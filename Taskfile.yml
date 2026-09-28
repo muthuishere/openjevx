@@ -44,3 +44,24 @@ tasks:
     desc: Run the Go tests
     cmds:
       - go test ./...
+
+  package:
+    desc: Build macOS, Linux and Windows release packages here (needs zig)
+    cmds:
+      - ./scripts/package.sh
+
+  docker:
+    desc: Build amd64 and arm64 images and save them as tars in .local/dist
+    cmds:
+      - mkdir -p {{.LOCAL}}/dist
+      - docker build --platform linux/arm64 -t ghcr.io/muthuishere/openjevx:latest .
+      - docker save ghcr.io/muthuishere/openjevx:latest -o {{.LOCAL}}/dist/openjevx-docker-arm64.tar
+      - docker build --platform linux/amd64 -t ghcr.io/muthuishere/openjevx:latest-amd64 .
+      - docker save ghcr.io/muthuishere/openjevx:latest-amd64 -o {{.LOCAL}}/dist/openjevx-docker-amd64.tar
+
+  release:
+    desc: "Publish .local/dist to a GitHub release (task release VERSION=v0.2.0)"
+    requires: {vars: [VERSION]}
+    cmds:
+      - gh release view {{.VERSION}} >/dev/null 2>&1 || gh release create {{.VERSION}} --title "OpenJevX {{.VERSION}}" --notes "OpenJevX server {{.VERSION}}"
+      - gh release upload {{.VERSION}} --clobber {{.LOCAL}}/dist/openjevx-*.tar {{.LOCAL}}/dist/openjevx-*.zip {{.LOCAL}}/dist/SHA256SUMS-server
