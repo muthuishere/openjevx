@@ -27,6 +27,39 @@ COPY_FILES = ("train_openjevx.py", "export_onnx_gpu.py",
               "kaggle_train.py", "kaggle_eval.py", "adapter.py")
 
 
+def question_key(state, instructions):
+    """Same key as the leakage check: normalised state + normalised question text."""
+    import hashlib
+    if isinstance(state, str):
+        try:
+            state = json.loads(state)
+        except Exception:
+            state = " ".join(state.split()).lower()
+    text = state if isinstance(state, str) else json.dumps(state, sort_keys=True).lower()
+    text += "||" + " ".join(str(instructions).split()).lower()
+    return hashlib.blake2b(text.encode(), digest_size=12).hexdigest()
+
+
+def filter_rows(rows, exclude_keys, drop_sources, counts):
+    """Remove leaked test questions and reviewed-bad sources; drop rows left with no questions."""
+    kept = []
+    for row in rows:
+        if row.get("source") in drop_sources:
+            counts["dropped_source_rows"] += 1
+            continue
+        if exclude_keys:
+            for qid in list(row["questions"]):
+                if question_key(row["state"], row["questions"][qid].get("instructions", "")) in exclude_keys:
+                    del row["questions"][qid]
+                    row["gold"].pop(qid, None)
+                    counts["leaked_questions_removed"] += 1
+            if not row["questions"]:
+                counts["rows_emptied"] += 1
+                continue
+        kept.append(row)
+    return kept
+
+
 def write_gzip_jsonl(path, rows):
     import gzip
     with gzip.open(path, "wt", encoding="utf-8") as handle:
@@ -35,7 +68,8 @@ def write_gzip_jsonl(path, rows):
     return Path(path).stat().st_size
 
 
-def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), extra_eval=()):
+def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), extra_eval=(),
+          exclude_keys=frozenset(), drop_sources=frozenset()):
     import adapter
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -77,6 +111,10 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
         eval_rows.append(shaped)
         if smoke and len(eval_rows) >= EVAL_SMOKE_ROWS:
             break
+
+    removed = Counter()
+    train_rows = filter_rows(train_rows, exclude_keys, drop_sources, removed)
+    skips.update({"filter_" + key: value for key, value in removed.items()})
 
     for extra in extra_eval:
         for row in adapter.read_jsonl(extra):
@@ -127,8 +165,12 @@ def main():
     parser.add_argument("--budget-gb", type=float, default=DEFAULT_BUDGET_GB)
     parser.add_argument("--extra-train", action="append", default=[], help="JSONL kept in full")
     parser.add_argument("--extra-eval", action="append", default=[], help="JSONL added to eval")
+    parser.add_argument("--exclude-keys", help="JSON list of question keys to remove (leaked test questions)")
+    parser.add_argument("--drop-sources", help="text file, one source per line, removed from training")
     args = parser.parse_args()
-    build(args.out, smoke=args.smoke, budget_gb=args.budget_gb, extra_train=args.extra_train, extra_eval=args.extra_eval)
+    build(args.out, smoke=args.smoke, budget_gb=args.budget_gb, extra_train=args.extra_train, extra_eval=args.extra_eval,
+          exclude_keys=frozenset(json.load(open(args.exclude_keys))) if args.exclude_keys else frozenset(),
+          drop_sources=frozenset(l.strip() for l in open(args.drop_sources) if l.strip()) if args.drop_sources else frozenset())
 
 
 if __name__ == "__main__":

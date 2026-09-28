@@ -12,7 +12,9 @@ import boto3
 
 key = sys.argv[1]
 seconds = int(sys.argv[2]) if len(sys.argv) > 2 else 86400
-client = boto3.client("s3", endpoint_url=os.environ["S3_ENDPOINT"], region_name=os.environ["S3_REGION"],
+endpoint = os.environ["S3_ENDPOINT"]
+endpoint = endpoint if "://" in endpoint else "https://" + endpoint
+client = boto3.client("s3", endpoint_url=endpoint, region_name=os.environ["S3_REGION"],
                       aws_access_key_id=os.environ["S3_ACCESS_KEY"], aws_secret_access_key=os.environ["S3_SECRET_KEY"])
 print(client.generate_presigned_url("get_object", Params={"Bucket": os.environ["BACKUP_S3_BUCKET"], "Key": key},
                                     ExpiresIn=seconds))
