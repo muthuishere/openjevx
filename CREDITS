@@ -1,0 +1,29 @@
+OpenJevX credits
+
+We stand on this work. Keep these names with any copy.
+
+OpenJevX
+  Muthukumaran Navaneethakrishnan
+  https://github.com/muthuishere
+
+Laya, the decision model this is specialized from
+  Nandakishor Mukkunnoth, ConvAI Innovations
+  https://github.com/NandhaKishorM/laya
+  https://huggingface.co/convaiinnovations/laya
+
+ModernBERT, the encoder inside Laya
+  Answer.AI and LightOn
+  https://huggingface.co/answerdotai/ModernBERT-large
+
+RLCD, Reinforcement Learning for Calibrated Decisions
+  The Laya training method. Reporting honest probabilities is the reward.
+
+typed-decisions
+  LocalLLaMA/typed-decisions, the public benchmark this specialization was trained on.
+  https://huggingface.co/datasets/LocalLLaMA/typed-decisions
+
+License
+  Apache License 2.0. See LICENSE and licenses/.
+  Any person or company may use this commercially or non-commercially.
+
+OpenJevX is not affiliated with TypeSafe. Jev is a trademark of its owner.

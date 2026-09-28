@@ -40,11 +40,10 @@ jevx ask "We were billed twice" --noul refund:"Is a refund required?"
 
 Device is `cpu` or `gpu` in `openjevx.json`. Do not use a Python or Node launcher.
 
-## Provenance
+## Credits
 
-- Decision architecture and runtime: Laya by ConvAI Innovations
-- Encoder: `answerdotai/ModernBERT-large`
-- Training method: RLCD, Reinforcement Learning for Calibrated Decisions
-- License: Apache-2.0. Commercial and non-commercial use by any company is allowed. See `LICENSE` and `licenses/`.
+We stand on Laya by Nandakishor Mukkunnoth (ConvAI Innovations) and ModernBERT by Answer.AI and LightOn. Full names are in `CREDITS`.
+
+Apache-2.0. Any person or company may use this commercially or non-commercially. See `LICENSE` and `licenses/`.
 
 This project is not affiliated with TypeSafe. Jev is a trademark of its respective owner.
