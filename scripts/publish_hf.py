@@ -71,8 +71,13 @@ LightOn. Laya and ModernBERT are Apache-2.0 licensed.
     (model_dir / "README.md").write_text(card)
     api = HfApi()
     api.create_repo(REPO_ID, repo_type="model", private=True, exist_ok=True)
-    api.upload_folder(repo_id=REPO_ID, repo_type="model", folder_path=model_dir,
-                      commit_message="Publish OpenJevX RLCD checkpoint and ONNX export")
+    api.upload_folder(
+        repo_id=REPO_ID,
+        repo_type="model",
+        folder_path=model_dir,
+        ignore_patterns=["openjevx.onnx", "checkpoint_latest/*", "checkpoint_latest/**"],
+        commit_message="Publish OpenJevX RLCD checkpoint and ONNX export",
+    )
     api.update_repo_settings(REPO_ID, private=False)
     release_notes = (
         f"OpenJevX v0.1.0: RLCD fine-tuned Laya decision model.\n\n"
@@ -85,8 +90,11 @@ LightOn. Laya and ModernBERT are Apache-2.0 licensed.
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     ).returncode == 0
+    onnx_asset = model_dir / "openjevx.int8.onnx"
+    if not onnx_asset.exists():
+        onnx_asset = model_dir / "openjevx.onnx"
     assets = [
-        str(model_dir / "openjevx.onnx"),
+        str(onnx_asset),
         str(model_dir / "benchmark.json"),
         str(model_dir / "SHA256SUMS"),
         str(model_dir / "rl_agent_config.json"),

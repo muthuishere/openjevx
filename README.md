@@ -1,20 +1,14 @@
 # OpenJevX
 
-OpenJevX is an open-weight, Jev-compatible System One decision model built by specializing
-[Laya](https://github.com/NandhaKishorM/laya). It answers runtime-defined `choice`, `score`,
-and `noul` questions with calibrated probabilities in one non-autoregressive forward pass.
+OpenJevX is a Jev-compatible decision model. No Python.
 
-- Model: https://huggingface.co/muthuishere/openjevx
-- ONNX release: https://github.com/muthuishere/openjevx/releases/tag/v0.1.0
+- Linux / macOS: `./README`
+- Windows: `README.cmd`
 
-## Run
+The release executable contains the int8 ONNX model. `openjevx.json` selects `cpu` or `gpu`.
+`gpu` does not fall back to CPU.
 
-Python 3.10+ and Node.js 18+ are the only prerequisites. The first run creates an isolated
-runtime and downloads the model from Hugging Face; later runs reuse the cache.
-
-```bash
-npx github:muthuishere/openjevx --port 8000
-```
+Model card: https://huggingface.co/muthuishere/openjevx
 
 Test the Jev-compatible endpoint:
 
@@ -44,12 +38,7 @@ jevx profile use openjevx
 jevx ask "We were billed twice" --noul refund:"Is a refund required?"
 ```
 
-Use another device when available:
-
-```bash
-npx github:muthuishere/openjevx --device mps
-npx github:muthuishere/openjevx --device cuda
-```
+Device is `cpu` or `gpu` in `openjevx.json`. Do not use a Python or Node launcher.
 
 ## Provenance
 

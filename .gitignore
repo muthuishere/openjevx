@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 *.log
 .DS_Store
+
+openjevx
+openjevx.exe
+libonnxruntime.so
+libonnxruntime.dylib
+onnxruntime.dll
+*.tar.gz
+*.zip
