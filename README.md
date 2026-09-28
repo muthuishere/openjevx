@@ -40,6 +40,10 @@ jevx ask "We were billed twice" --noul refund:"Is a refund required?"
 
 Device is `cpu` or `gpu` in `openjevx.json`. Do not use a Python or Node launcher.
 
+## Next training
+
+Read `docs/adr/` before another fine-tune. Start with [ADR 0002](docs/adr/0002-training-run.md).
+
 ## Credits
 
 We stand on Laya by Nandakishor Mukkunnoth (ConvAI Innovations) and ModernBERT by Answer.AI and LightOn. Full names are in `CREDITS`.
