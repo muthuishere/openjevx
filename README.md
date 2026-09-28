@@ -45,6 +45,6 @@ Device is `cpu` or `gpu` in `openjevx.json`. Do not use a Python or Node launche
 - Decision architecture and runtime: Laya by ConvAI Innovations
 - Encoder: `answerdotai/ModernBERT-large`
 - Training method: RLCD, Reinforcement Learning for Calibrated Decisions
-- License: Apache-2.0
+- License: Apache-2.0. Commercial and non-commercial use by any company is allowed. See `LICENSE` and `licenses/`.
 
 This project is not affiliated with TypeSafe. Jev is a trademark of its respective owner.

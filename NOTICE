@@ -1,6 +1,13 @@
 OpenJevX
 Copyright 2026 Muthukumaran Navaneethakrishnan
 
-This product includes software and model derivatives from Laya by ConvAI Innovations
-(https://github.com/NandhaKishorM/laya) and ModernBERT by Answer.AI and LightOn
-(https://huggingface.co/answerdotai/ModernBERT-large), licensed under Apache License 2.0.
+Licensed under the Apache License, Version 2.0. See LICENSE.
+Any person or company may use, modify, and distribute this software and the
+model weights for commercial or non-commercial purposes.
+
+This product includes third-party material, also under Apache-2.0. Those
+notices are in licenses/ and are not removed by this grant.
+
+- Laya by ConvAI Innovations, https://github.com/NandhaKishorM/laya
+- ModernBERT by Answer.AI and LightOn,
+  https://huggingface.co/answerdotai/ModernBERT-large

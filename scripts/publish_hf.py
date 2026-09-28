@@ -30,6 +30,7 @@ def main():
 
     card = f"""---
 license: apache-2.0
+license_link: https://www.apache.org/licenses/LICENSE-2.0
 library_name: laya
 pipeline_tag: text-classification
 tags:
