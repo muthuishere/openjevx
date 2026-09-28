@@ -47,3 +47,13 @@ jevx profile use openjevx
 ```
 
 Apache-2.0. Credits: `CREDITS`. Next training: `docs/adr/0002-training-run.md`.
+
+## Dashboard
+
+Open http://127.0.0.1:21118/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
+
+Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
+
+- `GET /stats` — JSON snapshot (same password)
+- `GET /metrics` — Prometheus format (same password)
+- `GET /health` — open, no password

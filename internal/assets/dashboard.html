@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset=utf-8><title>OpenJevX</title>
+<style>
+:root{color-scheme:dark}
+body{background:#0b0e14;color:#c9d1d9;font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:0;padding:24px}
+h1{font-size:18px;margin:0 0 4px}
+.sub{color:#8b949e;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:14px}
+.card .k{color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.card .v{font-size:22px;margin-top:6px;color:#e6edf3}
+.err .v{color:#f85149}
+table{border-collapse:collapse;width:100%;background:#161b22;border:1px solid #21262d;border-radius:8px;overflow:hidden}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #21262d;font-size:12px}
+th{color:#8b949e;font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.bad{color:#f85149}
+h2{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px}
+a{color:#58a6ff}
+footer{margin-top:24px;color:#8b949e;font-size:11px}
+</style></head><body>
+<h1>OpenJevX</h1>
+<div class=sub><span id=device></span> &middot; <a href=/metrics>Prometheus /metrics</a> &middot; <a href=/stats>/stats JSON</a> &middot; refresh 2s</div>
+<div class=grid>
+<div class=card><div class=k>requests</div><div class=v id=t_req>0</div></div>
+<div class=card><div class=k>questions</div><div class=v id=t_q>0</div></div>
+<div class=card><div class=k>input tokens</div><div class=v id=t_tok>0</div></div>
+<div class=card><div class=k>p50 / p95 ms</div><div class=v id=t_lat>–</div></div>
+<div class="card" id=card_err><div class=k>errors</div><div class=v id=t_err>0</div></div>
+<div class=card><div class=k>uptime</div><div class=v id=t_up>–</div></div>
+</div>
+<h2>recent requests</h2>
+<table id=tbl><thead><tr><th>time</th><th class=num>ms</th><th class=num>questions</th><th class=num>tokens</th><th>device</th></tr></thead><tbody id=rows></tbody></table>
+<footer>OpenJevX &middot; Apache-2.0 &middot; Laya/ModernBERT upstream</footer>
+<script>
+const $=id=>document.getElementById(id);
+function up(s){if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";return Math.floor(s/3600)+"h "+Math.floor(s%3600/60)+"m"}
+async function tick(){
+ try{const r=await fetch("/stats");if(r.status===401){document.body.innerHTML="<h1>OpenJevX</h1><p>reload the page, browser will ask for the password (default adminadmin)</p>";return}
+ const d=await r.json();const c=d.requests;
+ $("device").textContent="device: "+d.device;
+ $("t_req").textContent=c.total;$("t_q").textContent=c.questions;$("t_tok").textContent=c.tokens;
+ $("t_lat").textContent=c.p50_ms+" / "+c.p95_ms;$("t_err").textContent=c.errors;
+ $("card_err").className="card"+(c.errors?" err":"");
+ $("t_up").textContent=up(d.uptime_seconds);
+ $("rows").innerHTML=(d.recent||[]).slice().reverse().map(x=>"<tr><td>"+new Date(x.time).toLocaleTimeString()+"</td><td class=num>"+x.ms.toFixed(1)+"</td><td class=num>"+x.questions+"</td><td class=num>"+x.input_tokens+"</td><td>"+(x.error?"<span class=bad>"+x.error+"</span>":x.device)+"</td></tr>").join("");
+ }catch(e){}
+}
+tick();setInterval(tick,2000);
+</script></body></html>

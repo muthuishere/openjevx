@@ -9,19 +9,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	ort "github.com/yalue/onnxruntime_go"
 
 	"github.com/muthuishere/openjevx/internal/assets"
 	"github.com/muthuishere/openjevx/internal/bpe"
 	"github.com/muthuishere/openjevx/internal/decide"
+	"github.com/muthuishere/openjevx/internal/stats"
 )
 
 type config struct {
-	Listen  string `json:"listen"`
-	Device  string `json:"device"`
-	Model   string `json:"model,omitempty"`
-	Runtime string `json:"runtime,omitempty"`
+	Listen   string `json:"listen"`
+	Device   string `json:"device"`
+	Password string `json:"password,omitempty"`
+	Model    string `json:"model,omitempty"`
+	Runtime  string `json:"runtime,omitempty"`
 }
 
 func main() {
@@ -51,6 +55,26 @@ func main() {
 	cfg.Device = used
 	log.Printf("device %s", used)
 	defer session.Destroy()
+	stats.SetDevice(cfg.Device)
+	guard := protected(cfg.Password)
+	var inferMu sync.Mutex
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		guard(w, r, func() {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write(assets.Dashboard)
+		})
+	})
+	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		guard(w, r, func() { writeJSON(w, stats.Snapshot(cfg.Device)) })
+	})
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		guard(w, r, func() {
+			w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+			_, _ = w.Write([]byte(stats.Prometheus()))
+		})
+	})
+
 	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"status": "ok", "device": cfg.Device, "model": "openjevx"})
 	})
@@ -59,33 +83,69 @@ func main() {
 			http.Error(w, "POST", http.StatusMethodNotAllowed)
 			return
 		}
+		started := time.Now()
 		var req struct {
 			State     json.RawMessage            `json:"state"`
 			Questions map[string]json.RawMessage `json:"questions"`
 		}
+		answer := func(errText string, status int) {
+			if errText != "" {
+				http.Error(w, errText, status)
+			}
+			var types []string
+			for id := range req.Questions {
+				if raw, ok := req.Questions[id]; ok {
+					var q struct {
+						Type string `json:"type"`
+					}
+					if json.Unmarshal(raw, &q) == nil {
+						types = append(types, q.Type)
+					}
+				}
+			}
+			stats.Record(stats.Request{
+				Time: time.Now(), Duration: float64(time.Since(started).Microseconds()) / 1000,
+				Questions: len(req.Questions), Device: cfg.Device, Error: errText,
+			}, types)
+		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			answer(err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(req.Questions) == 0 {
+			answer("questions missing", http.StatusBadRequest)
 			return
 		}
 		order := orderedKeys(req.Questions)
 		ids, qs, err := decide.ParseQuestions(req.Questions, order)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			answer(err.Error(), http.StatusBadRequest)
 			return
 		}
 		items := decide.Encode(tok, stateText(req.State), qs)
+		inferMu.Lock()
 		logits, width, act, err := run(session, items)
+		inferMu.Unlock()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			answer(err.Error(), http.StatusInternalServerError)
 			return
 		}
+		var types []string
+		for _, q := range qs {
+			types = append(types, q.Type)
+		}
+		stats.Record(stats.Request{
+			Time:      time.Now(),
+			Duration:  float64(time.Since(started).Microseconds()) / 1000,
+			Questions: len(ids), Tokens: tokenCount(items), Device: cfg.Device,
+		}, types)
 		writeJSON(w, map[string]any{
 			"model":   "openjevx",
 			"answers": decide.Decode(ids, qs, items, logits, width, act),
 			"usage":   map[string]int{"input_tokens": tokenCount(items), "output_tokens": 0},
 		})
 	})
-	log.Printf("OpenJevX %s at http://%s/v1/systemone", cfg.Device, cfg.Listen)
+	log.Printf("OpenJevX %s at http://%s (dashboard on /, metrics on /metrics)", cfg.Device, cfg.Listen)
 	log.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
 
@@ -286,6 +346,29 @@ func tokenCount(items []decide.Item) int {
 		n += len(item.IDs)
 	}
 	return n
+}
+
+func protected(password string) func(http.ResponseWriter, *http.Request, func()) {
+	return func(w http.ResponseWriter, r *http.Request, fn func()) {
+		if password == "" {
+			fn()
+			return
+		}
+		_, pass, ok := r.BasicAuth()
+		if !ok {
+			if pass = r.URL.Query().Get("password"); pass == "" {
+				w.Header().Set("WWW-Authenticate", `Basic realm="openjevx"`)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		if pass != password {
+			w.Header().Set("WWW-Authenticate", `Basic realm="openjevx"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		fn()
+	}
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
