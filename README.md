@@ -4,6 +4,9 @@ OpenJevX is an open-weight, Jev-compatible System One decision model built by sp
 [Laya](https://github.com/NandhaKishorM/laya). It answers runtime-defined `choice`, `score`,
 and `noul` questions with calibrated probabilities in one non-autoregressive forward pass.
 
+- Model: https://huggingface.co/muthuishere/openjevx
+- ONNX release: https://github.com/muthuishere/openjevx/releases/tag/v0.1.0
+
 ## Run
 
 Python 3.10+ and Node.js 18+ are the only prerequisites. The first run creates an isolated

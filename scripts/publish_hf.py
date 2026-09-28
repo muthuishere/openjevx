@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Publish a validated OpenJevX checkpoint and ONNX graph to Hugging Face."""
 
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -16,6 +18,16 @@ def main():
     report = json.loads((model_dir / "benchmark.json").read_text())
     if report["accuracy"] < 0.70:
         raise RuntimeError("refusing to publish a checkpoint below the 0.70 accuracy gate")
+    checksums = []
+    for path in sorted(model_dir.rglob("*")):
+        if path.is_file() and path.name not in {"README.md", "SHA256SUMS"}:
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            checksums.append(f"{digest.hexdigest()}  {path.relative_to(model_dir)}")
+    (model_dir / "SHA256SUMS").write_text("\n".join(checksums) + "\n")
+
     card = f"""---
 license: apache-2.0
 library_name: laya
@@ -62,7 +74,36 @@ LightOn. Laya and ModernBERT are Apache-2.0 licensed.
     api.upload_folder(repo_id=REPO_ID, repo_type="model", folder_path=model_dir,
                       commit_message="Publish OpenJevX RLCD checkpoint and ONNX export")
     api.update_repo_settings(REPO_ID, private=False)
+    release_notes = (
+        f"OpenJevX v0.1.0: RLCD fine-tuned Laya decision model.\n\n"
+        f"Typed-decisions accuracy: {report['accuracy']:.3f}. "
+        f"CUDA p50: {report['latency_ms']['p50']:.1f} ms per five-question case.\n\n"
+        "The ONNX graph requires the tokenizer and rl_agent_config.json from the Hugging Face model."
+    )
+    release_exists = subprocess.run(
+        ["gh", "release", "view", "v0.1.0", "--repo", "muthuishere/openjevx"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    assets = [
+        str(model_dir / "openjevx.onnx"),
+        str(model_dir / "benchmark.json"),
+        str(model_dir / "SHA256SUMS"),
+        str(model_dir / "rl_agent_config.json"),
+    ]
+    if release_exists:
+        subprocess.run(
+            ["gh", "release", "upload", "v0.1.0", *assets, "--clobber", "--repo", "muthuishere/openjevx"],
+            check=True,
+        )
+    else:
+        subprocess.run(
+            ["gh", "release", "create", "v0.1.0", *assets, "--repo", "muthuishere/openjevx",
+             "--title", "OpenJevX v0.1.0", "--notes", release_notes],
+            check=True,
+        )
     print(f"https://huggingface.co/{REPO_ID}")
+    print("https://github.com/muthuishere/openjevx/releases/tag/v0.1.0")
 
 
 if __name__ == "__main__":
