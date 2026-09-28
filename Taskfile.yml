@@ -6,7 +6,7 @@ vars:
 
 tasks:
   setup:
-    desc: Fetch the ONNX Runtime library and the int8 model into .local/
+    desc: Fetch the ONNX Runtime library and the 4-bit model into .local/
     cmds:
       - mkdir -p {{.LOCAL}}
       - |
@@ -23,9 +23,8 @@ tasks:
           rm -rf {{.LOCAL}}/$pkg
         fi
       - |
-        if [ ! -f {{.LOCAL}}/openjevx.int8.onnx ]; then
-          if [ -f artifacts/openjevx.int8.onnx ]; then cp artifacts/openjevx.int8.onnx {{.LOCAL}}/
-          else curl -fsSL -o {{.LOCAL}}/openjevx.int8.onnx https://huggingface.co/muthuishere/openjevx/resolve/main/openjevx.int8.onnx; fi
+        if [ ! -f {{.LOCAL}}/openjevx.w4.onnx ]; then
+          curl -fsSL -o {{.LOCAL}}/openjevx.w4.onnx https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx.w4.onnx
         fi
 
   build:
