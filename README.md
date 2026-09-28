@@ -1,5 +1,7 @@
 # OpenJevX
 
+Open, local decision model server for [jevx](https://github.com/muthuishere/jevx). Source: [github.com/muthuishere/openjevx](https://github.com/muthuishere/openjevx) · Releases: [latest](https://github.com/muthuishere/openjevx/releases/latest)
+
 Default port: **21118**
 
 http://127.0.0.1:21118/v1/systemone
@@ -26,20 +28,37 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.2.0/openjevx-darwin-arm64.tar
 tar -xf openjevx-darwin-arm64.tar && ./openjevx
 ```
 
 Linux:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.2.0/openjevx-linux-amd64.tar
 tar -xf openjevx-linux-amd64.tar && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.2.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
+
+## Docker
+
+```bash
+git clone https://github.com/muthuishere/openjevx.git && cd openjevx
+docker compose up -d --build
+```
+
+No clone? Load a prebuilt image from the release (`amd64` or `arm64`):
+
+```bash
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.2.0/openjevx-docker-amd64.tar
+docker load -i openjevx-docker-amd64.tar
+docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64
+```
 
 ## jevx
+
+Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
 
 ```bash
 jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx

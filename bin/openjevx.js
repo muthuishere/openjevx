@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
 
-const version = "v0.1.0";
+const version = "v0.2.0";
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;
 const home = process.env.OPENJEVX_HOME || join(homedir(), ".local", "share", "openjevx");
 const binDir = process.env.OPENJEVX_BIN || join(homedir(), ".local", "bin");

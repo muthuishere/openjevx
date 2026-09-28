@@ -1,0 +1,7 @@
+.git
+.local
+artifacts
+node_modules
+*.tar
+*.tar.gz
+*.zip
