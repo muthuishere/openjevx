@@ -1,0 +1,76 @@
+{
+  "n_decisions": 1260,
+  "n_correct": 879,
+  "accuracy": 0.6976190476190476,
+  "n_errors": 0,
+  "latency_ms": {
+    "p50": 53.51048500000388,
+    "p95": 71.51372300000958,
+    "mean": 52.279032296032014
+  },
+  "by_category": {
+    "A_numeric_compare_close": {
+      "correct": 41,
+      "total": 74,
+      "accuracy": 0.5540540540540541
+    },
+    "A_numeric_compare_clear": {
+      "correct": 108,
+      "total": 146,
+      "accuracy": 0.7397260273972602
+    },
+    "B_explicit_fact": {
+      "correct": 135,
+      "total": 180,
+      "accuracy": 0.75
+    },
+    "C_explicit_choice": {
+      "correct": 180,
+      "total": 180,
+      "accuracy": 1.0
+    },
+    "D_count_bucket": {
+      "correct": 156,
+      "total": 180,
+      "accuracy": 0.8666666666666667
+    },
+    "E_cheapest_of_three": {
+      "correct": 46,
+      "total": 160,
+      "accuracy": 0.2875
+    },
+    "F_conjunction": {
+      "correct": 149,
+      "total": 180,
+      "accuracy": 0.8277777777777777
+    },
+    "G_no_context_trivia_choice": {
+      "correct": 32,
+      "total": 96,
+      "accuracy": 0.3333333333333333
+    },
+    "G_no_context_trivia_noul": {
+      "correct": 32,
+      "total": 64,
+      "accuracy": 0.5
+    }
+  },
+  "by_type": {
+    "noul": {
+      "correct": 465,
+      "total": 644,
+      "accuracy": 0.7220496894409938
+    },
+    "choice": {
+      "correct": 258,
+      "total": 436,
+      "accuracy": 0.591743119266055
+    },
+    "score": {
+      "correct": 156,
+      "total": 180,
+      "accuracy": 0.8666666666666667
+    }
+  },
+  "brier_noul": 0.1820258678416145
+}
