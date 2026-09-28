@@ -1,53 +1,73 @@
 # OpenJevX
 
-OpenJevX is a Jev-compatible decision model. No Python.
+Jev-compatible decision model. No Python. Apache-2.0.
 
-- Linux / macOS: `./README`
-- Windows: `README.cmd`
+Default port: **8000**
 
-The release executable contains the int8 ONNX model. `openjevx.json` selects `cpu` or `gpu`.
-`gpu` does not fall back to CPU.
+Server: http://127.0.0.1:8000/v1/systemone
 
-Model card: https://huggingface.co/muthuishere/openjevx
+Config file `openjevx.json`:
 
-Test the Jev-compatible endpoint:
-
-```bash
-curl http://127.0.0.1:8000/v1/systemone \
-  -H 'content-type: application/json' \
-  -d '{
-    "state": {"body": "We were billed twice. Refund the duplicate."},
-    "questions": {
-      "department": {
-        "type": "choice",
-        "instructions": "Which team should handle this?",
-        "criteria": {
-          "billing": "payments, invoices, and refunds",
-          "technical": "bugs and outages"
-        }
-      }
-    }
-  }'
+```json
+{ "listen": "127.0.0.1:8000", "device": "cpu" }
 ```
 
-## Use With jevx
+`device` is `cpu` or `gpu`. `gpu` does not fall back to CPU.
+
+## Install
+
+One command. It downloads the binary over HTTPS and installs `openjevx`. You do not unpack anything.
+
+```bash
+npx git+https://github.com/muthuishere/openjevx.git
+```
+
+Then:
+
+```bash
+openjevx
+```
+
+If `openjevx` is not found:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+openjevx
+```
+
+## Install manually
+
+macOS:
+
+```bash
+curl -L -o openjevx.tar https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-darwin-arm64.tar
+tar -xf openjevx.tar
+./openjevx
+```
+
+Linux:
+
+```bash
+curl -L -o openjevx.tar https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-linux-amd64.tar
+tar -xf openjevx.tar
+./openjevx
+```
+
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.1.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
+
+## jevx
 
 ```bash
 jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
 jevx profile use openjevx
-jevx ask "We were billed twice" --noul refund:"Is a refund required?"
 ```
-
-Device is `cpu` or `gpu` in `openjevx.json`. Do not use a Python or Node launcher.
-
-## Next training
-
-Read `docs/adr/` before another fine-tune. Start with [ADR 0002](docs/adr/0002-training-run.md).
 
 ## Credits
 
-We stand on Laya by Nandakishor Mukkunnoth (ConvAI Innovations) and ModernBERT by Answer.AI and LightOn. Full names are in `CREDITS`.
+We stand on Laya by Nandakishor Mukkunnoth (ConvAI Innovations) and ModernBERT by Answer.AI and LightOn. See `CREDITS`.
 
-Apache-2.0. Any person or company may use this commercially or non-commercially. See `LICENSE` and `licenses/`.
+Apache-2.0. Any company may use this commercially or not. See `LICENSE` and `licenses/`.
+
+Next training: `docs/adr/0002-training-run.md`.
 
 This project is not affiliated with TypeSafe. Jev is a trademark of its respective owner.
