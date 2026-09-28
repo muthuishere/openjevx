@@ -4,8 +4,9 @@ __pycache__/
 *.log
 .DS_Store
 
-openjevx
-openjevx.exe
+/openjevx
+/openjevx.exe
+/dist/
 libonnxruntime.so
 libonnxruntime.dylib
 onnxruntime.dll

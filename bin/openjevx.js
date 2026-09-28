@@ -47,6 +47,7 @@ if (!existsSync(exe)) {
   const extracted = spawnSync("tar", ["-xf", archive, "-C", home], { stdio: "inherit" });
   if (extracted.status !== 0) process.exit(extracted.status || 1);
   if (!windows) chmodSync(exe, 0o755);
+  writeFileSync(join(home, "openjevx.json"), JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
 }
 
 mkdirSync(binDir, { recursive: true });
@@ -58,7 +59,7 @@ if (windows) {
   chmodSync(cmd, 0o755);
 }
 console.log("OpenJevX is ready.");
-console.log("Default port: 8000");
-console.log("Server:  http://127.0.0.1:8000/v1/systemone");
+console.log("Default port: 21118");
+console.log("Server:  http://127.0.0.1:21118/v1/systemone");
 console.log("Command: openjevx");
 if (!windows) console.log(`If needed: export PATH="${binDir}:$PATH"`);
