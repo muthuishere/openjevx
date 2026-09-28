@@ -1,0 +1,46 @@
+version: "3"
+
+vars:
+  ORT_VERSION: 1.22.0
+  LOCAL: .local
+
+tasks:
+  setup:
+    desc: Fetch the ONNX Runtime library and the int8 model into .local/
+    cmds:
+      - mkdir -p {{.LOCAL}}
+      - |
+        if [ ! -f {{.LOCAL}}/libonnxruntime.dylib ] && [ ! -f {{.LOCAL}}/libonnxruntime.so ]; then
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) pkg=onnxruntime-osx-arm64-{{.ORT_VERSION}}; lib=libonnxruntime.dylib ;;
+            Darwin-x86_64) pkg=onnxruntime-osx-x86_64-{{.ORT_VERSION}}; lib=libonnxruntime.dylib ;;
+            Linux-x86_64) pkg=onnxruntime-linux-x64-{{.ORT_VERSION}}; lib=libonnxruntime.so ;;
+            Linux-aarch64) pkg=onnxruntime-linux-aarch64-{{.ORT_VERSION}}; lib=libonnxruntime.so ;;
+            *) echo "unsupported platform"; exit 1 ;;
+          esac
+          curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v{{.ORT_VERSION}}/$pkg.tgz | tar -xz -C {{.LOCAL}}
+          cp -L {{.LOCAL}}/$pkg/lib/$lib {{.LOCAL}}/$lib
+          rm -rf {{.LOCAL}}/$pkg
+        fi
+      - |
+        if [ ! -f {{.LOCAL}}/openjevx.int8.onnx ]; then
+          if [ -f artifacts/openjevx.int8.onnx ]; then cp artifacts/openjevx.int8.onnx {{.LOCAL}}/
+          else curl -fsSL -o {{.LOCAL}}/openjevx.int8.onnx https://huggingface.co/muthuishere/openjevx/resolve/main/openjevx.int8.onnx; fi
+        fi
+
+  build:
+    desc: Build the server into .local/ next to the model and runtime
+    deps: [setup]
+    cmds:
+      - CGO_ENABLED=1 go build -o {{.LOCAL}}/openjevx ./cmd/openjevx
+
+  run:
+    desc: Run the server locally (dashboard at http://127.0.0.1:21118/)
+    deps: [build]
+    cmds:
+      - ./{{.LOCAL}}/openjevx
+
+  test:
+    desc: Run the Go tests
+    cmds:
+      - go test ./...

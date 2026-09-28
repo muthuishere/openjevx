@@ -1,49 +1,160 @@
-<!doctype html><html><head><meta charset=utf-8><title>OpenJevX</title>
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>OpenJevX</title>
 <style>
-:root{color-scheme:dark}
-body{background:#0b0e14;color:#c9d1d9;font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:0;padding:24px}
-h1{font-size:18px;margin:0 0 4px}
-.sub{color:#8b949e;margin-bottom:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-.card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:14px}
-.card .k{color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-.card .v{font-size:22px;margin-top:6px;color:#e6edf3}
-.err .v{color:#f85149}
-table{border-collapse:collapse;width:100%;background:#161b22;border:1px solid #21262d;border-radius:8px;overflow:hidden}
-th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #21262d;font-size:12px}
-th{color:#8b949e;font-weight:600}
-td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-.bad{color:#f85149}
-h2{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px}
-a{color:#58a6ff}
-footer{margin-top:24px;color:#8b949e;font-size:11px}
-</style></head><body>
-<h1>OpenJevX</h1>
-<div class=sub><span id=device></span> &middot; <a href=/metrics>Prometheus /metrics</a> &middot; <a href=/stats>/stats JSON</a> &middot; refresh 2s</div>
-<div class=grid>
-<div class=card><div class=k>requests</div><div class=v id=t_req>0</div></div>
-<div class=card><div class=k>questions</div><div class=v id=t_q>0</div></div>
-<div class=card><div class=k>input tokens</div><div class=v id=t_tok>0</div></div>
-<div class=card><div class=k>p50 / p95 ms</div><div class=v id=t_lat>–</div></div>
-<div class="card" id=card_err><div class=k>errors</div><div class=v id=t_err>0</div></div>
-<div class=card><div class=k>uptime</div><div class=v id=t_up>–</div></div>
+:root{--bg:#f6f7f9;--panel:#fff;--line:#e4e7ec;--text:#101828;--muted:#667085;--accent:#4f46e5;--accent-soft:rgba(79,70,229,.12);--ok:#12b76a;--warn:#f79009;--bad:#f04438;--bad-soft:rgba(240,68,56,.08)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b0d12;--panel:#12151c;--line:#232733;--text:#e6e8ee;--muted:#8a91a3;--accent:#818cf8;--accent-soft:rgba(129,140,248,.16);--bad-soft:rgba(240,68,56,.12)}}
+:root[data-theme=dark]{--bg:#0b0d12;--panel:#12151c;--line:#232733;--text:#e6e8ee;--muted:#8a91a3;--accent:#818cf8;--accent-soft:rgba(129,140,248,.16);--bad-soft:rgba(240,68,56,.12)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 40px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.logo{font-weight:700;font-size:18px;letter-spacing:-.01em}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);background:var(--panel)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.live .dot{background:var(--ok);box-shadow:0 0 0 0 rgba(18,183,106,.5);animation:pulse 2s infinite}
+.down .dot{background:var(--bad)}
+@keyframes pulse{70%{box-shadow:0 0 0 6px rgba(18,183,106,0)}100%{box-shadow:0 0 0 0 rgba(18,183,106,0)}}
+.spacer{flex:1}
+button,select{font:inherit;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.k{color:var(--muted);font-size:12px;font-weight:500}
+.v{font-size:26px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.v small{font-size:13px;color:var(--muted);font-weight:500;margin-left:4px}
+.hint{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.card.bad{border-color:var(--bad);background:var(--bad-soft)}.card.bad .v{color:var(--bad)}
+.row{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:16px}
+@media (max-width:820px){.row{grid-template-columns:1fr}}
+h2{font-size:13px;font-weight:600;margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline}
+h2 span{font-weight:400;color:var(--muted);font-size:12px}
+canvas{width:100%;height:180px;display:block}
+.lat{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;text-align:center}
+.lat div{font-size:11px;color:var(--muted)}.lat b{display:block;font-size:14px;color:var(--text);font-variant-numeric:tabular-nums}
+.types .t{margin-bottom:10px}
+.types .lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.types .lbl span:last-child{color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--accent-soft);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .4s}
+.empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:12px}
+tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;background:rgba(18,183,106,.12);color:var(--ok)}
+.tag.e{background:var(--bad-soft);color:var(--bad);white-space:normal}
+.slow{color:var(--warn);font-weight:600}
+footer{margin-top:20px;color:var(--muted);font-size:12px;display:flex;gap:12px;flex-wrap:wrap}
+.gate{max-width:420px;margin:15vh auto;text-align:center}
+</style></head><body><div class=wrap>
+<header>
+ <span class=logo>OpenJevX</span>
+ <span class=pill id=status><span class=dot></span><span id=statusText>connecting…</span></span>
+ <span class=pill id=device>–</span>
+ <span class=pill id=uptime>–</span>
+ <span class=spacer></span>
+ <select id=every title="Refresh interval"><option value=1000>1s</option><option value=2000 selected>2s</option><option value=5000>5s</option><option value=15000>15s</option></select>
+ <button id=pause>Pause</button>
+ <button id=theme title="Toggle theme">◐</button>
+</header>
+
+<section class=kpis>
+ <div class=card><div class=k>Requests</div><div class=v id=req>0</div><div class=hint id=rate>– req/min</div></div>
+ <div class=card><div class=k>Questions answered</div><div class=v id=q>0</div><div class=hint id=qper>–</div></div>
+ <div class=card><div class=k>Input tokens</div><div class=v id=tok>0</div><div class=hint id=tokper>–</div></div>
+ <div class=card><div class=k>Median latency</div><div class=v id=p50>–</div><div class=hint id=p95>p95 –</div></div>
+ <div class=card id=errCard><div class=k>Errors</div><div class=v id=err>0</div><div class=hint id=errRate>0% of requests</div></div>
+</section>
+
+<section class=row>
+ <div class=card><h2>Latency <span id=chartNote>last 200 requests</span></h2><canvas id=chart></canvas>
+  <div class=lat><div>avg<b id=lavg>–</b></div><div>p50<b id=l50>–</b></div><div>p95<b id=l95>–</b></div><div>p99<b id=l99>–</b></div><div>max<b id=lmax>–</b></div></div></div>
+ <div class=card><h2>Question types <span id=typeTotal></span></h2><div class=types id=types><div class=empty>No questions yet</div></div></div>
+</section>
+
+<section class=card><h2>Recent requests <span>newest first · slow = over p95</span></h2>
+ <div class=tablewrap><table><thead><tr><th>Time</th><th class=num>Latency</th><th class=num>Questions</th><th class=num>Tokens</th><th>Device</th><th>Result</th></tr></thead><tbody id=rows></tbody></table></div>
+ <div class=empty id=noRows>Waiting for the first request to <code>POST /v1/systemone</code></div>
+</section>
+
+<footer><a href=/stats>/stats JSON</a><a href=/metrics>Prometheus /metrics</a><a href=/health>/health</a><span class=spacer></span><span>Polling pauses while this tab is hidden.</span></footer>
 </div>
-<h2>recent requests</h2>
-<table id=tbl><thead><tr><th>time</th><th class=num>ms</th><th class=num>questions</th><th class=num>tokens</th><th>device</th></tr></thead><tbody id=rows></tbody></table>
-<footer>OpenJevX &middot; Apache-2.0 &middot; Laya/ModernBERT upstream</footer>
 <script>
 const $=id=>document.getElementById(id);
-function up(s){if(s<60)return s+"s";if(s<3600)return Math.floor(s/60)+"m";return Math.floor(s/3600)+"h "+Math.floor(s%3600/60)+"m"}
+const nf=new Intl.NumberFormat();
+const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"k":nf.format(n);
+const ms=v=>v==null?"–":v<10?v.toFixed(2)+" ms":v<1000?v.toFixed(1)+" ms":(v/1000).toFixed(2)+" s";
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const up=s=>s<60?s+"s":s<3600?Math.floor(s/60)+"m "+s%60+"s":s<86400?Math.floor(s/3600)+"h "+Math.floor(s%3600/60)+"m":Math.floor(s/86400)+"d "+Math.floor(s%86400/3600)+"h";
+function setStatus(cls,text){$("status").className="pill "+cls;$("statusText").textContent=text}
+
+let timer=null,paused=false,last=null;
+try{const t=localStorage.getItem("ojx-theme");if(t)document.documentElement.dataset.theme=t;const e=localStorage.getItem("ojx-every");if(e)$("every").value=e}catch(e){}
+$("theme").onclick=()=>{const dark=matchMedia("(prefers-color-scheme:dark)").matches;const cur=document.documentElement.dataset.theme||(dark?"dark":"light");const n=cur==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("ojx-theme",n)}catch(e){}if(last)draw(last)};
+$("pause").onclick=()=>{paused=!paused;$("pause").textContent=paused?"Resume":"Pause";paused?(stop(),setStatus("","paused")):start()};
+$("every").onchange=()=>{try{localStorage.setItem("ojx-every",$("every").value)}catch(e){}if(!paused)start()};
+document.addEventListener("visibilitychange",()=>{if(paused)return;document.hidden?stop():start()});
+function stop(){clearTimeout(timer);timer=null}
+function start(){stop();tick()}
+
 async function tick(){
- try{const r=await fetch("/stats");if(r.status===401){document.body.innerHTML="<h1>OpenJevX</h1><p>reload the page, browser will ask for the password (default adminadmin)</p>";return}
- const d=await r.json();const c=d.requests;
- $("device").textContent="device: "+d.device;
- $("t_req").textContent=c.total;$("t_q").textContent=c.questions;$("t_tok").textContent=c.tokens;
- $("t_lat").textContent=c.p50_ms+" / "+c.p95_ms;$("t_err").textContent=c.errors;
- $("card_err").className="card"+(c.errors?" err":"");
- $("t_up").textContent=up(d.uptime_seconds);
- $("rows").innerHTML=(d.recent||[]).slice().reverse().map(x=>"<tr><td>"+new Date(x.time).toLocaleTimeString()+"</td><td class=num>"+x.ms.toFixed(1)+"</td><td class=num>"+x.questions+"</td><td class=num>"+x.input_tokens+"</td><td>"+(x.error?"<span class=bad>"+x.error+"</span>":x.device)+"</td></tr>").join("");
- }catch(e){}
+ try{
+  const r=await fetch("/stats",{cache:"no-store"});
+  if(r.status===401){document.body.innerHTML='<div class=gate><h2>Sign in required</h2><p>Reload the page and enter the dashboard password (set <code>"password"</code> in <code>openjevx.json</code>).</p><button onclick="location.reload()">Reload</button></div>';return}
+  const d=await r.json();last=d;render(d);setStatus("live","live");
+ }catch(e){setStatus("down","server unreachable")}
+ if(!paused&&!document.hidden)timer=setTimeout(tick,+$("every").value);
 }
-tick();setInterval(tick,2000);
+
+function render(d){
+ const c=d.requests,recent=d.recent||[];
+ $("device").textContent=d.device.toUpperCase();
+ $("uptime").textContent="up "+up(d.uptime_seconds);
+ $("req").textContent=fmt(c.total);
+ const now=Date.now(),lastMin=recent.filter(x=>now-new Date(x.time)<60000).length;
+ $("rate").textContent=lastMin+" req in last minute";
+ $("q").textContent=fmt(c.questions);
+ $("qper").textContent=c.total?(c.questions/c.total).toFixed(1)+" per request":"–";
+ $("tok").textContent=fmt(c.input_tokens);
+ $("tokper").textContent=c.total?fmt(Math.round(c.input_tokens/c.total))+" per request":"–";
+ $("p50").innerHTML=c.total?esc(ms(c.p50_ms)):"–";
+ $("p95").textContent=c.total?"p95 "+ms(c.p95_ms):"p95 –";
+ $("err").textContent=fmt(c.errors);
+ $("errCard").className="card"+(c.errors?" bad":"");
+ $("errRate").textContent=c.total?(100*c.errors/c.total).toFixed(1)+"% of requests":"0% of requests";
+ $("lavg").textContent=c.total?ms(c.avg_ms):"–";$("l50").textContent=c.total?ms(c.p50_ms):"–";
+ $("l95").textContent=c.total?ms(c.p95_ms):"–";$("l99").textContent=c.total?ms(c.p99_ms):"–";$("lmax").textContent=c.total?ms(c.max_ms):"–";
+
+ const types=Object.entries(d.per_question_type||{}).sort((a,b)=>b[1]-a[1]),tmax=types.length?types[0][1]:0,tsum=types.reduce((s,t)=>s+t[1],0);
+ $("typeTotal").textContent=tsum?fmt(tsum)+" total":"";
+ $("types").innerHTML=types.length?types.map(([k,v])=>`<div class=t><div class=lbl><span>${esc(k||"(untyped)")}</span><span>${fmt(v)} · ${(100*v/tsum).toFixed(0)}%</span></div><div class=bar><i style="width:${(100*v/tmax).toFixed(1)}%"></i></div></div>`).join(""):"<div class=empty>No questions yet</div>";
+
+ $("noRows").style.display=recent.length?"none":"block";
+ $("rows").innerHTML=recent.slice().reverse().map(x=>{
+  const slow=!x.error&&c.p95_ms&&x.ms>c.p95_ms&&recent.length>20;
+  return `<tr><td>${new Date(x.time).toLocaleTimeString()}</td><td class="num${slow?" slow":""}">${ms(x.ms)}</td><td class=num>${x.questions}</td><td class=num>${fmt(x.input_tokens)}</td><td>${esc(x.device)}</td><td>${x.error?`<span class="tag e">${esc(x.error)}</span>`:"<span class=tag>ok</span>"}</td></tr>`}).join("");
+ draw(d);
+}
+
+function draw(d){
+ const cv=$("chart"),dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+ cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);g.clearRect(0,0,w,h);
+ const css=getComputedStyle(document.documentElement),col=n=>css.getPropertyValue(n).trim();
+ const pts=(d.recent||[]).map(x=>({v:x.ms,e:!!x.error}));
+ if(pts.length<2){g.fillStyle=col("--muted");g.font="13px system-ui";g.textAlign="center";g.fillText("Chart appears after a couple of requests",w/2,h/2);return}
+ const pad={l:48,r:8,t:8,b:18},max=Math.max(...pts.map(p=>p.v))*1.1||1,W=w-pad.l-pad.r,H=h-pad.t-pad.b;
+ const X=i=>pad.l+W*i/(pts.length-1),Y=v=>pad.t+H*(1-v/max);
+ g.strokeStyle=col("--line");g.fillStyle=col("--muted");g.font="11px system-ui";g.textAlign="right";g.lineWidth=1;
+ for(let i=0;i<=3;i++){const v=max*i/3,y=Y(v);g.beginPath();g.moveTo(pad.l,y);g.lineTo(w-pad.r,y);g.stroke();g.fillText(ms(v),pad.l-6,y+4)}
+ const p95=d.requests.p95_ms;
+ if(p95){g.setLineDash([4,4]);g.strokeStyle=col("--warn");g.beginPath();g.moveTo(pad.l,Y(p95));g.lineTo(w-pad.r,Y(p95));g.stroke();g.setLineDash([]);g.fillStyle=col("--warn");g.textAlign="left";g.fillText("p95",pad.l+4,Y(p95)-4)}
+ g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(i),Y(p.v)):g.moveTo(X(i),Y(p.v)));
+ g.strokeStyle=col("--accent");g.lineWidth=1.75;g.lineJoin="round";g.stroke();
+ g.lineTo(X(pts.length-1),pad.t+H);g.lineTo(X(0),pad.t+H);g.closePath();g.fillStyle=col("--accent-soft");g.fill();
+ g.fillStyle=col("--bad");pts.forEach((p,i)=>{if(p.e){g.beginPath();g.arc(X(i),Y(p.v),3.5,0,7);g.fill()}});
+}
+addEventListener("resize",()=>last&&draw(last));
+start();
 </script></body></html>

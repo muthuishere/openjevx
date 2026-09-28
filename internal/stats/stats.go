@@ -42,8 +42,10 @@ type store struct {
 	questions int64
 	tokens    int64
 	latSum    float64
-	latencies []float64
-	recent    []Request
+	latencies []float64 // ring buffer of the last maxLatencies durations
+	latNext   int
+	recent    []Request // ring buffer of the last maxRecent requests
+	recNext   int
 	perType   map[string]int64
 }
 
@@ -62,13 +64,17 @@ func Record(r Request, types []string) {
 	for _, t := range types {
 		Store.perType[t]++
 	}
-	Store.latencies = append(Store.latencies, r.Duration)
-	if len(Store.latencies) > maxLatencies {
-		Store.latencies = Store.latencies[len(Store.latencies)-maxLatencies:]
+	if len(Store.latencies) < maxLatencies {
+		Store.latencies = append(Store.latencies, r.Duration)
+	} else {
+		Store.latencies[Store.latNext] = r.Duration
+		Store.latNext = (Store.latNext + 1) % maxLatencies
 	}
-	Store.recent = append(Store.recent, r)
-	if len(Store.recent) > maxRecent {
-		Store.recent = Store.recent[len(Store.recent)-maxRecent:]
+	if len(Store.recent) < maxRecent {
+		Store.recent = append(Store.recent, r)
+	} else {
+		Store.recent[Store.recNext] = r
+		Store.recNext = (Store.recNext + 1) % maxRecent
 	}
 }
 
@@ -81,29 +87,32 @@ func pct(sorted []float64, p float64) float64 {
 }
 
 func Snapshot(device string) map[string]any {
+	// Copy under the lock, sort outside it, so a dashboard poll never blocks Record.
 	Store.mu.Lock()
-	defer Store.mu.Unlock()
 	sorted := append([]float64(nil), Store.latencies...)
-	sort.Float64s(sorted)
+	recent := append(append([]Request(nil), Store.recent[Store.recNext:]...), Store.recent[:Store.recNext]...)
+	total, errs, questions, tokens := Store.total, Store.errors, Store.questions, Store.tokens
 	var avg float64
-	if Store.total > 0 {
-		avg = Store.latSum / float64(Store.total)
+	if total > 0 {
+		avg = Store.latSum / float64(total)
 	}
 	types := map[string]any{}
 	for k, v := range Store.perType {
 		types[k] = v
 	}
+	Store.mu.Unlock()
+	sort.Float64s(sorted)
 	return map[string]any{
 		"uptime_seconds": int(time.Since(started).Seconds()),
 		"device":         device,
 		"requests": counter{
-			Total: Store.total, Errors: Store.errors, Questions: Store.questions,
-			Tokens: Store.tokens, Device: device,
+			Total: total, Errors: errs, Questions: questions,
+			Tokens: tokens, Device: device,
 			Avg: round(avg), P50: round(pct(sorted, .5)), P95: round(pct(sorted, .95)),
 			P99: round(pct(sorted, .99)), Max: round(pct(sorted, 1)),
 		},
 		"per_question_type": types,
-		"recent":            Store.recent,
+		"recent":            recent,
 	}
 }
 

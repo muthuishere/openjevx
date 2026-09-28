@@ -57,3 +57,7 @@ Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
 - `GET /stats` — JSON snapshot (same password)
 - `GET /metrics` — Prometheus format (same password)
 - `GET /health` — open, no password
+
+## Run locally from source
+
+Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the int8 model into `.local/`, builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.

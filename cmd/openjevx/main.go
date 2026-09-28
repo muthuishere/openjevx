@@ -134,16 +134,18 @@ func main() {
 		for _, q := range qs {
 			types = append(types, q.Type)
 		}
-		stats.Record(stats.Request{
-			Time:      time.Now(),
-			Duration:  float64(time.Since(started).Microseconds()) / 1000,
-			Questions: len(ids), Tokens: tokenCount(items), Device: cfg.Device,
-		}, types)
+		tokens := tokenCount(items)
 		writeJSON(w, map[string]any{
 			"model":   "openjevx",
 			"answers": decide.Decode(ids, qs, items, logits, width, act),
-			"usage":   map[string]int{"input_tokens": tokenCount(items), "output_tokens": 0},
+			"usage":   map[string]int{"input_tokens": tokens, "output_tokens": 0},
 		})
+		// Recorded after the answer is written so stats never delay the client.
+		stats.Record(stats.Request{
+			Time:      time.Now(),
+			Duration:  float64(time.Since(started).Microseconds()) / 1000,
+			Questions: len(ids), Tokens: tokens, Device: cfg.Device,
+		}, types)
 	})
 	log.Printf("OpenJevX %s at http://%s (dashboard on /, metrics on /metrics)", cfg.Device, cfg.Listen)
 	log.Fatal(http.ListenAndServe(cfg.Listen, nil))

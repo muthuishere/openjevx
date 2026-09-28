@@ -12,3 +12,5 @@ libonnxruntime.dylib
 onnxruntime.dll
 *.tar.gz
 *.zip
+
+.local/
