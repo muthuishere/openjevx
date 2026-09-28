@@ -1,0 +1,13 @@
+{
+  "name": "openjevx",
+  "version": "0.1.0",
+  "description": "One-command local server for the OpenJevX System One decision model",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "openjevx": "bin/openjevx.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

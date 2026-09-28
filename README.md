@@ -4,7 +4,49 @@ OpenJevX is an open-weight, Jev-compatible System One decision model built by sp
 [Laya](https://github.com/NandhaKishorM/laya). It answers runtime-defined `choice`, `score`,
 and `noul` questions with calibrated probabilities in one non-autoregressive forward pass.
 
-The model and one-command server are being trained and packaged now.
+## Run
+
+Python 3.10+ and Node.js 18+ are the only prerequisites. The first run creates an isolated
+runtime and downloads the model from Hugging Face; later runs reuse the cache.
+
+```bash
+npx github:muthuishere/openjevx --port 8000
+```
+
+Test the Jev-compatible endpoint:
+
+```bash
+curl http://127.0.0.1:8000/v1/systemone \
+  -H 'content-type: application/json' \
+  -d '{
+    "state": {"body": "We were billed twice. Refund the duplicate."},
+    "questions": {
+      "department": {
+        "type": "choice",
+        "instructions": "Which team should handle this?",
+        "criteria": {
+          "billing": "payments, invoices, and refunds",
+          "technical": "bugs and outages"
+        }
+      }
+    }
+  }'
+```
+
+## Use With jevx
+
+```bash
+jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
+jevx profile use openjevx
+jevx ask "We were billed twice" --noul refund:"Is a refund required?"
+```
+
+Use another device when available:
+
+```bash
+npx github:muthuishere/openjevx --device mps
+npx github:muthuishere/openjevx --device cuda
+```
 
 ## Provenance
 

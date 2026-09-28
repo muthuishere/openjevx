@@ -3,10 +3,18 @@ set -euo pipefail
 
 trap 'touch /root/OPENJEVX_FAILED' ERR
 
-cd /root/openjevx
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 export USE_TF=0
 export USE_TORCH=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+if [ ! -d /root/laya/.git ]; then
+  git init /root/laya
+  git -C /root/laya remote add origin https://github.com/NandhaKishorM/laya.git
+  git -C /root/laya fetch --depth 1 origin 9d955671415fc19f069b9cc998928075c1f255ec
+  git -C /root/laya checkout --detach FETCH_HEAD
+fi
 
 python -m pip install -q -e /root/laya datasets transformers safetensors huggingface_hub pyarrow pandas scipy accelerate onnx
 python -m pip uninstall -y onnxruntime onnxruntime-gpu >/dev/null 2>&1 || true
