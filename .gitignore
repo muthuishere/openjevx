@@ -14,3 +14,7 @@ onnxruntime.dll
 *.zip
 
 .local/
+data/*.jsonl
+data/*.jsonl.gz
+data/raw/
+clauderesults/*.jsonl
