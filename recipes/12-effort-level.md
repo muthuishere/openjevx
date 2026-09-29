@@ -23,7 +23,7 @@ jevx ask --profile openjevx --no-context --in "Rename the variable foo to bar in
 Real output:
 
 ```
-effort           unsure     0.57
+effort           unsure     0.53
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ Delegate low-effort work to a smaller model; keep the hard ones.
 
 ## How the local model did
 
-Leans trivial (level 0 at 0.53, expected level 0.51) but not confidently; jevx says unsure. Hosted Jev says trivial 0.94.
+Leans trivial (level 0 at 0.53, expected level 0.51) but not confidently; jevx says unsure (0.53). Hosted Jev says trivial 0.94.

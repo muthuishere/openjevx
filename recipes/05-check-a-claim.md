@@ -34,7 +34,7 @@ jevx is --profile openjevx --no-context "Does the invoice say the total is 1,500
 Real output:
 
 ```
-no 0.07
+no 0.12
 ```
 
 ## What to do with the answer

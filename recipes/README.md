@@ -23,7 +23,7 @@ Every recipe is one `POST /v1/systemone` with a `state` (the text or JSON the qu
 Each recipe was run against a local OpenJevX server (v0.4.0 8-bit model, CPU, Apple M5 Pro) and the output was
 pasted unedited, including the wrong and unsure ones. Each page ends with how the local model did. The `jevx`
 lines ran through the `jevx` CLI with `--profile openjevx` and `--no-context` (so your agent files do not change
-the question). Your inputs will score differently: copy the pattern, not the numbers, and test on your own data.
+the question) and `--fresh` (so no cached answer was reused); the tables and `--fresh` need jevx v0.11.0 or newer. Your inputs will score differently: copy the pattern, not the numbers, and test on your own data.
 
 ## Recipes
 
@@ -59,3 +59,7 @@ the question). Your inputs will score differently: copy the pattern, not the num
 
 These are the `jevx` CLI's default thresholds. When the answer is unsure, the fix is usually a narrower question:
 name the exact thing you are looking for, say what counts as yes, and let code do arithmetic and dates.
+
+jevx caches answers for 7 days, keyed by the profile's model name. After upgrading the OpenJevX model, run
+`jevx cache clear`, or give the profile a versioned model name (for example `openjevx-0.5.0`), so you do not get the
+old model's answers back.

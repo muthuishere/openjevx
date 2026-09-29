@@ -25,10 +25,10 @@ jevx judge --profile openjevx --no-context --request "fix the failing test" --pr
 Real output:
 
 ```
-accept        0.45
-wanted more   0.37
-reaction      accept (0.43, confidence 0.43)
-satisfaction  1.6 / 4  (openjevx)
+accept        0.67
+wanted more   0.54
+reaction      accept (0.53, confidence 0.53)
+satisfaction  2.8 / 4  (openjevx)
 ```
 
 ## What to do with the answer
@@ -37,4 +37,4 @@ If accept is low, add evidence (the test output); if wanting more is high, finis
 
 ## How the local model did
 
-Leans accept on the curl questions (0.65); `jevx judge` puts accept at 0.45.
+Leans accept both ways: 0.65 on the curl questions and 0.67 from `jevx judge`, but neither is confident.

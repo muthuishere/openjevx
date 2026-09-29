@@ -23,7 +23,7 @@ jevx is --profile openjevx --no-context "Did the build and tests succeed?" --in 
 Real output:
 
 ```
-no 0.08
+unsure 0.24
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ Never claim success unless this is a confident yes; for a pass/fail line, a plai
 
 ## How the local model did
 
-Right: no.
+Leans no (P(yes) 0.24), but not below jevx's 0.2 no line, so jevx says unsure. Use `grep FAIL`.

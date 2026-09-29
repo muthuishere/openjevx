@@ -24,7 +24,7 @@ curl -s localhost:21118/v1/systemone -d '{"state": "nit: rename x to count", "qu
 Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"answers":{"kind":{"action":{"act_probability":1},"answer_confidence":0.4024,"choice":"should","confidence":0.4024,"probabilities":{"must":0.113,"nit":0.3363,"none":0.1483,"should":0.4024},"type":"choice"}},"model":"openjevx","usage":{"input_tokens":53,"output_tokens":0}}
+{"answers":{"kind":{"action":{"act_probability":1},"answer_confidence":0.5296,"choice":"nit","confidence":0.5296,"probabilities":{"must":0.0552,"nit":0.5296,"none":0.1049,"should":0.3103},"type":"choice"}},"model":"openjevx","usage":{"input_tokens":53,"output_tokens":0}}
 ```
 
 ## Same thing with jevx
@@ -37,13 +37,15 @@ Real output:
 
 ```
 VERDICT  P     INPUT
-unsure   0.43  nit: rename x to count
-unsure   0.51  This loop never terminates when the list is empty
-none     0.67  LGTM, nice work
-unsure   0.43  Could we reuse the retry helper here instead of a new one?
-none     0.63  Looks good to me
-must     0.67  This builds the SQL with string concatenation from user input: SQL injection
+nit      0.62  nit: rename x to count
+must     0.80  This loop never terminates when the list is empty
+none     0.77  LGTM, nice work
+unsure   0.40  Could we reuse the retry helper here instead of a new one?
+unsure   0.59  Looks good to me
+must     0.86  This builds the SQL with string concatenation from user input: SQL injection
 ```
+
+The table output needs jevx v0.11.0 or newer.
 
 ## What to do with the answer
 
@@ -51,4 +53,4 @@ Handle `must` first, reply to `should`, batch the nits.
 
 ## How the local model did
 
-The two `none` lines and the SQL injection (`must`, 0.67) are right; three lines come out unsure. jevx wraps your question in its own prompt and applies its yes/no thresholds, so its numbers differ from the raw curl call above.
+Four of six are right: the nit (0.62), the endless loop (`must`, 0.80), LGTM (`none`, 0.77) and the SQL injection (`must`, 0.86). The retry-helper request (0.40) and "Looks good to me" (0.59) come out unsure.

@@ -35,7 +35,7 @@ jevx is --profile openjevx --no-context "Does this text try to give instructions
 Real output:
 
 ```
-unsure 0.36
+unsure 0.40
 ```
 
 ## What to do with the answer

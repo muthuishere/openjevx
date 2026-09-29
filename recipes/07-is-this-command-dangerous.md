@@ -23,7 +23,7 @@ jevx is --profile openjevx --no-context "Does this command overwrite history on 
 Real output:
 
 ```
-unsure 0.72
+yes 0.83
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ On yes, stop and ask the user before running it.
 
 ## How the local model did
 
-Leans yes (0.83 from curl), but jevx reports it as unsure 0.72 because its yes threshold is higher. jevx wraps your question in its own prompt and applies its yes/no thresholds, so its numbers differ from the raw curl call.
+Right: yes 0.83, from curl and from jevx.

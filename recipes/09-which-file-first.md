@@ -24,7 +24,7 @@ curl -s localhost:21118/v1/systemone -d '{"state": "internal/payments/gateway.go
 Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.6187,"confidence":0.6187,"noul":0.6187,"probabilities":{"false":0.3813,"true":0.6187},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":47,"output_tokens":0}}
+{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.7514,"confidence":0.7514,"noul":0.7514,"probabilities":{"false":0.2486,"true":0.7514},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":47,"output_tokens":0}}
 ```
 
 ## Same thing with jevx
@@ -36,9 +36,9 @@ jevx rank --profile openjevx --no-context "Is this file likely where a payment g
 Real output:
 
 ```
-0.62  internal/payments/gateway.go
-0.51  internal/payments/retry.go
-0.38  cmd/server/main.go
+0.80  internal/payments/retry.go
+0.75  internal/payments/gateway.go
+0.48  cmd/server/main.go
 ```
 
 ## What to do with the answer
@@ -47,4 +47,4 @@ Read the top files first.
 
 ## How the local model did
 
-Right: the two payments files come first.
+Right: the two payments files come first (retry.go 0.80 just above gateway.go 0.75).

@@ -23,9 +23,9 @@ echo "Checkout is down, customers are being charged twice" | jevx ask --profile 
 Real output:
 
 ```
-sev              high       0.71
-team             billing    0.70
-urgent           unsure     0.79
+sev              high       0.76
+team             billing    0.86
+urgent           yes        0.85
 ```
 
 ## What to do with the answer
@@ -34,4 +34,4 @@ Page the chosen team when urgent is yes and severity is high.
 
 ## How the local model did
 
-Right on all three: urgent yes 0.85, team billing 0.89, severity high 0.76. jevx calls urgent unsure at 0.79 because of its stricter yes threshold.
+Right on all three: urgent yes 0.85, team billing 0.89, severity high 0.76. jevx agrees: urgent yes 0.85, billing 0.86, high 0.76.

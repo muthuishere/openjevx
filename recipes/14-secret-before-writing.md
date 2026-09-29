@@ -23,7 +23,7 @@ jevx is --profile openjevx --no-context "Does this line contain a password?" --i
 Real output:
 
 ```
-unsure 0.34
+no 0.17
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ On yes, replace the value with an environment-variable reference before writing.
 
 ## How the local model did
 
-Missed on this model: P(yes) 0.17 and jevx says unsure 0.34. Hosted Jev says yes 0.99. For secrets use a pattern scanner; do not rely on this answer.
+Missed on this model: P(yes) 0.17, so jevx says no. Hosted Jev says yes 0.99. For secrets use a pattern scanner; do not rely on this answer.

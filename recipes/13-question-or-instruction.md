@@ -23,7 +23,7 @@ jevx pick --profile openjevx --no-context "What is the user asking for?" answer=
 Real output:
 
 ```
-answer 0.68
+answer 0.83
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ On `answer`, explain and do not touch the code.
 
 ## How the local model did
 
-Right: answer.
+Right: answer (0.83).

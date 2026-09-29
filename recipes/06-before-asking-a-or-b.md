@@ -23,7 +23,7 @@ jevx pick --profile openjevx --no-context "What would the user want the agent to
 Real output:
 
 ```
-push 0.73
+push 0.62
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ Act on it when `confidence` is 0.6 or more and say so in the report; below that,
 
 ## How the local model did
 
-`push` at 0.62 from curl and 0.73 through jevx: just over the act line. Hosted Jev says `push 0.86`.
+`push` at 0.62 from curl and through jevx: just over the act line. Hosted Jev says `push 0.86`.

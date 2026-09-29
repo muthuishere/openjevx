@@ -34,7 +34,7 @@ jevx pick --profile openjevx --no-context "Which date is the payment due date?" 
 Real output:
 
 ```
-a 0.84
+a 0.70
 ```
 
 ## What to do with the answer
@@ -43,4 +43,4 @@ Use the chosen candidate. Compute the candidates in code (45 days after 2026-09-
 
 ## How the local model did
 
-Wrong on this model: it picks `a` (the issue date, 0.70) instead of `b` (2026-10-16). Hosted Jev picks `b 1.00`. Do not rely on the local model for this one without testing it on your documents.
+Wrong on this model: it picks `a` (the issue date, 0.70 from curl and jevx) instead of `b` (2026-10-16). Hosted Jev picks `b 1.00`. Do not rely on the local model for this one without testing it on your documents.
