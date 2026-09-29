@@ -39,8 +39,9 @@ source IP) and asks the questions whose answer flips.
 
 Held-out families (eval only): db/mysql, app/go_panic, fe/sentry.
 Phrasings: last template of every question family is gate-only, the one before it eval-only.
+No eval or gate case asks about a state train already asked about (leak_check's state-level check).
 
-Usage:  python3 finetuning/dataprep/gen_logs.py
+Usage:  python3 finetuning/dataprep/gen_logs.py [--test-only]   (--test-only keeps the train file)
 """
 import json
 import random
@@ -49,6 +50,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402
+from datavalidate.leak_check import in_keys, state_keys  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 TRAIN_PATH = paths.TRAIN / "logs_train.jsonl"
@@ -832,7 +834,22 @@ def make_cases(rng, split, kind, fam, bal=None):
     return out
 
 
-def generate(path, seed, split, fams, target_q=None, target_cases=None):
+def train_state_keys(path):
+    """(state, question type) keys of every train question, compared as leak_check does."""
+    keys = set()
+    for line in open(path, encoding="utf-8"):
+        row = json.loads(line)
+        for q in row["questions"].values():
+            keys.update(state_keys(row["state"], q.get("type")))
+    return keys
+
+
+def in_train(row, forbid):
+    return in_keys(row["state"], [q.get("type") for q in row["questions"].values()], forbid)
+
+
+def generate(path, seed, split, fams, target_q=None, target_cases=None, forbid=frozenset()):
+    """forbid: train state keys; an eval/gate case about a trained state is dropped."""
     rng = random.Random(seed)
     seen, nq, nc, i = set(), 0, 0, 0
     fam_count, bal = Counter(), defaultdict(Counter)
@@ -843,7 +860,7 @@ def generate(path, seed, split, fams, target_q=None, target_cases=None):
             i += 1
             for row in make_cases(rng, split, kind, fam, bal):
                 dk = json.dumps([row["state"], row["questions"]], sort_keys=True)
-                if dk in seen:
+                if dk in seen or (forbid and in_train(row, forbid)):
                     continue
                 seen.add(dk)
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -862,9 +879,12 @@ def main():
     train_fams = [k for k in all_fams if k not in HELD_OUT]
     for p in (TRAIN_PATH, EVAL_PATH, GATE_PATH, SAMPLES_PATH):
         p.parent.mkdir(parents=True, exist_ok=True)
-    stats = {"train": generate(TRAIN_PATH, TRAIN_SEED, "train", train_fams, target_q=TRAIN_Q),
-             "eval": generate(EVAL_PATH, EVAL_SEED, "eval", all_fams, target_q=EVAL_Q),
-             "gate": generate(GATE_PATH, GATE_SEED, "gate", all_fams, target_cases=GATE_CASES)}
+    # --test-only keeps the train file a model was trained on and redoes eval + gate against it.
+    stats = {} if "--test-only" in sys.argv else {
+        "train": generate(TRAIN_PATH, TRAIN_SEED, "train", train_fams, target_q=TRAIN_Q)}
+    forbid = train_state_keys(TRAIN_PATH)
+    stats["eval"] = generate(EVAL_PATH, EVAL_SEED, "eval", all_fams, target_q=EVAL_Q, forbid=forbid)
+    stats["gate"] = generate(GATE_PATH, GATE_SEED, "gate", all_fams, target_cases=GATE_CASES, forbid=forbid)
     for name, s in stats.items():
         print(f"\n=== {name}: cases={s['cases']} questions={s['questions']}")
         print("  families:", dict(sorted(s["fams"].items())))
@@ -883,7 +903,7 @@ def main():
         print(f"adapter {p.name}: {total} rows, {rej} rejected")
 
     with open(SAMPLES_PATH, "w", encoding="utf-8") as fh:
-        for kind, rows in stats["train"]["samples"].items():
+        for kind, rows in stats.get("train", {"samples": {}})["samples"].items():
             for row in rows:
                 fh.write(json.dumps(row, indent=2, ensure_ascii=False) + "\n\n")
     print(f"samples -> {SAMPLES_PATH}")

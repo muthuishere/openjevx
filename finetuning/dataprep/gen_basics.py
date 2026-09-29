@@ -5,7 +5,11 @@ Each rule states its threshold in the state, gives the facts, and asks whether t
 Values cluster around the threshold (just below / on / just above) plus far values, both
 polarities, several phrasings. Gold is computed by evaluating the rule, never written by hand.
 The last phrasing of every rule is reserved for the gate file, so the gate tests the rule,
-not a memorised sentence.
+not a memorised sentence. No gate state is ever a training state either (a reworded question about
+a trained state is still a leak): the gate uses its own thresholds (GATE_T), opening hours
+(GATE_HOURS), a "today" outside the train range, half-hour meetings and, for the physical constants,
+decimal readings the train split never uses; any gate case whose facts still match a train case
+is dropped (checked on the underlying facts, whether train rendered them as JSON or English).
 
 Outputs: <data>/train/basics_train.jsonl, <data>/gate/basics_gate.jsonl (see finetuning/paths.py)
 """
@@ -146,6 +150,23 @@ TIME_RULES = [
      ["Is support available now?", "Can a customer reach support now?", "Is support staffed at this hour?"]),
 ]
 
+# Gate-only thresholds: the gate states a rule the model never saw with these numbers. Rules that
+# state a physical fact (boiling, freezing) or zero stock keep their number and use unseen values.
+GATE_T = {
+    "driving_licence": 17, "voting": 21, "car_rental": 25, "senior_discount": 65, "child_ticket": 3,
+    "movie_rating": 16, "retirement": 58, "fever": 37.5, "battery_low": 15, "storage_full": 85,
+    "free_shipping": 499, "discount_min": 1499, "baggage": 20, "cabin_bag": 10, "speeding": 60,
+    "pass_mark": 40, "attendance": 80, "password_length": 12, "cpu_alert": 85, "error_rate": 2,
+    "latency_slo": 250, "coverage": 70, "approvals": 1, "reorder": 50, "bmi_over": 30.0,
+    "budget": 15000, "min_balance": 5000, "atm_limit": 20000, "rain_umbrella": 50, "aqi": 100,
+    "elevator": 6, "fuel_low": 10, "tyre_pressure": 32, "hotel_checkin": 12, "loan_age": 18,
+    "credit_score": 750, "overtime": 40, "leave_balance": 8, "parking": 60, "screen_time": 90,
+    "steps_goal": 8000, "blood_sugar": 100, "gst_invoice": 20000, "delivery_radius": 5,
+}
+GATE_DECIMAL = {"water_boil", "freezing"}  # integer readings in train, one-decimal readings in the gate
+GATE_HOURS = {"store_open": (11, 20), "bank_hours": (10, 15), "quiet_hours": (21, 24), "support_hours": (8, 17)}
+GATE_TODAY = dt.date(2028, 9, 29)  # train "today" is 2026-09-29 +/- 500 days
+
 
 def compare(v, op, t):
     return {">=": v >= t, ">": v > t, "<=": v <= t, "<": v < t, "==": v == t}[op]
@@ -169,9 +190,13 @@ def numeric_rows(rng, gate):
     rows = []
     for rid, dom, rule, field, unit, t, op, (lo, hi), phrasings, noun in NUMERIC:
         use = phrasings[-1:] if gate else phrasings[:-1]
-        is_float = isinstance(t, float)
+        if gate:
+            t = GATE_T.get(rid, t)
+        is_float = isinstance(t, float) or (gate and rid in GATE_DECIMAL)
         vals = near_values(t, lo, hi, is_float, rng) if gate else [
             v for _ in range(25) for v in near_values(t, lo, hi, is_float, rng)]
+        if gate and rid in GATE_DECIMAL:  # 99.9 / 100.1, never a whole number the train split uses
+            vals = [v if v != int(v) else round(v + 0.5 if v + 0.5 <= hi else v - 0.5, 1) for v in vals]
         for v in vals:
             q = rng.choice(use)
             state = {"rule": rule.format(t=t), noun: {field: v}}
@@ -182,7 +207,7 @@ def numeric_rows(rng, gate):
             rows.append({"source": f"our-cases-basics/{dom}/{rid}", "domain": f"basics/{dom}/{rid}",
                          "state": render(state, rng) if not gate else state,
                          "questions": {"q": {"type": "noul", "instructions": q, "criteria": dict(YN)}},
-                         "gold": {"q": "true" if gold else "false"}})
+                         "gold": {"q": "true" if gold else "false"}, "_facts": (rid, t, v)})
     return rows
 
 
@@ -193,14 +218,14 @@ def date_rows(rng, gate):
         use = phrasings[-1:] if gate else phrasings[:-1]
         offsets = [-1, 0, 1, -30, 30] if gate else [o for _ in range(40) for o in (-1, 0, 1, rng.randint(-400, 400))]
         for off in offsets:
-            today = base + dt.timedelta(days=rng.randint(-500, 500)) if not gate else base
+            today = base + dt.timedelta(days=rng.randint(-500, 500)) if not gate else GATE_TODAY
             the_date = today + dt.timedelta(days=off)
             gold = today > the_date if kind == "after" else today <= the_date
             state = {"rule": rule, "today": today.isoformat(), field: the_date.isoformat()}
             rows.append({"source": f"our-cases-basics/{dom}/{rid}", "domain": f"basics/{dom}/{rid}",
                          "state": state if gate else render(state, rng),
                          "questions": {"q": {"type": "noul", "instructions": rng.choice(use), "criteria": dict(YN)}},
-                         "gold": {"q": "true" if gold else "false"}})
+                         "gold": {"q": "true" if gold else "false"}, "_facts": (rid, str(today), str(the_date))})
     return rows
 
 
@@ -208,6 +233,8 @@ def time_rows(rng, gate):
     rows = []
     for rid, dom, rule, o, c, phrasings in TIME_RULES:
         use = phrasings[-1:] if gate else phrasings[:-1]
+        if gate:
+            o, c = GATE_HOURS[rid]
         hours = [o - 1, o, c - 1, c, (o + c) // 2] if gate else [h for _ in range(30) for h in (o - 1, o, c - 1, c, rng.randint(0, 23))]
         for h in hours:
             h %= 24
@@ -217,7 +244,7 @@ def time_rows(rng, gate):
             rows.append({"source": f"our-cases-basics/{dom}/{rid}", "domain": f"basics/{dom}/{rid}",
                          "state": state if gate else render(state, rng),
                          "questions": {"q": {"type": "noul", "instructions": rng.choice(use), "criteria": dict(YN)}},
-                         "gold": {"q": "true" if gold else "false"}})
+                         "gold": {"q": "true" if gold else "false"}, "_facts": (rid, o, c, h, minute)})
     return rows
 
 
@@ -225,16 +252,22 @@ def meeting_rows(rng, gate):
     rows = []
     phrasings = ["Do these two meetings clash?", "Do the meetings overlap?", "Is there a calendar conflict?"]
     use = phrasings[-1:] if gate else phrasings[:-1]
+    hm = lambda m: f"{m // 60:02d}:{m % 60:02d}"
     for _ in range(10 if gate else 1500):
-        s1 = rng.randint(8, 16); d1 = rng.choice([1, 2])
-        s2 = rng.choice([s1 - d1, s1 + d1, s1, s1 + 1, s1 - 1, s1 + 3]); d2 = rng.choice([1, 2])
+        if gate:  # gate meetings start on the half hour; train meetings are all on the hour
+            s1 = rng.randint(8, 16) * 60 + 30; d1 = rng.choice([60, 120])
+            s2 = rng.choice([s1 - d1, s1 + d1, s1, s1 + 30, s1 - 30, s1 + 60, s1 - 60, s1 + 180]); d2 = rng.choice([60, 90, 120])
+        else:
+            s1 = rng.randint(8, 16); d1 = rng.choice([1, 2])
+            s2 = rng.choice([s1 - d1, s1 + d1, s1, s1 + 1, s1 - 1, s1 + 3]); d2 = rng.choice([1, 2])
+            s1, d1, s2, d2 = s1 * 60, d1 * 60, s2 * 60, d2 * 60
         gold = s1 < s2 + d2 and s2 < s1 + d1
         state = {"rule": "Two meetings clash if their times overlap; back-to-back is not a clash.",
-                 "meeting_a": f"{s1:02d}:00-{s1 + d1:02d}:00", "meeting_b": f"{s2:02d}:00-{s2 + d2:02d}:00"}
+                 "meeting_a": f"{hm(s1)}-{hm(s1 + d1)}", "meeting_b": f"{hm(s2)}-{hm(s2 + d2)}"}
         rows.append({"source": "our-cases-basics/work/meeting_clash", "domain": "basics/work/meeting_clash",
                      "state": state if gate else render(state, rng),
                      "questions": {"q": {"type": "noul", "instructions": rng.choice(use), "criteria": dict(YN)}},
-                     "gold": {"q": "true" if gold else "false"}})
+                     "gold": {"q": "true" if gold else "false"}, "_facts": ("meeting", s1, d1, s2, d2)})
     return rows
 
 
@@ -252,6 +285,13 @@ def main():
                    + time_rows(random.Random(13), False) + meeting_rows(random.Random(14), False))
     gate = dedupe(numeric_rows(random.Random(21), True) + date_rows(random.Random(22), True)
                   + time_rows(random.Random(23), True) + meeting_rows(random.Random(24), True))
+    # No gate case may share its facts with a train case, however train worded or rendered it.
+    train_facts = {r["_facts"] for r in train}
+    dropped = sum(r["_facts"] in train_facts for r in gate)
+    gate = [r for r in gate if r["_facts"] not in train_facts]
+    print(f"basics_gate: dropped {dropped} cases whose facts are in train")
+    for r in train + gate:
+        del r["_facts"]
     gate_keys = {json.dumps([r["state"], r["questions"]], sort_keys=True) for r in gate}
     train = [r for r in train if json.dumps([r["state"], r["questions"]], sort_keys=True) not in gate_keys]
     random.Random(5).shuffle(train)

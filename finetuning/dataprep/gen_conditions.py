@@ -36,6 +36,8 @@ row, mirroring gen_it_worker.py's `build_row`):
 Splits:
     - 5 whole domains held out of train, eval-only (HELD_OUT_DOMAINS).
     - The last phrasing template in every instruction pool is eval-only (T()).
+    - No eval or gate row asks about a state train already asked about (same question type):
+      such rows are redrawn (leak_check's state-level check).
     - ~20% of eval numeric/date samples are drawn from a wider range /
       different digit-length than train ever sees (see `sample_num`).
 
@@ -56,6 +58,7 @@ from datetime import date, timedelta
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402
+from datavalidate.leak_check import in_keys, state_keys  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = paths.DATA
@@ -1338,7 +1341,7 @@ def build_case(domain, rng, split):
     else:
         node_c = ("not", ("or", ("atom", atom1), ("atom", atom2)))
     gold_c = eval_node(node_c, state)
-    langs = list(node_langs(node_c))
+    langs = sorted(node_langs(node_c))  # sorted: set order changes with PYTHONHASHSEED
     if langs:
         lang = A(rng, langs)
         code, lang_label = render_code_block(node_c, lang, today=today if lang != "sql" or True else None)
@@ -1415,7 +1418,22 @@ def dedup_key(row):
     return json.dumps([row["state"], row["questions"]], sort_keys=True, default=str)
 
 
-def generate(path, target, seed, domain_ids, split):
+def train_state_keys(path):
+    """(state, question type) keys of every train question, compared as leak_check does."""
+    keys = set()
+    for line in open(path, encoding="utf-8"):
+        row = json.loads(line)
+        for q in row["questions"].values():
+            keys.update(state_keys(row["state"], q.get("type")))
+    return keys
+
+
+def in_train(row, forbid):
+    return in_keys(row["state"], [q.get("type") for q in row["questions"].values()], forbid)
+
+
+def generate(path, target, seed, domain_ids, split, forbid=frozenset()):
+    """forbid: train state keys; a test row asking about a trained state is redrawn."""
     rng = random.Random(seed)
     schedule = list(domain_ids)
     seen = set()
@@ -1431,7 +1449,7 @@ def generate(path, target, seed, domain_ids, split):
             i += 1
             row, meta = build_row(domain_id, rng, split)
             dk = dedup_key(row)
-            if dk in seen:
+            if dk in seen or (forbid and in_train(row, forbid)):
                 misses += 1
                 if misses > 80000:
                     raise RuntimeError("too many dedup collisions")
@@ -1521,7 +1539,7 @@ GATE_KINDS = ["age_adult", "stock_level", "cpu_critical", "deadline_passed",
               "status_equals", "list_membership", "null_check"]
 
 
-def generate_gate(path, target, seed):
+def generate_gate(path, target, seed, forbid=frozenset()):
     rng = random.Random(seed)
     seen = set()
     counts = Counter()
@@ -1533,7 +1551,7 @@ def generate_gate(path, target, seed):
             i += 1
             row = gate_case(rng, kind, i)
             dk = dedup_key(row)
-            if dk in seen:
+            if dk in seen or in_train(row, forbid):
                 misses += 1
                 if misses > 20000:
                     raise RuntimeError("too many gate dedup collisions")
@@ -1557,14 +1575,21 @@ def main():
     for d in (paths.TRAIN, paths.EVAL, paths.GATE):
         d.mkdir(parents=True, exist_ok=True)
 
-    print("\nGenerating train...")
-    train_stats = generate(TRAIN_PATH, TRAIN_TARGET, TRAIN_SEED, TRAIN_DOMAIN_IDS, "train")
+    if "--test-only" in sys.argv:  # keep the train file a model was trained on; redo eval + gate against it
+        print("\nKeeping train", TRAIN_PATH)
+        train_stats = None
+    else:
+        print("\nGenerating train...")
+        train_stats = generate(TRAIN_PATH, TRAIN_TARGET, TRAIN_SEED, TRAIN_DOMAIN_IDS, "train")
     print("Generating eval...")
-    eval_stats = generate(EVAL_PATH, EVAL_TARGET, EVAL_SEED, ALL_DOMAIN_IDS, "eval")
+    forbid = train_state_keys(TRAIN_PATH)
+    eval_stats = generate(EVAL_PATH, EVAL_TARGET, EVAL_SEED, ALL_DOMAIN_IDS, "eval", forbid)
     print("Generating basics gate...")
-    gate_stats = generate_gate(GATE_PATH, GATE_TARGET, GATE_SEED)
+    gate_stats = generate_gate(GATE_PATH, GATE_TARGET, GATE_SEED, forbid)
 
     for name, stats, path in (("TRAIN", train_stats, TRAIN_PATH), ("EVAL", eval_stats, EVAL_PATH)):
+        if stats is None:
+            continue
         print(f"\n=== {name} ({path}) ===")
         print(f"cases={stats['cases']} questions={stats['questions']}")
         print("per domain:")
