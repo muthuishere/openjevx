@@ -1,0 +1,28 @@
+name: Attach release asset from URL
+# Copies a large file (e.g. the fine-tune kit in the public R2 bucket) onto a GitHub release from GitHub's
+# network, so nothing large is uploaded from the owner's slow home connection.
+# Run: gh workflow run attach-asset.yml -f tag=v0.5.0 -f url=<public URL> [-f sha256=<hex>]
+on:
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Release tag, e.g. v0.5.0", required: true }
+      url: { description: "Public URL of the file to attach", required: true }
+      sha256: { description: "Expected sha256 (optional)", required: false }
+permissions:
+  contents: write
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download
+        run: |
+          name="$(basename "${{ inputs.url }}")"
+          curl -fL --retry 5 -o "$name" "${{ inputs.url }}"
+          ls -la "$name"
+          sha256sum "$name" | tee "$name.sha256"
+          if [ -n "${{ inputs.sha256 }}" ]; then echo "${{ inputs.sha256 }}  $name" | sha256sum -c -; fi
+          echo "NAME=$name" >> "$GITHUB_ENV"
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" "$NAME" "$NAME.sha256" --clobber --repo "${{ github.repository }}"
