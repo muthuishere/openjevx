@@ -7,7 +7,7 @@ Date: 2026-09-29
 
 v0.4 fixed everyday software triage (software-role test 63.7% → 98.1%, families never seen in
 training 66.1% → 87.3%), but a small probe of the real uses shows the gaps
-(`clauderesults/09-usecase-probe.md`):
+(`llmresults/09-usecase-probe.md`):
 
 - **Conditions over state are shaky.** Age 18 → "adult" scores 0.51, stock 1 is called "out of
   stock", date comparisons are coin flips. Programming is a domain's rules written as conditions,
