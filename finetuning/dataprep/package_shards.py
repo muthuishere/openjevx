@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import shutil
+import sys
 from collections import Counter
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -126,6 +127,12 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
             if shaped is not None:
                 eval_rows.append(shaped)
 
+    if smoke:  # a small mixed sample so the smoke run finishes in minutes, with every source in it
+        import random
+        rng = random.Random(7)
+        rng.shuffle(train_rows)
+        rng.shuffle(eval_rows)
+        train_rows, eval_rows = train_rows[:TRAIN_SMOKE_ROWS], eval_rows[:EVAL_SMOKE_ROWS]
     train_out = out_dir / ("train_smoke.jsonl.gz" if smoke else "train.jsonl.gz")
     eval_out = out_dir / ("eval_smoke.jsonl.gz" if smoke else "eval.jsonl.gz")
     train_bytes = write_gzip_jsonl(train_out, train_rows)
