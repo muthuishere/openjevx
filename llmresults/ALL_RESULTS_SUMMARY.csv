@@ -1,0 +1,6 @@
+run,accuracy,decisions,errors,note
+"public test (typed-decisions, 2000 decisions)",0.761,2000,477,shipped v0.3.0 4-bit
+"public train (typed-decisions, 6000 decisions)",0.719,6000,1688,v0.2.0 int8 -- not re-run on 4-bit
+my rule-labelled everyday set,0.451,1194,655,"shipped v0.3.0 4-bit, 1194 of 5200 decisions (file regenerated mid-session, see note)"
+owner's 1000-question CSV,0.469,1000,531,"8-bit weight-only, not the shipped 4-bit"
+opencode+OpenRouter generated set,0.632,9557,3520,shipped v0.3.0 4-bit

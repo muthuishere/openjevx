@@ -8,7 +8,7 @@ domains, in English and in code (Python / JavaScript / Go / SQL) -- with
 heavy sampling right at numeric/date boundaries (age 17/18/19, stock 0/1/2,
 cpu 89/90/91, deadline yesterday/today/tomorrow, ...).
 
-Row contract (same as scripts/data/gen_it_worker.py):
+Row contract (same as finetuning/dataprep/gen_it_worker.py):
     {"source": "our-cases-conditions/<domain>/<kind>",
      "domain": "conditions/<domain>/<kind>",
      "state": <dict OR plain-English string>,
@@ -45,7 +45,7 @@ explicit-date deadlines, status equals, list membership, null checks) as a
 release gate. Every gate gold is also computed by evaluation, never by hand.
 
 Usage:
-    python3 scripts/data/gen_conditions.py
+    python3 finetuning/dataprep/gen_conditions.py
 """
 
 import json
@@ -1578,7 +1578,7 @@ def main():
     print("per kind:", dict(gate_stats["per_kind"]))
 
     # ---- adapter validation ----
-    sys.path.insert(0, str(ROOT / "scripts" / "train"))
+    sys.path.insert(0, str(ROOT / "finetuning" / "train"))
     import adapter  # noqa: E402
 
     def check_adapter(path):

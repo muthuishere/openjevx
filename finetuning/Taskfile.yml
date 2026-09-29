@@ -1,0 +1,26 @@
+version: "3"
+# OpenJevX fine-tuning. Settings live in config.json (version, GPU provider, 750 MB 8-bit limit,
+# data mix, training knobs, gate thresholds). Run from this folder: `task all`.
+
+tasks:
+  dataprep:
+    desc: Generate the rule-labelled sets (basics, conditions, IT-worker) into data/
+    cmds: [python3 ft.py dataprep]
+  validate:
+    desc: Adapter dry-parse and leakage check against every test set
+    cmds: [python3 ft.py validate]
+  package:
+    desc: Build the training shard (pass -- --smoke for the small test shard)
+    cmds: [python3 ft.py package {{.CLI_ARGS}}]
+  smoke:
+    desc: Package and run the ~10-minute smoke job on the GPU provider
+    cmds: [python3 ft.py package --smoke, python3 ft.py train --smoke]
+  train:
+    desc: Package and run the full job; brings back the 8-bit ONNX (<= 750 MB) and the checkpoint
+    cmds: [python3 ft.py package, python3 ft.py train]
+  gate:
+    desc: "Serve a model locally and score it against the thresholds (task gate -- path/to/openjevx.w8.onnx)"
+    cmds: [python3 ft.py gate {{.CLI_ARGS}}]
+  all:
+    desc: dataprep -> validate -> smoke -> full train -> gate, stopping at the first failure
+    cmds: [python3 ft.py all]

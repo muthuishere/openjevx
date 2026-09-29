@@ -78,7 +78,7 @@ function cellFor(model, id) {
     <code>jevx</code>'s default thresholds (yes ≥ 0.8, no ≤ 0.2, choice/score min confidence 0.6)
     against three servers on this machine: <strong>base</strong> = <code>convaiinnovations/laya</code>{' '}
     exactly as released from Hugging Face, no fine-tune, exported to ONNX on CPU and 8-bit
-    weight-only quantized (<code>scripts/quantize_w8.py</code>) so it's comparable in format to the
+    weight-only quantized (<code>finetuning/export/quantize_w8.py</code>) so it's comparable in format to the
     other two; <strong>v0.3</strong> = the shipped v0.3.0 server on port 21118 (4-bit weight-only);
     <strong>v0.4</strong> = the new fine-tuned server on port 21126 (8-bit weight-only).
     Full raw output: <code>site/src/data/comparison.json</code>.</p>

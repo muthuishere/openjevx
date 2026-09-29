@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Copy a private training shard onto a running vast.ai box over SSH, then write /root/in/READY.
 
-Pairs with scripts/vast/run_job.sh (no-URL mode), which waits for READY.
+Pairs with finetuning/train/run_job.sh (no-URL mode), which waits for READY.
 Usage: push_data.py INSTANCE_ID SHARD_DIR SHARD_NAME [--key ~/.ssh/id_ed25519_muthuishere]
 SHARD_DIR must hold openjevx-<SHARD_NAME>-{train.jsonl.gz,eval.jsonl.gz,run.json}.
 Run it detached; it gives up after 40 minutes (the job then fails and the watcher destroys the box).

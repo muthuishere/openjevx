@@ -40,7 +40,7 @@ Per-question-kind phrasing is drawn from a small template pool per kind; the
 last 1-2 templates in every pool are reserved for eval only (see T()).
 
 Usage:
-    python3 scripts/data/gen_it_worker.py
+    python3 finetuning/dataprep/gen_it_worker.py
 """
 
 import json
@@ -1887,7 +1887,7 @@ def main():
             print(f"  {t}: {dict(dist)}")
 
     # ---- adapter validation ----
-    sys.path.insert(0, str(ROOT / "scripts" / "train"))
+    sys.path.insert(0, str(ROOT / "finetuning" / "train"))
     import adapter  # noqa: E402
 
     def check_adapter(path):

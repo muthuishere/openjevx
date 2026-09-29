@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-notebook driver: reuses scripts/train_openjevx.py functions on our shards.
+"""Training driver: reuses train_openjevx.py functions on our shards.
 
 fp16 autocast + GradScaler + fp32 master weights are already exactly what the
 trainer does (T4/P100 have no real bf16). Gradient checkpointing is enabled by

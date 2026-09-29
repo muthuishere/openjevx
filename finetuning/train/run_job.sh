@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # One-shot OpenJevX fine-tune on a rented CUDA box (vast.ai or any Linux GPU).
 # Gets the private training shard (SSH copy or signed URLs), trains, calibrates,
-# exports fp32 ONNX on CUDA. Markers: /root/JOB_COMPLETE or /root/JOB_FAILED.
-# Artifacts: /root/out/openjevx-model. Log: /root/job.log.
-# Usage: SHARD=full bash scripts/vast/run_job.sh   (data copied to /root/in over SSH, then /root/in/READY)
-#    or: SHARD=full TRAIN_URL=... EVAL_URL=... RUN_URL=... bash scripts/vast/run_job.sh
+# exports ONNX on CUDA, quantizes to 8-bit and ships ONLY the 8-bit file, which must be
+# <= MAX_W8_MB (750). Markers: /root/JOB_COMPLETE or /root/JOB_FAILED.
+# Artifacts: /root/out/openjevx-model (openjevx.w8.onnx + tokenizer/config). Log: /root/job.log.
+# Usage: SHARD=full bash finetuning/train/run_job.sh   (data copied to /root/in over SSH, then /root/in/READY)
+#    or: SHARD=full TRAIN_URL=... EVAL_URL=... RUN_URL=... bash finetuning/train/run_job.sh
 set -euo pipefail
 trap 'touch /root/JOB_FAILED' ERR
 
@@ -27,7 +28,7 @@ if [ "$SHARD" = smoke ]; then
 else
   mv "$IN/openjevx-${SHARD}-train.jsonl.gz" "$IN/train.jsonl.gz"; mv "$IN/openjevx-${SHARD}-eval.jsonl.gz" "$IN/eval.jsonl.gz"
 fi
-cp "$ROOT"/scripts/train/{train_job.py,eval_job.py,adapter.py} "$ROOT"/scripts/{train_openjevx.py,export_onnx_gpu.py} "$JOB/"
+cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
 
 python -m pip install -q "laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec" \
   transformers==4.57.6 datasets sentencepiece protobuf safetensors accelerate huggingface_hub tokenizers onnx
@@ -43,6 +44,11 @@ PY
 
 cd "$JOB"
 INPUT_DIR="$IN" WORK_DIR="$OUT" PYTHONPATH="$JOB" python train_job.py
-PYTHONPATH="$JOB" python export_onnx_gpu.py --model "$OUT/openjevx-model" --output "$OUT/openjevx-model/openjevx.onnx"
+PYTHONPATH="$JOB" python export_onnx_gpu.py --model "$OUT/openjevx-model" --output "$OUT/fp32/openjevx.onnx"
+python quantize_w8.py "$OUT/fp32/openjevx.onnx" "$OUT/openjevx-model/openjevx.w8.onnx"
+MB=$(( $(stat -c %s "$OUT/openjevx-model/openjevx.w8.onnx") / 1048576 ))
+echo "8-bit ONNX: ${MB} MB (limit ${MAX_W8_MB:-750})"
+[ "$MB" -le "${MAX_W8_MB:-750}" ] || { echo "8-bit ONNX over the size limit"; false; }
+rm -rf "$OUT/fp32"
 cp /root/job.log "$OUT/" || true
 touch /root/JOB_COMPLETE

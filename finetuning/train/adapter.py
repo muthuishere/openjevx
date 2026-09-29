@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gold adapter: shape our typed-decisions gold into what build_item expects.
 
-Rules (build_item is scripts/train_openjevx.py:37):
+Rules (build_item is finetuning/train/train_openjevx.py:37):
 - choice: probabilities keyed by the exact criteria dict keys, 0.9 on gold, 0.1 spread.
 - noul:   probabilities keyed "false"/"true", 0.9 on gold.
 - score:  build_item hardcodes levels=4 for dict criteria (train_openjevx.py:48), so

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the staging directory for an openjevx training run.
 
-Uses the gold adapter (scripts/train/adapter.py) on data/train_openjevx.jsonl
+Uses the gold adapter (finetuning/train/adapter.py) on data/train_openjevx.jsonl
 and data/eval_openjevx.jsonl, writes gzipped shards (priority sources our-cases-*
 and typed-decisions/* kept in full, tasksource-train hash-stratified to fit the
 upload budget), plus the trainer, driver and runner code and run.json.
@@ -16,14 +16,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-TRAIN_DIR = Path(__file__).resolve().parent
+TRAIN_DIR = ROOT / "finetuning" / "train"
+EXPORT_DIR = ROOT / "finetuning" / "export"
 
 TRAIN_SMOKE_ROWS = 2000
 EVAL_SMOKE_ROWS = 300
 DEFAULT_BUDGET_GB = 1.8
 
 COPY_FILES = ("train_openjevx.py", "export_onnx_gpu.py",
-              "train_job.py", "eval_job.py", "adapter.py")
+              "train_job.py", "eval_job.py", "adapter.py", "quantize_w8.py")
 
 
 def question_key(state, instructions):
@@ -69,6 +70,8 @@ def write_gzip_jsonl(path, rows):
 
 def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), extra_eval=(),
           exclude_keys=frozenset(), drop_sources=frozenset()):
+    import sys
+    sys.path.insert(0, str(TRAIN_DIR))
     import adapter
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -127,7 +130,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
     eval_bytes = write_gzip_jsonl(eval_out, eval_rows)
 
     for name in COPY_FILES:
-        source = TRAIN_DIR / name if (TRAIN_DIR / name).exists() else ROOT / "scripts" / name
+        source = TRAIN_DIR / name if (TRAIN_DIR / name).exists() else EXPORT_DIR / name
         shutil.copy2(source, out_dir / name)
 
     env = {
@@ -138,7 +141,12 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
         "EVAL_MAX": "150" if smoke else os.environ.get("EVAL_MAX", "1500"),
         "ACC_GATE": os.environ.get("ACC_GATE", "0.0" if smoke else "0.55"),
     }
+    env.update({k: os.environ[k] for k in ("MAX_LEN", "AMP", "GRAD_CKPT", "MAX_HOURS") if os.environ.get(k)})
     (out_dir / "run.json").write_text(json.dumps({"smoke": smoke, "env": env}))
+    # The names push_data.py / run_job.sh expect.
+    shard = "smoke" if smoke else "full"
+    for src, suffix in ((train_out, "train.jsonl.gz"), (eval_out, "eval.jsonl.gz"), (out_dir / "run.json", "run.json")):
+        shutil.copy2(src, out_dir / f"openjevx-{shard}-{suffix}")
 
     manifest = {
         "mode": plan.get("mode", "full"),
