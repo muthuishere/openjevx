@@ -48,7 +48,7 @@ def cut(text, limit):
 def row(name, rng, state, phrasings, gold):
     return {"source": f"our-cases-public/{name}", "domain": f"public/{name}", "state": state,
             "questions": {"q1": {"type": "noul", "instructions": rng.choice(phrasings),
-                                 "criteria": "true = yes, false = no"}},
+                                 "criteria": {"true": "yes", "false": "no"}}},
             "gold": {"q1": "true" if gold else "false"}}
 
 

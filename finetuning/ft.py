@@ -7,7 +7,8 @@ finetuning/config.example.json; edit it there. Data paths are relative to the da
 
   ft.py dataprep        generate the rule-labelled sets into <data>/{train,eval,gate}
   ft.py validate        adapter dry-parse + leakage check (writes <data>/work/leak/leaked_keys.json)
-  ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/
+  ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/ and run every
+                            row through the trainer's build_item on CPU (needs uv)
   ft.py train [--smoke]     run the shard on config.provider (gpu/<provider>.py), get the 8-bit ONNX back
   ft.py gate MODEL.onnx     serve MODEL locally and score it; exit 1 if it misses the config thresholds
   ft.py all             every step in order, with a smoke run before the full run
@@ -36,6 +37,10 @@ PY = str(ROOT / ".local/eval/venv/bin/python") if (ROOT / ".local/eval/venv/bin/
 def sh(*args, env=None):
     print("+", " ".join(map(str, args)), flush=True)
     subprocess.run([str(a) for a in args], check=True, cwd=ROOT, env={**os.environ, **(env or {})})
+
+
+BUILD_DEPS = ["torch", "transformers==4.57.6", "datasets", "safetensors", "huggingface_hub", "sentencepiece",
+              "laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec"]
 
 
 def shard_dir(smoke):
@@ -73,6 +78,12 @@ def package(smoke):
     for f in d["extra_eval"]:
         args += ["--extra-eval", paths.DATA / f]
     sh(*args, env=CFG["train"])
+    # Prove the trainer itself accepts every row (all of them for smoke, 500 per source for full) on CPU,
+    # so a data bug fails here instead of on a rented GPU.
+    d = shard_dir(smoke)
+    shards = [d / "train_smoke.jsonl.gz", d / "eval_smoke.jsonl.gz"] if smoke else [d / "train.jsonl.gz", d / "eval.jsonl.gz"]
+    sh("uv", "run", "-q", *[x for dep in BUILD_DEPS for x in ("--with", dep)], "python",
+       FT / "datavalidate/check_build.py", *shards, *([] if smoke else ["--sample", "500"]))
 
 
 def train(smoke):

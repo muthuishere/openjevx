@@ -97,8 +97,16 @@ def adapt_row(row):
             kept[question_id] = shaped
     if not kept:
         return None
+    questions = {}
+    for question_id in kept:
+        question = dict(row["questions"][question_id])
+        # yes/no criteria must be {"true": ..., "false": ...}; anything else (e.g. a plain string) is
+        # dropped so the default wording is used, as the server does.
+        if question.get("type") == "noul" and not isinstance(question.get("criteria"), dict):
+            question.pop("criteria", None)
+        questions[question_id] = question
     return {"source": row.get("source"), "domain": row.get("domain"),
-            "state": row.get("state"), "questions": row["questions"], "gold": kept}
+            "state": row.get("state"), "questions": questions, "gold": kept}
 
 
 def hash_slot(text, key=b"openjevx-stratify"):
