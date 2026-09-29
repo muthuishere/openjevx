@@ -16,19 +16,13 @@ Changing your avatar
 ## Call the local server
 
 ```bash
-while IFS= read -r l; do
-  jq -nc --arg l "$l" '{state: $l, questions: {"hit": {"type": "noul", "instructions": "Does this page answer: how do I get my money back?"}}}' \
-  | curl -s localhost:21118/v1/systemone -d @- | jq -c --arg l "$l" '{p: .answers.hit.noul, title: $l}'
-done < results.txt | sort -r
+curl -s localhost:21118/v1/systemone -d '{"state": "Pricing of the enterprise plan", "questions": {"hit": {"type": "noul", "instructions": "Does this page answer: how do I get my money back?"}}}'
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"p":0.779,"title":"Cancelling a subscription and getting money back"}
-{"p":0.2938,"title":"Refund policy for annual plans"}
-{"p":0.1588,"title":"Pricing of the enterprise plan"}
-{"p":0.1291,"title":"Changing your avatar"}
+{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.9049,"confidence":0.9049,"noul":0.0951,"probabilities":{"false":0.9049,"true":0.0951},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":46,"output_tokens":0}}
 ```
 
 ## Same thing with jevx
@@ -51,4 +45,4 @@ Open the top results only. The order matters more than the absolute numbers.
 
 ## How the local model did
 
-The best hit ranks first, but "Refund policy for annual plans" scores only 0.29, so use the order, not a fixed cut-off.
+The best hit ranks first, but "Refund policy for annual plans" scores only 0.31, so use the order, not a fixed cut-off.

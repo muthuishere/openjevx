@@ -18,21 +18,13 @@ docs/README.md
 ## Call the local server
 
 ```bash
-while IFS= read -r l; do
-  jq -nc --arg l "$l" '{state: $l, questions: {"hit": {"type": "noul", "instructions": "Is this file likely where a payment gateway timeout is handled?"}}}' \
-  | curl -s localhost:21118/v1/systemone -d @- | jq -c --arg l "$l" '{p: .answers.hit.noul, file: $l}'
-done < files.txt | sort -r
+curl -s localhost:21118/v1/systemone -d '{"state": "internal/payments/gateway.go", "questions": {"hit": {"type": "noul", "instructions": "Is this file likely where a payment gateway timeout is handled?"}}}'
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"p":0.8046,"file":"internal/payments/retry.go"}
-{"p":0.7514,"file":"internal/payments/gateway.go"}
-{"p":0.4792,"file":"cmd/server/main.go"}
-{"p":0.4288,"file":"internal/users/store.go"}
-{"p":0.2612,"file":"web/src/components/Button.tsx"}
-{"p":0.2107,"file":"docs/README.md"}
+{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.6187,"confidence":0.6187,"noul":0.6187,"probabilities":{"false":0.3813,"true":0.6187},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":47,"output_tokens":0}}
 ```
 
 ## Same thing with jevx

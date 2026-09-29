@@ -17,36 +17,30 @@ Pick-one per ticket: which team owns it.
 ## Call the local server
 
 ```bash
-while IFS= read -r l; do
-  jq -nc --arg l "$l" '{state: ($l | fromjson), questions: {"team": {"type": "choice", "instructions": "Which team should handle this ticket?", "criteria": {"web": "frontend or UI", "api": "backend or API", "billing": "payments and invoices", "docs": "how-to question"}}}}' \
-  | curl -s localhost:21118/v1/systemone -d @- | jq -c --arg l "$l" '{team: .answers.team.choice, p: .answers.team.confidence}'
-done < tickets.jsonl
+curl -s localhost:21118/v1/systemone -d '{"state": {"ticket": "The save button on the settings page is misaligned on mobile"}, "questions": {"team": {"type": "choice", "instructions": "Which team should handle this ticket?", "criteria": {"web": "frontend or UI", "api": "backend or API", "billing": "payments and invoices", "docs": "how-to question"}}}}'
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"team":"web","p":0.8999}
-{"team":"billing","p":0.9089}
-{"team":"api","p":0.8998}
-{"team":"web","p":0.616}
-{"team":"docs","p":0.8924}
+{"answers":{"team":{"action":{"act_probability":1},"answer_confidence":0.8516,"choice":"web","confidence":0.8516,"probabilities":{"api":0.0437,"billing":0.0114,"docs":0.0933,"web":0.8516},"type":"choice"}},"model":"openjevx","usage":{"input_tokens":58,"output_tokens":0}}
 ```
 
 ## Same thing with jevx
 
 ```bash
-jevx ask --profile openjevx --no-context --states tickets.jsonl --choice team="Which team should handle this ticket?|web=frontend or UI;api=backend or API;billing=payments and invoices;docs=how-to question" | jq -c "{line, team: .answers.team.verdict, p: .answers.team.p}"
+jevx ask --profile openjevx --no-context --states tickets.jsonl --choice team="Which team should handle this ticket?|web=frontend or UI;api=backend or API;billing=payments and invoices;docs=how-to question"
 ```
 
 Real output:
 
 ```
-{"line":1,"team":"web","p":0.84}
-{"line":2,"team":"billing","p":0.97}
-{"line":3,"team":"api","p":0.71}
-{"line":4,"team":"web","p":0.68}
-{"line":5,"team":"docs","p":0.72}
+VERDICT  P     INPUT
+web      0.84  {"ticket": "The save button on the settings page is misaligned on mobile"}
+billing  0.97  {"ticket": "I was charged twice for my March invoice"}
+api      0.71  {"ticket": "POST /v2/orders returns 500 when the cart has 0 items"}
+web      0.68  {"ticket": "Dark mode makes the chart labels unreadable"}
+docs     0.72  {"ticket": "How do I export my data to CSV?"}
 ```
 
 ## What to do with the answer
@@ -55,4 +49,4 @@ Assign each ticket to `choice`. Below 0.6 `confidence`, leave it for a human ins
 
 ## How the local model did
 
-All five routed as expected; the dark-mode ticket is the least sure (0.62).
+All five routed as expected; the dark-mode ticket is the least sure (0.68).

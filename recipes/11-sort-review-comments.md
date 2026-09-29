@@ -18,38 +18,31 @@ This builds the SQL with string concatenation from user input: SQL injection
 ## Call the local server
 
 ```bash
-while IFS= read -r l; do
-  jq -nc --arg l "$l" '{state: $l, questions: {"kind": {"type": "choice", "instructions": "What kind of review comment is this?", "criteria": {"must": "a real bug or risk that must be fixed", "should": "a reasonable change request", "nit": "style or naming only", "none": "praise or approval"}}}}' \
-  | curl -s localhost:21118/v1/systemone -d @- | jq -c --arg l "$l" '{kind: .answers.kind.choice, p: .answers.kind.confidence}'
-done < reviews.txt
+curl -s localhost:21118/v1/systemone -d '{"state": "nit: rename x to count", "questions": {"kind": {"type": "choice", "instructions": "What kind of review comment is this?", "criteria": {"must": "a real bug or risk that must be fixed", "should": "a reasonable change request", "nit": "style or naming only", "none": "praise or approval"}}}}'
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
 
 ```json
-{"kind":"nit","p":0.5296}
-{"kind":"must","p":0.7984}
-{"kind":"none","p":0.8707}
-{"kind":"should","p":0.6667}
-{"kind":"none","p":0.6574}
-{"kind":"must","p":0.8373}
+{"answers":{"kind":{"action":{"act_probability":1},"answer_confidence":0.4024,"choice":"should","confidence":0.4024,"probabilities":{"must":0.113,"nit":0.3363,"none":0.1483,"should":0.4024},"type":"choice"}},"model":"openjevx","usage":{"input_tokens":53,"output_tokens":0}}
 ```
 
 ## Same thing with jevx
 
 ```bash
-jevx ask --profile openjevx --no-context --lines reviews.txt --choice kind="What kind of review comment is this?|must=a real bug or risk that must be fixed;should=a reasonable change request;nit=style or naming only;none=praise or approval" | jq -c "{line, kind: .answers.kind.verdict}"
+jevx ask --profile openjevx --no-context --lines reviews.txt --choice kind="What kind of review comment is this?|must=a real bug or risk that must be fixed;should=a reasonable change request;nit=style or naming only;none=praise or approval"
 ```
 
 Real output:
 
 ```
-{"line":1,"kind":"unsure"}
-{"line":2,"kind":"unsure"}
-{"line":3,"kind":"none"}
-{"line":4,"kind":"unsure"}
-{"line":5,"kind":"none"}
-{"line":6,"kind":"must"}
+VERDICT  P     INPUT
+unsure   0.43  nit: rename x to count
+unsure   0.51  This loop never terminates when the list is empty
+none     0.67  LGTM, nice work
+unsure   0.43  Could we reuse the retry helper here instead of a new one?
+none     0.63  Looks good to me
+must     0.67  This builds the SQL with string concatenation from user input: SQL injection
 ```
 
 ## What to do with the answer
@@ -58,4 +51,4 @@ Handle `must` first, reply to `should`, batch the nits.
 
 ## How the local model did
 
-Curl gets all six kinds as expected (nit 0.53 is the least sure); through jevx three lines come out unsure. jevx wraps your question in its own prompt and applies its yes/no thresholds, so its numbers differ from the raw curl call.
+The two `none` lines and the SQL injection (`must`, 0.67) are right; three lines come out unsure. jevx wraps your question in its own prompt and applies its yes/no thresholds, so its numbers differ from the raw curl call above.
