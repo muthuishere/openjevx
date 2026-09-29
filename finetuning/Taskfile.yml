@@ -16,6 +16,9 @@ tasks:
   package:
     desc: Build the training shard (pass -- --smoke for the small test shard)
     cmds: [python3 ft.py package {{.CLI_ARGS}}]
+  runtime:
+    desc: Build the GPU box runtime (PyTorch, CUDA libs, packages, base model) once in Docker and put it in R2
+    cmds: [python3 ft.py runtime]
   smoke:
     desc: Package and run the ~10-minute smoke job on the GPU provider
     cmds: [python3 ft.py package --smoke, python3 ft.py train --smoke]

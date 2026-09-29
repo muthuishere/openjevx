@@ -103,8 +103,8 @@ def main():
     env.update({f"PUT_{k}_URL": r2.link_put(f"runs/{name}/{v}", link_s) for k, v in RESULTS.items()})
     # Runtime environment in R2 (venv with PyTorch + CUDA libs + packages, and the base model), keyed by
     # what it contains. Present -> the box downloads it; absent -> the box builds it once and uploads it.
-    key = hashlib.sha1(((ROOT / "finetuning/train/requirements-box.txt").read_text() + IMAGE +
-                        os.environ.get("BASE_MODEL", "convaiinnovations/laya")).encode()).hexdigest()[:12]
+    key = r2.runtime_key((ROOT / "finetuning/train/requirements-box.txt").read_text(), IMAGE,
+                         os.environ.get("BASE_MODEL", "convaiinnovations/laya"))
     rt = f"runtime/{key}"
     have = set(r2.ls(rt + "/"))
     if f"{rt}/env.count" in have and f"{rt}/hf.tar" in have:

@@ -22,13 +22,14 @@ One command, `task all` in `finetuning/` (settings in `~/.config/openjevx/config
    (`shards/<version>/`) and a `job.env` (`runs/<run>/job.env`) holding only signed links and the
    kill token (uploaded from memory via `sec`, never written to disk). The box gets one signed link
    to `job.env` and nothing else.
-2. **Runtime from R2.** `finetuning/train/requirements-box.txt` lists what the box adds to the stock
-   `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime` image (runtime, not devel: ~1/3 the size, and
-   usually cached on hosts). The bundle key is a hash of that file + image + base model. If
-   `runtime/<key>/{wheels,hf}.tar` exist, the box installs offline from them; otherwise it installs
-   from PyPI/Hugging Face and uploads the bundle for the next box. A failed bundle upload never
-   fails training. Vast cannot pull a container image from R2 (it needs a registry; an R2-backed
-   registry would need a Worker our token cannot create), so this is the "image from our bucket".
+2. **Runtime from R2, built once on our machine.** The box image is bare `python:3.11-slim` (~50 MB, pulls
+   in seconds). Everything else (a venv with PyTorch + CUDA libraries + packages, and the base model) is in
+   R2 at `runtime/<key>/`, key = hash of `finetuning/train/requirements-box.txt` + image + base model.
+   `finetuning/build_runtime.sh` (`task runtime`, also run by `task all`) builds it locally in the same image
+   under Docker (linux/amd64) and streams it straight into R2, so no GPU box ever builds it. A box can still
+   build it as a last resort if the R2 download fails. (Building it on a rented box was tried first: flaky
+   host networks made it slow and it ran into the smoke time limit.) Vast cannot pull a container image from
+   R2 (it needs a registry; an R2-backed registry would need a Worker our token cannot create).
 3. **The box does the whole job.** Clone the pushed commit, train, calibrate, export ONNX on CUDA,
    quantize to 8-bit, **fail if the 8-bit ONNX is over 750 MB**, upload `openjevx.w8.onnx`,
    `checkpoint.tar.gz` (trainable), `eval_report.json`, `job.log`, `status.json` to
