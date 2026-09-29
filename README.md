@@ -85,7 +85,9 @@ Release from this machine, no CI: `task package` builds the macOS, Linux and Win
 
 ## Fine-tune it further
 
-The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request). For further training use the full-precision files on [Hugging Face](https://huggingface.co/muthuishere/openjevx): `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`, and `openjevx.onnx` (fp32).
+The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
+
+**Fine-tune kit (v0.4.0, 2.2 GB):** [openjevx-finetune-v0.4.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz.sha256)). It holds the fine-tuned checkpoint (`model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`), both ONNX files (8-bit and fp32), and the training scripts. No training data. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `scripts/data/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.
