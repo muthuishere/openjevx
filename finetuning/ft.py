@@ -108,8 +108,18 @@ def train(smoke):
     return run_dir / "out" / "openjevx.w8.onnx"
 
 
+def free_port():
+    import socket
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
 def gate(model):
-    g = CFG["gate"]
+    g = dict(CFG["gate"])
+    # Never trust a fixed port: an old server already listening there answers /health and gets scored
+    # instead of this model (that happened once). Use a free port and a temporary jevx profile.
+    g["port"] = free_port()
     model = Path(model).resolve()
     mb = model.stat().st_size // 2**20
     if mb > CFG["model"]["max_w8_mb"]:
@@ -125,13 +135,16 @@ def gate(model):
     proc = subprocess.Popen([str(binary)], cwd=srv, stdout=open(srv / "server.log", "w"), stderr=subprocess.STDOUT)
     try:
         for _ in range(120):
+            if proc.poll() is not None:
+                sys.exit(f"gate server exited; see {srv / 'server.log'}")
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{g['port']}/health", timeout=2)
                 break
             except Exception:
-                if proc.poll() is not None:
-                    sys.exit(f"gate server exited; see {srv / 'server.log'}")
                 time.sleep(1)
+        time.sleep(2)
+        if proc.poll() is not None:  # e.g. bind failed but something else answered /health
+            sys.exit(f"gate server exited; see {srv / 'server.log'}")
         sys.path.insert(0, str(FT / "gate"))
         import gate_eval
         url = f"http://127.0.0.1:{g['port']}/v1/systemone"
@@ -146,7 +159,13 @@ def gate(model):
                     failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {g['min_basics_confident_right']:.0%}")
                 if m["confident_wrong"] > g["max_basics_confident_wrong"]:
                     failures.append(f"{f}: confidently wrong {m['confident_wrong']:.1%} > {g['max_basics_confident_wrong']:.0%}")
-        j = subprocess.run(["bash", FT / "gate/jevx13.sh", g["jevx_profile"]], text=True, capture_output=True, cwd=ROOT)
+        profile = f"openjevx-gate-{g['port']}"
+        subprocess.run(["jevx", "profile", "add", profile, url, "--model", f"openjevx-gate-{model.stem}"],
+                       capture_output=True, check=True)
+        try:
+            j = subprocess.run(["bash", FT / "gate/jevx13.sh", profile], text=True, capture_output=True, cwd=ROOT)
+        finally:
+            subprocess.run(["jevx", "profile", "remove", profile], capture_output=True)
         print(j.stdout, flush=True)
         correct = int(j.stdout.split("correct ")[-1].split("/")[0]) if "correct " in j.stdout else 0
         report["jevx13_correct"] = correct
