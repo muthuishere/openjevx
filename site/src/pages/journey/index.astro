@@ -4,7 +4,7 @@ const base = import.meta.env.BASE_URL;
 ---
 <Base title="The journey" description="How OpenJevX got from v0.1 to v0.4, in four steps.">
   <h1>The journey</h1>
-  <p class="lead">Four releases, what each one fixed. Full numbers on the
+  <p class="lead">Four releases, what each one fixed. Full numbers on the{' '}
     <a href={`${base}/results/`}>results page</a>.</p>
 
   <div class="timeline">
@@ -13,7 +13,7 @@ const base = import.meta.env.BASE_URL;
       <div class="tl-card">
         <div class="tl-tag">v0.1</div>
         <h3>Laya, fine-tuned on public data</h3>
-        <p><code>convaiinnovations/laya</code> trained on the public typed-decisions set:
+        <p><code>convaiinnovations/laya</code> trained on the public typed-decisions set:{' '}
           <strong>77.4%</strong> on its benchmark.</p>
       </div>
     </div>
@@ -37,7 +37,7 @@ const base = import.meta.env.BASE_URL;
       <div class="tl-card">
         <div class="tl-tag">v0.3</div>
         <h3>Fix the quantization</h3>
-        <p>4-bit weight-only: activations stay float, so batching no longer changes answers.
+        <p>4-bit weight-only: activations stay float, so batching no longer changes answers.{' '}
           <strong>77.0%</strong> at 461 MB, no retrain.</p>
       </div>
     </div>
@@ -49,7 +49,7 @@ const base = import.meta.env.BASE_URL;
         <h3>Fine-tune on real software work — $1.80</h3>
         <p>443,394 decisions across 7 roles and 56 families, after removing 22,576 questions that
           leaked from the test sets. One rented RTX 4090, under 3 hours.</p>
-        <p>Software-role accuracy <strong>63.7% → 98.1%</strong>; families never seen in training
+        <p>Software-role accuracy <strong>63.7% → 98.1%</strong>; families never seen in training{' '}
           <strong>66.1% → 87.3%</strong>.</p>
       </div>
     </div>
