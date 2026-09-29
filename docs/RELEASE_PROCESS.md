@@ -94,7 +94,13 @@ and size.
 3. **GitHub**: bump versions (README, Taskfile, launcher, Docker), `MODEL_DIR=<folder> task package` (small binary
    per platform + `openjevx-model-<version>.tar.gz`), tag `v<version>`, create the release with the gate and
    benchmark numbers, via a PR to `main`.
-4. **Site**: results page and fine-tune page numbers.
+4. **Site** (GitHub Pages, `site/`):
+   - results page: the new gate and benchmark numbers;
+   - **fine-tune page** (https://muthuishere.github.io/openjevx/finetune/) must let someone download and do
+     everything for this version: the model folder archive (`openjevx-model-<version>.tar.gz`, GitHub release),
+     the trainable checkpoint / fine-tune kit (public R2 link + sha256), the Hugging Face repo, the sample CSV
+     (`/openjevx/examples/decisions.csv`), and the step-by-step commands with this version's numbers (cost, time,
+     decisions). Check every link on the deployed page returns 200 after the Pages deploy.
 5. **Users**: jevx caches answers by model name for 7 days, so tell upgraders to run `jevx cache clear`, or use
    a versioned model name in the profile (`openjevx-<version>`).
 
