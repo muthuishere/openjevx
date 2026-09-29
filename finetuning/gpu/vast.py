@@ -79,6 +79,8 @@ def main():
         print("pushing HEAD so the box can clone it", flush=True)
         out("git", "push", "origin", "HEAD")
     repo = out("git", "remote", "get-url", "origin")
+    if repo.startswith("git@"):  # the box has no GitHub SSH key: clone the public repo over HTTPS
+        repo = "https://" + repo[4:].replace(":", "/", 1)
 
     name = f"{shard_dir.name}-{time.strftime('%Y%m%d-%H%M')}"
     run_dir = paths.WORK / "runs" / name
@@ -112,9 +114,19 @@ def main():
     r2.client().put_object(Bucket=r2.PRIVATE, Key=f"runs/{name}/job.env", Body=body.encode())
     job_env_url = r2.link_get(f"runs/{name}/job.env", link_s)
 
-    job = (f"git clone --filter=blob:none {shlex.quote(repo)} /root/job && "
+    # If anything before run_job.sh fails (clone, checkout), report it and destroy the box anyway:
+    # run_job.sh's own cleanup only exists once it runs.
+    job = (f"export GIT_TERMINAL_PROMPT=0 JOB_ENV_URL={shlex.quote(job_env_url)}; "
+           "curl -fsSL --retry 5 -o /root/job.env \"$JOB_ENV_URL\" && . /root/job.env; "
+           f"{{ git clone --filter=blob:none {shlex.quote(repo)} /root/job && "
            f"git -C /root/job checkout --detach {ref} && "
-           f"JOB_ENV_URL={shlex.quote(job_env_url)} bash /root/job/finetuning/train/run_job.sh")
+           "bash /root/job/finetuning/train/run_job.sh; } || { "
+           "[ -f /root/JOB_FAILED ] || [ -f /root/JOB_COMPLETE ] || { "
+           "echo 'box setup failed before run_job.sh'; "
+           "printf '{\"status\":\"failed\",\"stage\":\"setup\"}' > /root/status.json; "
+           "curl -fsS -X PUT -T /root/job.log \"$PUT_LOG_URL\"; curl -fsS -X PUT -T /root/status.json \"$PUT_STATUS_URL\"; "
+           "curl -fsS -X POST \"$KILL_URL\" -H \"X-Kill-Token: $KILL_TOKEN\" "
+           "-d \"{\\\"instance_id\\\": ${CONTAINER_ID:-${VAST_CONTAINERLABEL#C.}}}\"; }; }")
     onstart = ("mkdir -p /root/.ssh; chmod 700 /root/.ssh; "
                f"printf '%s\\n' {shlex.quote(SSH_PUB.read_text().strip())} >> /root/.ssh/authorized_keys; "
                "chmod 600 /root/.ssh/authorized_keys; "
