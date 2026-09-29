@@ -84,7 +84,7 @@ go version && task --version && uv --version && python3 --version</CodeCard>
   <p>Each row becomes one request to the server, <code>POST /v1/systemone</code>, with your state and
     question. Training teaches the model to give your answer to that request.</p>
   <h4>Yes/no (noul)</h4>
-  <div class="cards">
+  <div class="pair">
     <CodeCard label="CSV row">{`state,question,type,options,answer
 "{""order_total_rs"": 501}","Does the order get the discount? Orders over Rs 500 get 10% off.",noul,,yes`}</CodeCard>
     <CodeCard label="request the model receives">{`{
@@ -94,7 +94,7 @@ go version && task --version && uv --version && python3 --version</CodeCard>
 }`}</CodeCard>
   </div>
   <h4>Pick one (choice)</h4>
-  <div class="cards">
+  <div class="pair">
     <CodeCard label="CSV row">{`state,question,type,options,answer
 "{""repo"": ""billing"", ""title"": ""Invoice PDF missing tax line""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments`}</CodeCard>
     <CodeCard label="request the model receives">{`{
@@ -106,7 +106,7 @@ go version && task --version && uv --version && python3 --version</CodeCard>
 }`}</CodeCard>
   </div>
   <h4>Rating (score)</h4>
-  <div class="cards">
+  <div class="pair">
     <CodeCard label="CSV row">{`state,question,type,options,answer
 "{""customers_affected"": 40, ""payments_failing"": false, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,high`}</CodeCard>
     <CodeCard label="request the model receives">{`{

@@ -109,9 +109,17 @@ code {
 .code-card code {
   background: none;
   padding: 0;
-  white-space: pre;
+  /* Wrap long lines instead of scrolling; copying still gives the exact original text. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: inherit;
 }
+.code-card pre { scrollbar-color: rgba(255,255,255,0.18) transparent; scrollbar-width: thin; }
+.code-card pre::-webkit-scrollbar { height: 8px; background: transparent; }
+.code-card pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+/* An example shown two ways (CSV row, then the request it becomes): stacked, full width. */
+.pair { display: grid; gap: 10px; margin: 1.2em 0; }
+.pair .code-card { margin: 0; }
 .copy-btn {
   border: 1px solid rgba(255,255,255,0.18);
   background: transparent;
