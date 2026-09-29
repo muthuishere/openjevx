@@ -6,7 +6,8 @@ finetuning/config.example.json; edit it there. Data paths are relative to the da
 (~/openjevx/data or $OPENJEVX_DATA, see finetuning/paths.py).
 
   ft.py dataprep        generate the rule-labelled sets into <data>/{train,eval,gate}
-  ft.py validate        adapter dry-parse + leakage check (writes <data>/work/leak/leaked_keys.json)
+  ft.py validate        adapter dry-parse + leakage check (writes <data>/work/leak/leaked_keys.json;
+                        fails if a gate question asks about a state that is in training)
   ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/ and run every
                             row through the trainer's build_item on CPU (needs uv)
   ft.py train [--smoke]     run the shard on config.provider (gpu/<provider>.py), get the 8-bit ONNX back
@@ -57,15 +58,22 @@ def validate():
     (WORK / "leak").mkdir(parents=True, exist_ok=True)
     sh(PY, FT / "datavalidate/check_adapter.py")
     v = CFG["datavalidate"]
-    args = [PY, FT / "datavalidate/leak_check.py", "--out", WORK / "leak/leaked_keys.json"]
-    for f in v["leak_train"]:
+    # Exact matches are removed from training at package time; a gate question about a state we train
+    # on (reworded or not) fails validate; the same for an eval file only warns.
+    args = [PY, FT / "datavalidate/leak_check.py", "--out", WORK / "leak/leaked_keys.json", "--fail-on-gate"]
+    extra = [x["file"] for x in CFG["dataprep"].get("extra_train", [])]
+    for f in dict.fromkeys(v["leak_train"] + extra):
         args += ["--train", paths.DATA / f]
     for f in v["leak_eval"]:
         if (paths.DATA / f).exists():
-            args += ["--eval", paths.DATA / f]
+            args += ["--gate" if f.startswith("gate/") else "--eval", paths.DATA / f]
         else:
             print(f"note: test file {f} not present, skipped in the leakage check")
-    sh(*args)
+    try:
+        sh(*args)
+    except subprocess.CalledProcessError:
+        sys.exit("validate: a gate file shares question states with training (see the table above); "
+                 "regenerate the gate so it only asks about unseen states")
 
 
 def package(smoke):

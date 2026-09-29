@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402
+from datavalidate.leak_check import in_keys, state_keys  # noqa: E402
 
 SEED = 20260929
 EVAL_FRAC = 0.10
@@ -235,6 +236,13 @@ DROPPED = {
 }
 
 
+def drop_trained(test, train):
+    """Drop eval rows whose state (code, passage, log block) is also a train state: truncation and
+    duplicate functions in the source sets put the same text on both sides of the split."""
+    seen = {k for r in train for q in r["questions"].values() for k in state_keys(r["state"], q["type"])}
+    return [r for r in test if not in_keys(r["state"], [q["type"] for q in r["questions"].values()], seen)]
+
+
 def write(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as handle:
@@ -256,9 +264,14 @@ def main():
     ap.add_argument("--raw", default=str(paths.RAW / "public-2026-09-29"))
     raw = Path(ap.parse_args().raw)
     out = paths.INCOMING / "public"
+    made = {}
     for name, fn in SOURCES.items():
-        rng = random.Random(f"{SEED}-{name}")
-        train, test = fn(raw, rng)
+        made[name] = fn(raw, random.Random(f"{SEED}-{name}"))
+    all_train = [r for train, _ in made.values() for r in train]  # the same function can sit in two sets
+    for name, (train, test) in made.items():
+        kept = drop_trained(test, all_train)
+        print(f"[{name}] dropped {len(test) - len(kept)} eval rows whose state is in a public train set")
+        test = kept
         write(out / f"{name}_train.jsonl", train)
         write(out / f"{name}_eval.jsonl", test)
         print(f"[{name}] -> {out}")
