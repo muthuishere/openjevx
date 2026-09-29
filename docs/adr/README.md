@@ -1,5 +1,7 @@
 # ADRs
 
+The step-by-step release checklist is [`docs/RELEASE_PROCESS.md`](../RELEASE_PROCESS.md).
+
 Read these before the next OpenJevX training run. Do not revive the Qwen path in `modeltraining`.
 
 | ADR | Use it when |

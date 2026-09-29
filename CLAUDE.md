@@ -9,7 +9,7 @@
 - Data: `~/openjevx/data/` (override with `$OPENJEVX_DATA`). All paths come from `finetuning/paths.py`:
   `raw/` · `incoming/` · `train/` · `eval/` · `gate/` · `work/{leak,shards,runs,gate,quality,samples}`.
   Never write data into the repo, and never add a new data path outside `paths.py`.
-- Agent reports: `llmresults/` (ADR 0005). Decisions: `docs/adr/`.
+- Agent reports: `llmresults/` (ADR 0005). Decisions: `docs/adr/`. Releasing a model: `docs/RELEASE_PROCESS.md`.
 
 ## Model rules
 - We ship **one model folder**: `openjevx.w8.onnx` (8-bit, at most 750 MB, `model.max_w8_mb`) + `config.json`
