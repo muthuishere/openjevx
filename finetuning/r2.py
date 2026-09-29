@@ -6,7 +6,7 @@ does not have it). R2 derives S3 keys from an API token: access key = token id,
 secret = sha256(token). Values never leave this process; the box only ever gets signed links.
 
   r2.py put FILE KEY [--bucket B]       r2.py get KEY FILE [--bucket B]
-  r2.py ls PREFIX [--bucket B]         r2.py put-stream KEY < data
+  r2.py ls PREFIX [--bucket B]
 """
 import hashlib, json, os, subprocess, sys, urllib.request
 from pathlib import Path
@@ -47,18 +47,6 @@ def put(path, key, bucket=PRIVATE):
         multipart_threshold=64 << 20, multipart_chunksize=64 << 20, max_concurrency=8))
 
 
-def put_stream(stream, key, bucket=PRIVATE):
-    """Multipart-upload a byte stream (e.g. tar on stdin) without a temporary file."""
-    from boto3.s3.transfer import TransferConfig
-    client().upload_fileobj(stream, bucket, key, Config=TransferConfig(
-        multipart_threshold=64 << 20, multipart_chunksize=64 << 20, max_concurrency=4))
-
-
-def runtime_key(requirements_text, image, base_model):
-    """Key of the GPU box runtime in R2 (runtime/<key>/): changes when what it contains changes."""
-    return hashlib.sha1((requirements_text + image + base_model).encode()).hexdigest()[:12]
-
-
 def get(key, path, bucket=PRIVATE):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     client().download_file(bucket, key, str(path))
@@ -84,6 +72,5 @@ if __name__ == "__main__":
         i = a.index("--bucket"); bucket = a[i + 1]; del a[i:i + 2]
     if a[:1] == ["put"]: put(a[1], a[2], bucket)
     elif a[:1] == ["get"]: get(a[1], a[2], bucket)
-    elif a[:1] == ["put-stream"]: put_stream(sys.stdin.buffer, a[1], bucket)
     elif a[:1] == ["ls"]: print("\n".join(ls(a[1] if len(a) > 1 else "", bucket)))
     else: sys.exit(__doc__)

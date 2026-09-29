@@ -9,7 +9,6 @@ finetuning/config.example.json; edit it there. Data paths are relative to the da
   ft.py validate        adapter dry-parse + leakage check (writes <data>/work/leak/leaked_keys.json)
   ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/ and run every
                             row through the trainer's build_item on CPU (needs uv)
-  ft.py runtime         build the GPU box runtime (venv + base model) once, locally in Docker, into R2
   ft.py train [--smoke]     run the shard on config.provider (gpu/<provider>.py), get the 8-bit ONNX back
   ft.py gate MODEL.onnx     serve MODEL locally and score it; exit 1 if it misses the config thresholds
   ft.py all             every step in order, with a smoke run before the full run
@@ -168,12 +167,10 @@ def main():
     if step == "dataprep": dataprep()
     elif step == "validate": validate()
     elif step == "package": package(smoke)
-    elif step == "runtime": sh("bash", FT / "build_runtime.sh")
     elif step == "train": print(train(smoke))
     elif step == "gate": gate(rest[0])
     elif step == "all":
         dataprep(); validate()
-        sh("bash", FT / "build_runtime.sh")
         package(True); train(True)
         package(False); gate(train(False))
     else:

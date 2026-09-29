@@ -22,14 +22,12 @@ One command, `task all` in `finetuning/` (settings in `~/.config/openjevx/config
    (`shards/<version>/`) and a `job.env` (`runs/<run>/job.env`) holding only signed links and the
    kill token (uploaded from memory via `sec`, never written to disk). The box gets one signed link
    to `job.env` and nothing else.
-2. **Runtime from R2, built once on our machine.** The box image is bare `python:3.11-slim` (~50 MB, pulls
-   in seconds). Everything else (a venv with PyTorch + CUDA libraries + packages, and the base model) is in
-   R2 at `runtime/<key>/`, key = hash of `finetuning/train/requirements-box.txt` + image + base model.
-   `finetuning/build_runtime.sh` (`task runtime`, also run by `task all`) builds it locally in the same image
-   under Docker (linux/amd64) and streams it straight into R2, so no GPU box ever builds it. A box can still
-   build it as a last resort if the R2 download fails. (Building it on a rented box was tried first: flaky
-   host networks made it slow and it ran into the smoke time limit.) Vast cannot pull a container image from
-   R2 (it needs a registry; an R2-backed registry would need a Worker our token cannot create).
+2. **Runtime: stock PyTorch image + pip on the box.** The box uses `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime`
+   (PyTorch + CUDA included) and installs the few packages in `finetuning/train/requirements-box.txt` from
+   PyPI, with retries; the base model comes from Hugging Face. Both download on the data-center network.
+   Tried and dropped the same day: a prebuilt runtime in R2 (built on a box: slow and hit the smoke time
+   limit; built on the owner's Mac: the home connection is too slow to upload several GB). Only the shard
+   (tens of MB) goes up from the owner's machine.
 3. **The box does the whole job.** Clone the pushed commit, train, calibrate, export ONNX on CUDA,
    quantize to 8-bit, **fail if the 8-bit ONNX is over 750 MB**, upload `openjevx.w8.onnx`,
    `checkpoint.tar.gz` (trainable), `eval_report.json`, `job.log`, `status.json` to
