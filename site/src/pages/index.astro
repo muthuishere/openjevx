@@ -5,9 +5,9 @@ import StatStrip from '../components/StatStrip.astro';
 const base = import.meta.env.BASE_URL;
 
 const stats = [
-  { before: '63.7%', after: '98.1%', label: 'software-role held-out accuracy' },
+  { before: '46.9%', after: '96.3%', label: 'everyday basics right & confident (v0.4.0 → v0.5.0)' },
   { before: '66.1%', after: '87.3%', label: 'never-seen software-role families' },
-  { before: '', after: '$1.80', label: 'total cost to train v0.4.0' },
+  { before: '', after: '$1.10', label: 'total cost to train v0.5.0' },
 ];
 ---
 <Base title="Home" description="OpenJevX: an open, local decision model server for jevx.">
@@ -18,7 +18,7 @@ const stats = [
   </p>
 
   <div class="btnrow">
-    <a class="btn" href="https://github.com/muthuishere/openjevx/releases/latest">Download v0.4.0</a>
+    <a class="btn" href="https://github.com/muthuishere/openjevx/releases/latest">Download v0.5.0</a>
     <a class="btn ghost" href="https://github.com/muthuishere/openjevx">GitHub</a>
     <a class="btn ghost" href="https://huggingface.co/muthuishere/openjevx">Hugging Face</a>
     <a class="textlink" href={`${base}/results/`}>See the before/after →</a>
@@ -31,14 +31,16 @@ const stats = [
 openjevx</CodeCard>
 
   <h2>Manual — macOS</h2>
-  <CodeCard label="macOS">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
-tar -xf openjevx-darwin-arm64.tar && ./openjevx</CodeCard>
+  <CodeCard label="macOS">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx</CodeCard>
 
   <h2>Manual — Linux</h2>
-  <CodeCard label="Linux">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
-tar -xf openjevx-linux-amd64.tar && ./openjevx</CodeCard>
+  <CodeCard label="Linux">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx</CodeCard>
 
-  <p>Windows: download <a href="https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> and run <code>openjevx.exe</code>.</p>
+  <p>Windows: download <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> and <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz">openjevx-model-0.5.0.tar.gz</a>, unpack both into the same folder (<code>tar -xzf openjevx-model-0.5.0.tar.gz</code>) and run <code>openjevx.exe</code>.</p>
 
   <h2>Docker</h2>
   <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx

@@ -23,7 +23,6 @@ from tokenizers import Tokenizer
 REPO = "muthuishere/openjevx"
 CLS, SEP, MASK = 50281, 50282, 50284
 MAX_LEN, HEAD_MAX = 1024, 256
-TEMPERATURE = {0: 1.02553391456604, 1: 1.034013271331787, 2: 1.147902488708496}  # choice, score, noul
 
 
 def _criterion(v):
@@ -48,9 +47,12 @@ def _parse(q):
 
 
 class OpenJevX:
-    def __init__(self, model=None, tokenizer=None, providers=None):
+    def __init__(self, model=None, tokenizer=None, config=None, providers=None):
         model = model or hf_hub_download(REPO, "openjevx.w8.onnx")
-        tokenizer = tokenizer or hf_hub_download(REPO, "tokenizer/tokenizer.json")
+        tokenizer = tokenizer or hf_hub_download(REPO, "tokenizer.json")
+        config = config or hf_hub_download(REPO, "config.json")  # this model's own calibration temperatures
+        t = json.load(open(config))["temperature"]
+        self.temperature = {0: t["choice"], 1: t["score"], 2: t["noul"]}
         self.tok = Tokenizer.from_file(tokenizer)
         self.session = ort.InferenceSession(model, providers=providers or ["CPUExecutionProvider"])
 
@@ -93,7 +95,7 @@ class OpenJevX:
         out = {}
         for r, qid in enumerate(qids):
             _, markers, qtype, keys = items[r]
-            z = [float(x) / TEMPERATURE[qtype] for x in logits[r, :len(markers)]]
+            z = [float(x) / self.temperature[qtype] for x in logits[r, :len(markers)]]
             m = max(z); p = [math.exp(x - m) for x in z]; s = sum(p); p = [x / s for x in p]
             best = max(range(len(p)), key=p.__getitem__)
             ans = {"type": questions[qid]["type"], "probabilities": {k: round(p[j], 4) for j, k in enumerate(keys)},

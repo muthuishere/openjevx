@@ -84,14 +84,6 @@ git clone https://github.com/muthuishere/openjevx.git && cd openjevx
 docker compose up -d --build
 ```
 
-No clone? Load a prebuilt image from the release (`amd64` or `arm64`):
-
-```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
-docker load -i openjevx-docker-amd64.tar
-docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64
-```
-
 ## jevx
 
 Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
@@ -100,6 +92,8 @@ Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
 jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
 ```
+
+Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.0`).
 
 ## Recipes
 
@@ -125,11 +119,27 @@ Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and t
 
 Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
+## What v0.5.0 was trained on
+
+734,795 decisions (408,505 rows). Labels come from evaluating rules or from real outcomes, never from another model's guesses.
+
+| Area | Decisions | Share |
+|---|---|---|
+| Rule-checking across 38 business domains (retail pricing, recruiting, real estate, CI/CD, insurance claims, pharmacy stock, HR payroll, gaming, ...) | 200,139 | 27.2% |
+| Software-work roles (developers, testers, tech leads, managers, operations, everyone, agent checks) | 183,543 | 25.0% |
+| tasksource decision corpus | 146,567 | 19.9% |
+| Public sets with real labels (CVE fixes from bigvul, defect detection, code search, ms_marco relevance, HDFS and BGL operator log alerts) | 104,990 | 14.3% |
+| Log triage: application (Java/Python/Node/Go/nginx), database (Postgres/MySQL, real SQLSTATE codes), frontend (browser/Sentry) | 60,001 | 8.2% |
+| Everyday basics (driving licence age, store hours, parcel late, discount thresholds, fever, bag weight, ...) | 30,405 | 4.1% |
+| Public typed-decisions | 9,150 | 1.2% |
+
+Run: one RTX 4090 on Vast.ai, 734,145 decisions after packaging, one full pass in 2.4 h at ~88 items/s, about $1.10 in total. Leakage-checked (22,592 test questions removed); every row checked against the trainer before renting.
+
 ## Fine-tune it further
 
 The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
 
-**Fine-tune kit (v0.4.0, 2.2 GB):** [openjevx-finetune-v0.4.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz.sha256)). It holds the fine-tuned checkpoint (`model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`), both ONNX files (8-bit and fp32), and the training scripts. No training data. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
+**Fine-tune kit (v0.5.0, 777 MB):** [openjevx-finetune-v0.5.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz.sha256)). It holds the trainable fine-tuned checkpoint (`openjevx-model/`: `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`). No training data. The 8-bit ONNX is on the GitHub release and Hugging Face; the training scripts are in `finetuning/` in this repo. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `finetuning/dataprep/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.
