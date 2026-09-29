@@ -37,6 +37,10 @@ setsid bash -c "sleep $(python3 -c "print(int(float('${DEADLINE_HOURS:-7}') * 36
   curl -fsS -X POST \"\$KILL_URL\" -H \"X-Kill-Token: \$KILL_TOKEN\" -d '{\"instance_id\": ${INSTANCE_ID:-0}}'; }" \
   >/dev/null 2>&1 < /dev/null &
 
+# Heartbeat: upload the log to R2 every 2 minutes, so progress is visible without SSH.
+setsid bash -c ". /root/job.env; while [ ! -f /root/JOB_COMPLETE ] && [ ! -f /root/JOB_FAILED ]; do sleep 120; \
+  curl -fsS -X PUT -T $LOG \"\$PUT_LOG_URL\" >/dev/null 2>&1; done" < /dev/null > /dev/null 2>&1 &
+
 if [ "$SHARD" = smoke ]; then TR=train_smoke; EV=eval_smoke; else TR=train; EV=eval; fi
 fetch "$TRAIN_URL" "$IN/$TR.jsonl.gz"
 fetch "$EVAL_URL" "$IN/$EV.jsonl.gz"

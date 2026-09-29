@@ -65,6 +65,8 @@ def main():
     ap.add_argument("--max-price-per-hour", type=float, default=0.6)
     ap.add_argument("--timeout-hours", type=float, default=7)
     a = ap.parse_args()
+    if a.shard == "smoke":  # a smoke run takes minutes; never let a stuck one bill for hours
+        a.timeout_hours = min(a.timeout_hours, 1.5)
     kill_token = os.environ.get("OPENJEVX_KILL_TOKEN") or sys.exit("OPENJEVX_KILL_TOKEN missing; run under sec run")
     shard_dir = Path(a.shard_dir).resolve()
     files = {s: shard_dir / f"openjevx-{a.shard}-{s}" for s in ("train.jsonl.gz", "eval.jsonl.gz", "run.json")}
