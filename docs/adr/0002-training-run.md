@@ -1,6 +1,6 @@
 # ADR 0002 — How to train the next one
 
-Status: accepted  
+Status: accepted — launcher, image and watcher parts superseded by ADR 0009  
 Date: 2026-09-28
 
 ## Context
@@ -13,7 +13,7 @@ Follow this order. Do not invent a new trainer.
 
 1. Data. Public reproduction uses `LocalLLaMA/typed-decisions` train (1,200 cases, 6,000 decisions) and the untouched test split (400 cases, 2,000 decisions). A new domain replaces those two files but keeps the same row shape: `state`, `questions`, `gold` with full probability distributions.
 2. Hold out calibration before training. Seed `20260922`, up to 400 items or 10%, whichever is smaller. Fit one temperature per type (`choice`, `score`, `noul`). Delete inherited `temperature_by_options` or the old buckets hide the new fit.
-3. Code pin. Laya source is `9d955671415fc19f069b9cc998928075c1f255ec`. OpenJevX trainer is `scripts/train_openjevx.py`. Launcher is `scripts/run_vast.sh`.
+3. Code pin. Laya source is `9d955671415fc19f069b9cc998928075c1f255ec`. OpenJevX trainer is `finetuning/train/train_openjevx.py`. Launcher: see ADR 0009 (`finetuning/gpu/vast.py`, `finetuning/train/run_job.sh`).
 4. Hardware. One verified RTX 4090, CUDA 12.4 image `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel`, label `openjevx-...-DESTROY-AFTER`. Use the `vast-one-shot` skill. Do not assemble the box over SSH.
 5. Runtime guard. `onnxruntime-gpu==1.22.0` only. Uninstall `onnxruntime` and `onnxruntime-gpu` first, then `pip install --force-reinstall --no-deps onnxruntime-gpu==1.22.0`. Version 1.30 needs CUDA 13 and silently falls back to CPU on this image. Abort unless the session provider is `CUDAExecutionProvider`.
 6. Recipe, already in the script. 4 epochs, micro-batch 8, grad accumulation 8 (effective batch 64 on one GPU), encoder lr `2.5e-5`, head lr `1e-4`, AdamW, cosine, fp16 autocast, GradScaler, clip 1.0, `max_len` 1024, `head_max_len` 256. T4/4090 training uses fp16, not bf16.

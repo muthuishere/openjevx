@@ -29,6 +29,9 @@
   itself by calling the destroy endpoint (`finetuning/destroy-worker/`, a Cloudflare Pages Function that holds the
   Vast key). A timer on the box destroys it at the deadline whatever happens; the local run destroys it too if it
   is still alive. No long-lived key ever goes on the box.
+- The box's Python packages and base model also come from R2: a bundle keyed by
+  `finetuning/train/requirements-box.txt` + image + base model (`runtime/<key>/`), built by the first box that
+  needs it. Add box packages to that file, never inline in `run_job.sh`. Full design: ADR 0009.
 - All Cloudflare pieces are in code: `finetuning/cloud_setup.sh` (`task cloud-setup`) creates or refreshes the bucket,
   the destroy endpoint and its secrets (from `sec`), then checks the endpoint. Re-run it after changing `destroy.js`.
 - R2 buckets: `openjevx-train` is **private** (shards, runs, checkpoints, gate reports); `openjevx` is public and

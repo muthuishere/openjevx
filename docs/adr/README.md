@@ -12,3 +12,4 @@ Read these before the next OpenJevX training run. Do not revive the Qwen path in
 | [0006](0006-finetune-on-your-own-data.md) | Writing the fine-tune-on-your-own-data guide, toolkit or skill |
 | [0007](0007-managed-finetune-service.md) | Building the managed service: customers bring data, we return their ONNX |
 | [0008](0008-self-hosted-appliance.md) | Packaging the self-hosted appliance (DigitalOcean/AWS marketplace) and its training UI |
+| [0009](0009-one-job-gpu-run-via-r2.md) | Running a GPU training job (R2 inputs and runtime bundle, self-destroying box) |
