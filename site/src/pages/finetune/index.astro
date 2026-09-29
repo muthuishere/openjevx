@@ -1,18 +1,253 @@
 ---
 import Base from '../../layouts/Base.astro';
+import CodeCard from '../../components/CodeCard.astro';
+import StatStrip from '../../components/StatStrip.astro';
+const base = import.meta.env.BASE_URL;
+const csvUrl = `${base}/examples/decisions.csv`.replace('//', '/');
+const repo = 'https://github.com/muthuishere/openjevx';
 ---
-<Base title="Fine-tune it further" description="Take the fp32 OpenJevX weights and train them on your own decisions.">
-  <h1>Fine-tune it further</h1>
-  <p class="lead">The shipped model is <code>openjevx.w8.onnx</code> (8-bit weight-only: activations
-    stay float, so answers don't depend on what else is in the request). For further training, use
-    the full-precision files.</p>
+<Base title="Fine-tune it on your decisions" description="Put your own decisions in a spreadsheet and fine-tune OpenJevX on them, step by step.">
+  <h1>Fine-tune it on your decisions</h1>
+  <p class="lead">The shipped model does not know your rules: that your week is four days, that a
+    discount starts above Rs 500, that repo <code>billing</code> belongs to the payments team. Write
+    those decisions in a spreadsheet, and one command trains a model that does. Each step below says
+    what you should see.</p>
+
+  <h2>0. What you get and what it costs</h2>
+  <p>You get your own <code>openjevx.w8.onnx</code> (8-bit, at most 750 MB) plus a trainable
+    checkpoint. The model runs on <em>your</em> machine; your decisions never go to a hosted model.</p>
+  <p>Training runs on a rented GPU (an RTX 4090 on vast.ai, about $0.40–0.60 an hour). One run costs
+    about $1–3. For reference, the v0.5.0 full run took about 2.4 hours on 734k decisions and cost about
+    $1.10; the smoke run before it costs cents. The box deletes itself when it is done.</p>
+  <StatStrip stats={[
+    { after: '~$1–3', label: 'one fine-tune run' },
+    { after: '~2.4 h', label: 'v0.5.0 full run on a 4090' },
+    { after: '≤ 750 MB', label: 'your 8-bit model' },
+  ]} />
+
+  <h2>1. Install</h2>
+  <p>You need Go, <a href="https://taskfile.dev">Task</a>, <a href="https://docs.astral.sh/uv/">uv</a>
+    and Python 3.11+ on your machine.</p>
+  <CodeCard label="shell">git clone https://github.com/muthuishere/openjevx.git
+cd openjevx
+go version && task --version && uv --version && python3 --version</CodeCard>
+  <p>For the GPU step you also need:</p>
+  <ul>
+    <li>the <code>vastai</code> CLI and a vast.ai API key with a few dollars of credit
+      (<code>pip install vastai &amp;&amp; vastai set api-key YOUR_KEY_HERE</code>);</li>
+    <li>a Cloudflare account for R2 storage: the GPU box downloads your data from R2 and uploads
+      the model back there. <code>cd finetuning &amp;&amp; task cloud-setup</code> creates the private
+      bucket and the self-destroy endpoint, then checks it; you should see the endpoint answer.</li>
+  </ul>
+  <p>Optional: <a href="https://github.com/muthuishere/jevx">jevx</a> (for the 13-fundamentals check in
+    the gate and for using the model afterwards) and Docker. Steps 2–4 need no GPU and no cloud account.</p>
+
+  <h2>2. What goes in your CSV</h2>
+  <p>A row is <strong>one decision</strong> you want the model to make.</p>
+  <ul>
+    <li><code>state</code> = the facts at the moment of deciding: what your code, log or ticket knows.</li>
+    <li><code>question</code> = the decision, phrased as you would ask a colleague.</li>
+    <li><code>answer</code> = what the right decision was, from your rule or from what really happened. Never a guess.</li>
+  </ul>
+  <p>Start from the example. It covers a 4-day week, 3 working hours a day, a late parcel, a discount
+    over Rs 500, team routing by repo and ticket urgency:</p>
+  <p><a class="btn" href={csvUrl} download>Download decisions.csv</a>{' '}
+    (also in the repo: <a href={`${repo}/blob/main/finetuning/examples/decisions.csv`}><code>finetuning/examples/decisions.csv</code></a>,
+    with a <a href={`${repo}/blob/main/finetuning/examples/README.md`}>one-page column guide</a>)</p>
+
+  <h3>The columns</h3>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>column</th><th>required?</th><th>what to put</th><th>good example</th><th>common mistake</th></tr></thead>
+      <tbody>
+        <tr><td><code>state</code></td><td>yes</td><td>the facts, as a JSON object or plain text; include the threshold if it varies</td>
+          <td><code>{'{"hours_logged_today": 3.1}'}</code></td><td>just <code>true</code>, or leaving out the fact the rule needs</td></tr>
+        <tr><td><code>question</code></td><td>yes</td><td>one decision, as you'd ask a colleague</td>
+          <td>Is the parcel late?</td><td>two decisions in one: "is it late and who handles it"</td></tr>
+        <tr><td><code>type</code></td><td>no (<code>noul</code>)</td><td><code>noul</code> = yes/no, <code>choice</code> = pick one, <code>score</code> = rating</td>
+          <td><code>choice</code></td><td>using <code>choice</code> for yes/no</td></tr>
+        <tr><td><code>options</code></td><td>choice, score</td><td>the keys the model picks between, <code>|</code>-separated; optional short meaning after <code>=</code>; score levels lowest first</td>
+          <td><code>payments=billing repos|web=frontend repos</code></td><td>score levels out of order (<code>high|low|medium</code>)</td></tr>
+        <tr><td><code>answer</code></td><td>yes</td><td>yes/no (also true/false, 1/0); one option key; a level name or index (0 = lowest)</td>
+          <td><code>yes</code>, <code>payments</code>, <code>high</code></td><td>an answer that is not one of the options</td></tr>
+        <tr><td><code>split</code></td><td>no</td><td><code>train</code>, <code>test</code> or <code>gate</code>; empty = 90% train, 10% gate, fixed per row</td>
+          <td><code>gate</code></td><td>no gate rows, so you can't measure the result</td></tr>
+        <tr><td><code>source</code></td><td>no</td><td>a tag for where the row came from</td>
+          <td><code>shop</code></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>JSON in a CSV cell: wrap the cell in double quotes and double the quotes inside
+    (<code>"{'{""day"": ""Friday""}'}"</code>). Any spreadsheet does this when you save as CSV.</p>
+
+  <h3>One example per type: the CSV row, and what the model receives</h3>
+  <p>Each row becomes one request to the server, <code>POST /v1/systemone</code>, with your state and
+    question. Training teaches the model to give your answer to that request.</p>
+  <h4>Yes/no (noul)</h4>
+  <div class="cards">
+    <CodeCard label="CSV row">{`state,question,type,options,answer
+"{""order_total_rs"": 501}","Does the order get the discount? Orders over Rs 500 get 10% off.",noul,,yes`}</CodeCard>
+    <CodeCard label="request the model receives">{`{
+  "state": {"order_total_rs": 501},
+  "questions": {"q1": {"type": "noul",
+    "instructions": "Does the order get the discount? Orders over Rs 500 get 10% off."}}
+}`}</CodeCard>
+  </div>
+  <h4>Pick one (choice)</h4>
+  <div class="cards">
+    <CodeCard label="CSV row">{`state,question,type,options,answer
+"{""repo"": ""billing"", ""title"": ""Invoice PDF missing tax line""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments`}</CodeCard>
+    <CodeCard label="request the model receives">{`{
+  "state": {"repo": "billing", "title": "Invoice PDF missing tax line"},
+  "questions": {"q1": {"type": "choice", "instructions": "Which team owns this?",
+    "criteria": {"payments": "billing and payments-core repos",
+                 "platform": "infra-terraform and api-gateway repos",
+                 "web": "web-frontend and admin-console repos"}}}
+}`}</CodeCard>
+  </div>
+  <h4>Rating (score)</h4>
+  <div class="cards">
+    <CodeCard label="CSV row">{`state,question,type,options,answer
+"{""customers_affected"": 40, ""payments_failing"": false, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,high`}</CodeCard>
+    <CodeCard label="request the model receives">{`{
+  "state": {"customers_affected": 40, "payments_failing": false, "workaround": false},
+  "questions": {"q1": {"type": "score", "instructions": "How urgent is this ticket?",
+    "criteria": ["low", "medium", "high", "critical"]}}
+}`}</CodeCard>
+  </div>
+
+  <h3>Where the facts come from</h3>
+  <p>Put in the state exactly what your system will send the model when it asks for real.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>source</th><th>state</th></tr></thead>
+      <tbody>
+        <tr><td>a log alert</td><td><code>{'{"line": "OOMKilled payments-api", "env": "prod", "errors_last_10m": 42}'}</code></td></tr>
+        <tr><td>a support ticket</td><td><code>{'{"text": "Charged twice for order 8812", "customer_tier": "gold"}'}</code></td></tr>
+        <tr><td>a database record</td><td><code>{'{"promised_by": "2026-10-03", "delivered_on": "2026-10-04"}'}</code></td></tr>
+        <tr><td>a pull request</td><td><code>{'{"files_changed": 14, "touches": ["migrations/"], "summary": "adds a column"}'}</code></td></tr>
+        <tr><td>a form</td><td><code>{'{"leave_days_requested": 6, "leave_days_left": 4}'}</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Do and don't</h3>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>do</th><th>don't</th></tr></thead>
+      <tbody>
+        <tr><td>near-miss pairs at every threshold: 499 → no, 500 → no, 501 → yes; Thursday → yes, Friday → no</td><td>put the answer inside the state (<code>"eligible": true</code>)</td></tr>
+        <tr><td>balance the answers: no single answer above 80% of a question's rows</td><td>train on another model's guesses: labels come from the rule or from reality</td></tr>
+        <tr><td>20+ rows per question</td><td>give the same state and question two different answers (a fact is missing)</td></tr>
+        <tr><td>keep a few of the hardest rows as <code>split=gate</code></td><td>copy one wording everywhere; vary how the question and facts are phrased</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>How many rows</h3>
+  <p>Start with 200–1,000 rows. Each rule becomes many rows: both sides of the threshold, different
+    values, different wordings. The import step warns you when a question has fewer than 20 rows or
+    one answer takes more than 80% of them. The example CSV is deliberately small (39 rows) to show the
+    shape; it gets those warnings too.</p>
+
+  <h2>3. Import and check</h2>
+  <CodeCard label="shell">python3 finetuning/dataprep/import_csv.py yours.csv --name mydata --add-to-config</CodeCard>
+  <p>You should see the count of good and bad rows, then one line per question with its answers:</p>
+  <CodeCard label="output">yours.csv: 39 good rows, 0 bad
+
+question                                                     rows  labels
+Does the order get the discount? Orders over Rs 500 get 10%     6  false=3, true=3
+Which team owns this?                                           7  platform=3, payments=2, web=2
+warning: 'Which team owns this?': only 7 rows; aim for 20+ with near-miss pairs around the rule
+adapter: every row accepted
+wrote    24 train rows -> ~/openjevx/data/train/mydata_train.jsonl
+wrote    15 gate  rows -> ~/openjevx/data/gate/mydata_gate.jsonl
+updated ~/.config/openjevx/config.json (backup: config.json.bak-…)</CodeCard>
+  <p>A bad row is reported with its line number and a fix (<code>line 7: answer 'maybe' is not yes/no</code>).
+    Nothing is written until every row is good, unless you pass <code>--skip-bad</code>. Use
+    <code>--dry-run</code> to check without writing.</p>
+  <p><code>--add-to-config</code> backs up <code>~/.config/openjevx/config.json</code>, then adds your
+    train file to the training mix (repeated 3 times; change with <code>--repeat</code>), your gate file
+    to the gate, and both to the leakage check. Re-running it does not add duplicates.</p>
+
+  <h2>4. Test the current model on your gate first</h2>
+  <p>Before paying for a GPU, see how the shipped model already does on your rules. Download
+    <code>openjevx.w8.onnx</code> from the <a href={`${repo}/releases/latest`}>latest release</a>, then:</p>
+  <CodeCard label="shell">cd finetuning
+task gate -- ~/Downloads/openjevx.w8.onnx</CodeCard>
+  <p>This builds and serves the model on a free local port and scores every gate file, one line each:</p>
+  <CodeCard label="output">gate/mydata_gate.jsonl   n=    15 accuracy  60.0% right&amp;confident  40.0% confidently WRONG 13.3%</CodeCard>
+  <p>That line is your baseline. If your rules already score well, you may not need to train at all.</p>
+
+  <h2>5. Train</h2>
+  <CodeCard label="shell">cd finetuning
+task all</CodeCard>
+  <p>It runs these stages and stops at the first failure:</p>
+  <ol>
+    <li><strong>dataprep</strong> generates the built-in rule-labelled sets (basics, conditions, IT work, logs).</li>
+    <li><strong>leakage check</strong> removes any training question that also appears in a test or gate file.</li>
+    <li><strong>trainer check on CPU</strong> builds the shard and runs rows through the real trainer, so a
+      data bug fails here, for free, not on a rented GPU.</li>
+    <li><strong>smoke run</strong>: about 10 minutes on a GPU to prove the whole path works.</li>
+    <li><strong>full run</strong>: the real training, a few hours.</li>
+    <li><strong>gate</strong> on the new model.</li>
+  </ol>
+  <p>The GPU box downloads the shard from your private R2 bucket, trains, exports and quantizes to 8-bit,
+    uploads the model, checkpoint and log back to R2, then destroys itself. A timer destroys it at the
+    deadline no matter what. Your laptop only waits on R2, so it can sleep; results wait in the bucket.
+    You should see <code>RUN_DIR=…</code> and, at the end, the path to your new
+    <code>openjevx.w8.onnx</code> under <code>~/openjevx/data/work/runs/</code>.</p>
+  <p class="note">The box clones a pushed commit, so commit and push any change under
+    <code>finetuning/</code> before training. Your data goes through R2, not git.</p>
+
+  <h2>6. Read the gate report</h2>
+  <p>For each gate file you get three numbers:</p>
+  <ul>
+    <li><strong>accuracy</strong>: the top answer was right.</li>
+    <li><strong>right &amp; confident</strong>: right and sure enough to act on (yes ≥ 0.8, no ≤ 0.2, a
+      choice or score ≥ 0.6). This is what matters: an unsure answer gets escalated, not acted on.</li>
+    <li><strong>confidently wrong</strong>: sure and wrong. The dangerous one; keep it near zero.</li>
+  </ul>
+  <p>The model ships only if the everyday basics stay at least 90% right &amp; confident, at most 2%
+    confidently wrong, and it gets 12 of jevx's 13 fundamentals. These thresholds are in
+    <code>gate</code> in <code>~/.config/openjevx/config.json</code>. The full report is saved to
+    <code>~/openjevx/data/work/gate/&lt;model&gt;.json</code>. Compare your line with the baseline from step 4.</p>
+
+  <h2>7. Run your model</h2>
+  <p>Put the model in a folder with its settings and tokenizer:</p>
+  <CodeCard label="folder">my-model/
+  openjevx.w8.onnx
+  config.json        (its own calibration temperatures)
+  tokenizer.json</CodeCard>
+  <p>Point the server at the folder in <code>openjevx.json</code> and start it:</p>
+  <CodeCard label="openjevx.json">{`{
+  "listen": "127.0.0.1:21118",
+  "device": "auto",
+  "model": "/path/to/my-model"
+}`}</CodeCard>
+  <p>With Docker, mount the folder and set the same <code>"model"</code> path inside the container. Then
+    add a jevx profile with a versioned model name, so cached answers from the old model are not reused:</p>
+  <CodeCard label="shell">{`jevx profile add mymodel http://127.0.0.1:21118/v1/systemone --model mymodel-v1
+jevx profile use mymodel
+jevx cache clear
+jevx ask --noul discount="Does the order get the discount? Orders over Rs 500 get 10% off." --in '{"order_total_rs": 501}'`}</CodeCard>
+  <p>You should see a yes with high confidence. Train again later? Bump the name to <code>mymodel-v2</code>.</p>
+
+  <h2>8. Troubleshooting</h2>
+  <ul>
+    <li><strong>The GPU box is stuck loading.</strong> Some hosts take long to start. After 15 minutes the
+      box is destroyed and the next machine is tried, up to 3.</li>
+    <li><strong>Your network dropped.</strong> The box does not depend on your laptop; results wait in R2.
+      Run the step again to pick them up.</li>
+    <li><strong>The trainer rejects a row.</strong> The CPU trainer check in step 5 names the row and
+      source before any GPU is rented. Fix it in your CSV and import again.</li>
+    <li><strong>The gate fails.</strong> Look at which file failed. If it is your file, add near-miss rows
+      and check the state holds every fact; if it is the basics, lower <code>--repeat</code> so your data
+      does not crowd them out.</li>
+  </ul>
 
   <h2>Get the weights</h2>
   <div class="cards">
-    <div class="card">
-      <h3>Fine-tune bundle (v0.4.0)</h3>
-      <p><a href="https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz">openjevx-finetune-v0.4.0.tar.gz</a></p>
-    </div>
     <div class="card">
       <h3>Hugging Face</h3>
       <p><a href="https://huggingface.co/muthuishere/openjevx">huggingface.co/muthuishere/openjevx</a> —
@@ -21,35 +256,5 @@ import Base from '../../layouts/Base.astro';
     </div>
   </div>
 
-  <h2>Steps</h2>
-  <ol>
-    <li><strong>Data.</strong> Rows of <code>&#123;state, questions: &#123;id: &#123;type: noul|choice|score, instructions, criteria&#125;&#125;, gold&#125;</code>.
-      <code>finetuning/dataprep/gen_it_worker.py</code> generates rule-labelled software-work decisions —
-      add your own rows in the same shape.</li>
-    <li><strong>Shard.</strong> <code>finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>{' '}
-      adapts gold into targets, samples, and drops any question that also appears in your test sets.</li>
-    <li><strong>Train</strong> on any CUDA box: <code>SHARD=full bash finetuning/train/run_job.sh</code>.
-      Knobs in <code>run.json</code>: <code>EPOCHS</code>, <code>MAX_LEN</code>, <code>AMP=bf16</code>,
-      <code>MAX_HOURS</code>. The actual training loop is <code>finetuning/train/train_openjevx.py</code>.</li>
-    <li><strong>Ship.</strong> <code>python finetuning/export/quantize_w8.py openjevx.onnx openjevx.w8.onnx</code>,
-      then set <code>"model"</code> in <code>openjevx.json</code> or rebuild with <code>task package</code>.</li>
-  </ol>
-
-  <h2>What the v0.4.0 run actually cost</h2>
-  <p>For reference (source: <code>llmresults/08-morning-report.md</code>): 443,394 training
-    decisions, one rented RTX 4090 on vast.ai, capped at a 2.75-hour budget (~90% of one pass,
-    ~40 decisions/second). Smoke test $0.27, full run $1.53 — <strong>total $1.80</strong>. Both
-    boxes were destroyed after, no training data left on any box or bucket.</p>
-
-  <h2>Relevant scripts in this repo</h2>
-  <ul>
-    <li><code>finetuning/train/train_openjevx.py</code> — fine-tune + RLCD + calibration + CUDA benchmark</li>
-    <li><code>finetuning/export/export_onnx_gpu.py</code> — export the trained model to ONNX (CUDA)</li>
-    <li><code>finetuning/export/quantize_w8.py</code> / <code>finetuning/export/quantize_w4.py</code> — weight-only quantization</li>
-    <li><code>finetuning/dataprep/gen_it_worker.py</code> — rule-labelled software-role decision generator</li>
-    <li><code>finetuning/dataprep/package_shards.py</code> — shard builder with leak exclusion</li>
-    <li><code>finetuning/train/run_job.sh</code> — the vast.ai training job runner</li>
-  </ul>
-
-  <p>Questions or a bug in the pipeline: <a href="https://github.com/muthuishere/openjevx">open an issue</a>.</p>
+  <p>Questions or a bug in the pipeline: <a href={`${repo}/issues`}>open an issue</a>.</p>
 </Base>
