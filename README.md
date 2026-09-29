@@ -28,18 +28,18 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
 tar -xf openjevx-darwin-arm64.tar && ./openjevx
 ```
 
 Linux:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
 tar -xf openjevx-linux-amd64.tar && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
 
 ## Docker
 
@@ -51,7 +51,7 @@ docker compose up -d --build
 No clone? Load a prebuilt image from the release (`amd64` or `arm64`):
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx-docker-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
 docker load -i openjevx-docker-amd64.tar
 docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64
 ```
@@ -79,6 +79,15 @@ Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
 
 ## Run locally from source
 
-Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the 4-bit model into `.local/`, builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
+Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the 8-bit model into `.local/`, builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 
-Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.3.0` uploads everything in `.local/dist` to that GitHub release.
+Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
+
+## Fine-tune it further
+
+The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request). For further training use the full-precision files on [Hugging Face](https://huggingface.co/muthuishere/openjevx): `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`, and `openjevx.onnx` (fp32).
+
+1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `scripts/data/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
+2. **Shard**: `scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.
+3. **Train** on any CUDA box: `SHARD=full bash scripts/vast/run_job.sh` (data copied to `/root/in`, then `/root/in/READY`). Knobs in `run.json`: `EPOCHS`, `MAX_LEN`, `AMP=bf16`, `MAX_HOURS`.
+4. **Ship**: `python scripts/quantize_w8.py openjevx.onnx openjevx.w8.onnx`, then set `"model"` in `openjevx.json` or rebuild with `task package`.

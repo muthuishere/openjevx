@@ -1,4 +1,4 @@
-# OpenJevX server image: Go binary with the 4-bit model embedded, ONNX Runtime beside it.
+# OpenJevX server image: Go binary with the 8-bit model embedded, ONNX Runtime beside it.
 FROM golang:1.26-bookworm AS build
 ARG TARGETARCH
 ARG ORT_VERSION=1.22.0
@@ -6,7 +6,7 @@ WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
-RUN curl -fsSL -o internal/assets/model.onnx https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx.w4.onnx
+RUN curl -fsSL -o internal/assets/model.onnx https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx
 RUN case "$TARGETARCH" in arm64) ort=onnxruntime-linux-aarch64 ;; *) ort=onnxruntime-linux-x64 ;; esac \
  && curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ort}-${ORT_VERSION}.tgz | tar -xz \
  && mkdir -p /out && cp -L ${ort}-${ORT_VERSION}/lib/libonnxruntime.so /out/

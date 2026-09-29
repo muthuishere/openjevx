@@ -7,10 +7,10 @@ ORT=${ORT_VERSION:-1.22.0}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$ROOT/.local/dist
 CACHE=$ROOT/.local/ort
-MODEL=$ROOT/.local/openjevx.w4.onnx
+MODEL=$ROOT/.local/openjevx.w8.onnx
 cd "$ROOT"
 mkdir -p "$OUT" "$CACHE"
-[ -f "$MODEL" ] || curl -fsSL -o "$MODEL" https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx.w4.onnx
+[ -f "$MODEL" ] || curl -fsSL -o "$MODEL" https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx
 
 fetch() { # $1 package name, $2 extension, $3 library path inside
   [ -f "$CACHE/$(basename "$3")" ] && return

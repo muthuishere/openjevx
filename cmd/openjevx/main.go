@@ -229,7 +229,7 @@ func modelBytes(cfg config) ([]byte, error) {
 	path := cfg.Model
 	if path == "" {
 		exe, _ := os.Executable()
-		path = filepath.Join(filepath.Dir(exe), "openjevx.w4.onnx")
+		path = filepath.Join(filepath.Dir(exe), "openjevx.w8.onnx")
 	}
 	return os.ReadFile(path)
 }

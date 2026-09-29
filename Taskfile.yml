@@ -23,8 +23,8 @@ tasks:
           rm -rf {{.LOCAL}}/$pkg
         fi
       - |
-        if [ ! -f {{.LOCAL}}/openjevx.w4.onnx ]; then
-          curl -fsSL -o {{.LOCAL}}/openjevx.w4.onnx https://github.com/muthuishere/openjevx/releases/download/v0.3.0/openjevx.w4.onnx
+        if [ ! -f {{.LOCAL}}/openjevx.w8.onnx ]; then
+          curl -fsSL -o {{.LOCAL}}/openjevx.w8.onnx https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx
         fi
 
   build:
