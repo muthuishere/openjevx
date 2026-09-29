@@ -22,9 +22,10 @@ import paths  # noqa: E402
 import r2  # noqa: E402
 
 KILL_URL = os.environ.get("OPENJEVX_KILL_URL", "https://openjevx-destroy.pages.dev/destroy")
-IMAGE = "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel"
+IMAGE = os.environ.get("VAST_IMAGE", "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime")  # runtime: ~1/3 of devel
 SSH_PUB = Path.home() / ".ssh/id_ed25519_muthuishere.pub"
 MAX_W8_MB = os.environ.get("MAX_W8_MB", "750")
+START_MIN = int(os.environ.get("VAST_START_MINUTES", "15"))
 RESULTS = {"W8": "openjevx.w8.onnx", "CKPT": "checkpoint.tar.gz", "REPORT": "eval_report.json",
            "LOG": "job.log", "STATUS": "status.json"}
 
@@ -33,15 +34,21 @@ def out(*args):
     return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE, cwd=ROOT).stdout.strip()
 
 
-def pick_offer(max_price):
+def pick_offer(max_price, skip=()):
     gpu = os.environ.get("GPU_NAME") or "RTX_4090"
     query = f"gpu_name={gpu} num_gpus=1 verified=true reliability>0.99 disk_space>=80 inet_down>=200 dph<={max_price}"
     offers = json.loads(out("vastai", "search", "offers", query, "-o", "dph", "--raw"))
+    offers = [o for o in offers if o.get("machine_id") not in skip]
     if not offers:
         raise SystemExit(f"no verified {gpu} offer at <= ${max_price}/h")
     o = offers[0]
     print(f"offer {o['id']}: {o.get('geolocation')} ${o['dph_total']:.3f}/h reliability {o.get('reliability2', 0):.3f}", flush=True)
-    return o["id"]
+    return o["id"], o.get("machine_id")
+
+
+def state(iid):
+    rows = json.loads(out("vastai", "show", "instances", "--raw") or "[]")
+    return next((r.get("actual_status") or "unknown" for r in rows if r["id"] == iid), None)
 
 
 def alive(iid):
@@ -99,10 +106,27 @@ def main():
                "chmod 600 /root/.ssh/authorized_keys; "
                f"python3 -c 'import os,sys; os.setsid(); os.execvp(\"bash\", [\"bash\", \"-c\", sys.argv[1]])' "
                f"{shlex.quote(job + ' > /root/job.log 2>&1')} &")
-    created = json.loads(out("vastai", "create", "instance", str(pick_offer(a.max_price_per_hour)), "--image", IMAGE,
-                             "--disk", "80", "--ssh", "--direct", "--label", f"openjevx-{a.shard}-DESTROY-AFTER",
-                             "--onstart-cmd", onstart, "--raw"))
-    iid = created["new_contract"]
+    # Some hosts never finish pulling the image. Give each box START_MIN minutes to reach "running",
+    # otherwise destroy it and try the next machine (up to 3).
+    bad, iid = set(), None
+    for attempt in range(3):
+        offer, machine = pick_offer(a.max_price_per_hour, bad)
+        created = json.loads(out("vastai", "create", "instance", str(offer), "--image", IMAGE,
+                                 "--disk", "80", "--ssh", "--direct", "--label", f"openjevx-{a.shard}-DESTROY-AFTER",
+                                 "--onstart-cmd", onstart, "--raw"))
+        iid = created["new_contract"]
+        print(f"instance {iid} starting (attempt {attempt + 1})", flush=True)
+        start_by = time.time() + START_MIN * 60
+        while time.time() < start_by and state(iid) not in ("running", None):
+            time.sleep(30)
+        if state(iid) == "running":
+            break
+        print(f"instance {iid} not running after {START_MIN} min; destroying it and trying another machine", flush=True)
+        out("vastai", "destroy", "instance", str(iid), "-y")
+        bad.add(machine)
+        iid = None
+    if iid is None:
+        raise SystemExit("no box reached running after 3 tries")
     (run_dir / "instance.json").write_text(json.dumps({"instance_id": iid, "commit": ref, "run": name}, indent=2))
     print(f"instance {iid} running commit {ref[:10]}; results go to r2://{r2.PRIVATE}/runs/{name}/", flush=True)
 
