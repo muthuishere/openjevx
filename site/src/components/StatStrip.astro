@@ -1,0 +1,14 @@
+---
+const { stats } = Astro.props;
+// stats: [{ before, after, label }]
+---
+<div class="stat-strip">
+  {stats.map((s) => (
+    <div class="stat">
+      <div class="stat-value">
+        {s.before && <>{s.before}<span class="arrow">→</span></>}{s.after}
+      </div>
+      <div class="stat-label">{s.label}</div>
+    </div>
+  ))}
+</div>

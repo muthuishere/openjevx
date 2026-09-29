@@ -26,7 +26,7 @@ import Base from '../../layouts/Base.astro';
     <li><strong>Data.</strong> Rows of <code>&#123;state, questions: &#123;id: &#123;type: noul|choice|score, instructions, criteria&#125;&#125;, gold&#125;</code>.
       <code>scripts/data/gen_it_worker.py</code> generates rule-labelled software-work decisions —
       add your own rows in the same shape.</li>
-    <li><strong>Shard.</strong> <code>scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>
+    <li><strong>Shard.</strong> <code>scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>{' '}
       adapts gold into targets, samples, and drops any question that also appears in your test sets.</li>
     <li><strong>Train</strong> on any CUDA box: <code>SHARD=full bash scripts/vast/run_job.sh</code>.
       Knobs in <code>run.json</code>: <code>EPOCHS</code>, <code>MAX_LEN</code>, <code>AMP=bf16</code>,

@@ -41,6 +41,7 @@ function cellFor(model, id) {
   <p>Source: <code>clauderesults/01-quantization-and-everyday-domain-report.md</code>,
     <code>clauderesults/02-v0.3.0-release-and-jevx-report.md</code>. "Public test" is the
     public typed-decisions test.</p>
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Variant</th><th>Public test accuracy</th><th>Size</th><th>Time / 5-q case</th></tr></thead>
     <tbody>
@@ -49,11 +50,13 @@ function cellFor(model, id) {
       ))}
     </tbody>
   </table>
+  </div>
 
   <h2>Fine-tune: v0.3.0 (shipped) → v0.4.0 (new)</h2>
   <p>Source: <code>clauderesults/08-morning-report.md</code>,
     <code>.local/release/v0.4.0/benchmark.json</code>. Measured through the exact 8-bit ONNX file
     each version ships, on the Go server, on CPU.</p>
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Test (held-out)</th><th>v0.3.0</th><th>v0.4.0</th></tr></thead>
     <tbody>
@@ -62,6 +65,7 @@ function cellFor(model, id) {
       ))}
     </tbody>
   </table>
+  </div>
   <div class="note">
     The public typed-decisions test barely moved (76.1% → 76.2%) on purpose: where human labellers
     agreed on the answer, every version already scores ~87–89%; where they split (41% of that
@@ -70,15 +74,16 @@ function cellFor(model, id) {
   </div>
 
   <h2>Live three-way comparison</h2>
-  <p>Run for real on {new Date().toISOString().slice(0, 10)}, same 13 questions, through
+  <p>Run for real on {new Date().toISOString().slice(0, 10)}, same 13 questions, through{' '}
     <code>jevx</code>'s default thresholds (yes ≥ 0.8, no ≤ 0.2, choice/score min confidence 0.6)
-    against three servers on this machine: <strong>base</strong> = <code>convaiinnovations/laya</code>
+    against three servers on this machine: <strong>base</strong> = <code>convaiinnovations/laya</code>{' '}
     exactly as released from Hugging Face, no fine-tune, exported to ONNX on CPU and 8-bit
     weight-only quantized (<code>scripts/quantize_w8.py</code>) so it's comparable in format to the
     other two; <strong>v0.3</strong> = the shipped v0.3.0 server on port 21118 (4-bit weight-only);
     <strong>v0.4</strong> = the new fine-tuned server on port 21126 (8-bit weight-only).
     Full raw output: <code>site/src/data/comparison.json</code>.</p>
 
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Question</th><th>Expected</th><th>base</th><th>v0.3</th><th>v0.4</th></tr></thead>
     <tbody>
@@ -96,6 +101,7 @@ function cellFor(model, id) {
       ))}
     </tbody>
   </table>
+  </div>
 
   <p><small>Colour key: <span class="verdict v-right">green</span> = correct verdict,
     <span class="verdict v-unsure">amber</span> = unsure (inside jevx's default dead zone),
@@ -103,9 +109,10 @@ function cellFor(model, id) {
     <span class="verdict v-na">grey</span> = server not running for this comparison.</small></p>
 
   <h2>Software-role accuracy, 300-case random sample</h2>
-  <p>Ran <code>.local/eval/run_jsonl.py</code> against a random 300-case sample (seed 42) of
+  <p>Ran <code>.local/eval/run_jsonl.py</code> against a random 300-case sample (seed 42) of{' '}
     <code>.local/gate/it_worker_eval.jsonl</code> (3,000 cases, 916 individual questions in this
     sample) through each server that was live during this build.</p>
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Model</th><th>Decisions scored</th><th>Errors</th><th>Accuracy</th></tr></thead>
     <tbody>
@@ -123,6 +130,7 @@ function cellFor(model, id) {
       })}
     </tbody>
   </table>
+  </div>
   <p><small>Source: <code>{comparison.gate_300_sample?.source}</code>. This is a fresh live run
     against the base (as-released, no fine-tune), v0.3.0 and v0.4.0 servers, not a copy of the
     training-time gate numbers above — the base row only exists here, since the base model was

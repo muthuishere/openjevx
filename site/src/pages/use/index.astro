@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import CodeCard from '../../components/CodeCard.astro';
 ---
 <Base title="Use it" description="Run OpenJevX and wire it into jevx.">
   <h1>Use it</h1>
@@ -7,46 +8,42 @@ import Base from '../../layouts/Base.astro';
     the default port <code>21118</code>.</p>
 
   <h2>Run it</h2>
-  <pre><code>npx git+https://github.com/muthuishere/openjevx.git
-openjevx</code></pre>
-  <p>or download a package for your platform from the
+  <CodeCard label="macOS / Linux">npx git+https://github.com/muthuishere/openjevx.git
+openjevx</CodeCard>
+  <p>or download a package for your platform from the{' '}
     <a href="https://github.com/muthuishere/openjevx/releases/latest">latest release</a>:</p>
-  <pre><code># macOS
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
-tar -xf openjevx-darwin-arm64.tar && ./openjevx
-
-# Linux
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
-tar -xf openjevx-linux-amd64.tar && ./openjevx
-
-# Windows: download and run
-# https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip</code></pre>
+  <CodeCard label="macOS">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
+tar -xf openjevx-darwin-arm64.tar && ./openjevx</CodeCard>
+  <CodeCard label="Linux">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
+tar -xf openjevx-linux-amd64.tar && ./openjevx</CodeCard>
+  <p>Windows: download and run{' '}
+    <a href="https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a>.</p>
 
   <h2>Docker</h2>
-  <pre><code>git clone https://github.com/muthuishere/openjevx.git && cd openjevx
+  <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
 docker compose up -d --build
 
 # or load a prebuilt image tar from the release
 curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
 docker load -i openjevx-docker-amd64.tar
-docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64</code></pre>
+docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64</CodeCard>
 
   <h2>Wire it into jevx</h2>
-  <pre><code>jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+  <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
 
 jevx is "Is this urgent?" &lt; email.txt
 jevx pick "Which team?" web=frontend api=backend billing=money --in "charged twice"
-jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_units": 0&#125;'</code></pre>
+jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_units": 0&#125;'</CodeCard>
 
   <h2>Config</h2>
   <p><code>openjevx.json</code> next to the binary:</p>
-  <pre><code>&#123;
+  <CodeCard label="openjevx.json">&#123;
   "listen": "127.0.0.1:21118",
   "device": "auto",
   "password": "adminadmin"
-&#125;</code></pre>
-  <p><code>device</code> is <code>auto</code> (GPU if CUDA loads, else CPU), <code>cpu</code>, or
+&#125;</CodeCard>
+  <p><code>device</code> is <code>auto</code> (GPU if CUDA loads, else CPU), <code>cpu</code>, or{' '}
     <code>gpu</code> (no fallback).</p>
 
   <h2>Dashboard and stats</h2>

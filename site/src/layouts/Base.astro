@@ -1,4 +1,6 @@
 ---
+import '../styles/global.css';
+
 const { title, description } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const nav = [
@@ -17,98 +19,6 @@ const nav = [
   <title>{title} · OpenJevX</title>
   <meta name="description" content={description} />
   <link rel="icon" href="data:," />
-  <style>
-    :root {
-      --bg: #ffffff;
-      --bg-soft: #f6f7f9;
-      --text: #16181d;
-      --text-dim: #565c66;
-      --border: #e3e5e9;
-      --accent: #3457d5;
-      --accent-soft: #eaeeff;
-      --code-bg: #0f1117;
-      --code-text: #e6e8ef;
-      --green-bg: #e5f6ec; --green-text: #146c3b;
-      --amber-bg: #fdf3dd; --amber-text: #8a5b00;
-      --red-bg: #fdeaea; --red-text: #9c1f1f;
-      --max-w: 880px;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1115;
-        --bg-soft: #161922;
-        --text: #e7e9ee;
-        --text-dim: #9aa2b1;
-        --border: #262a35;
-        --accent: #8fa6ff;
-        --accent-soft: #1b2140;
-        --code-bg: #05060a;
-        --code-text: #d9dcea;
-        --green-bg: #113a24; --green-text: #7fe3ab;
-        --amber-bg: #3a2f0c; --amber-text: #f0c463;
-        --red-bg: #3a1414; --red-text: #f19b9b;
-      }
-    }
-    * { box-sizing: border-box; }
-    html, body { padding: 0; margin: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    a { color: var(--accent); }
-    header.site {
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; background: var(--bg); z-index: 10;
-    }
-    .wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 20px; }
-    nav.site {
-      display: flex; align-items: center; gap: 18px; padding: 14px 20px;
-      max-width: var(--max-w); margin: 0 auto; flex-wrap: wrap;
-    }
-    nav.site .brand { font-weight: 700; margin-right: auto; text-decoration: none; color: var(--text); }
-    nav.site a.navlink { text-decoration: none; color: var(--text-dim); font-size: 14px; }
-    nav.site a.navlink:hover { color: var(--text); }
-    main { padding: 40px 0 80px; }
-    h1 { font-size: 2rem; line-height: 1.2; margin-bottom: 0.4em; }
-    h2 { font-size: 1.4rem; margin-top: 2.2em; border-top: 1px solid var(--border); padding-top: 1.2em; }
-    h3 { font-size: 1.1rem; margin-top: 1.6em; }
-    p { color: var(--text); }
-    .lead { font-size: 1.15rem; color: var(--text-dim); }
-    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
-    pre {
-      background: var(--code-bg); color: var(--code-text);
-      padding: 14px 16px; border-radius: 8px; overflow-x: auto;
-    }
-    code { background: var(--bg-soft); padding: 0.15em 0.4em; border-radius: 4px; }
-    pre code { background: none; padding: 0; }
-    table { border-collapse: collapse; width: 100%; margin: 1.2em 0; font-size: 0.92rem; }
-    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
-    th { background: var(--bg-soft); }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 1.4em 0; }
-    .card {
-      border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; background: var(--bg-soft);
-    }
-    .card h3 { margin-top: 0; }
-    .btn {
-      display: inline-block; padding: 9px 16px; border-radius: 7px; background: var(--accent); color: white;
-      text-decoration: none; font-weight: 600; font-size: 14px;
-    }
-    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin: 1.2em 0; }
-    .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 100px; background: var(--accent-soft); color: var(--accent); margin-right: 6px; }
-    .verdict { display: inline-block; padding: 2px 8px; border-radius: 5px; font-weight: 600; font-size: 0.85em; }
-    .v-right { background: var(--green-bg); color: var(--green-text); }
-    .v-unsure { background: var(--amber-bg); color: var(--amber-text); }
-    .v-wrong { background: var(--red-bg); color: var(--red-text); }
-    .v-na { background: var(--bg-soft); color: var(--text-dim); }
-    footer.site { border-top: 1px solid var(--border); margin-top: 40px; padding: 24px 0; color: var(--text-dim); font-size: 13px; }
-    .note { background: var(--bg-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 1.2em 0; font-size: 0.94rem; color: var(--text-dim); }
-    @media (max-width: 480px) {
-      h1 { font-size: 1.5rem; }
-      nav.site { gap: 10px; }
-    }
-  </style>
 </head>
 <body>
   <header class="site">
@@ -130,5 +40,24 @@ const nav = [
       <a href="https://github.com/muthuishere/jevx">jevx</a>
     </div>
   </footer>
+  <script>
+    document.addEventListener('click', (e) => {
+      const btn = e.target instanceof Element ? e.target.closest('[data-copy-btn]') : null;
+      if (!btn) return;
+      const card = btn.closest('.code-card');
+      const codeEl = card ? card.querySelector('pre code') : null;
+      if (!codeEl) return;
+      const text = codeEl.textContent || '';
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1500);
+      }).catch(() => {});
+    });
+  </script>
 </body>
 </html>
