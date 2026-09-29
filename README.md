@@ -8,6 +8,7 @@ decisions in milliseconds, on your own machine.
 - **Releases:** [latest](https://github.com/muthuishere/openjevx/releases/latest) (macOS, Linux, Windows, Docker image tars)
 - **Model:** [huggingface.co/muthuishere/openjevx](https://huggingface.co/muthuishere/openjevx)
 - **Recipes:** [recipes/](recipes/README.md) (runnable examples) · [what you get](recipes/what-you-get.md) (measured size and latency)
+- **Python:** [`python/openjevx.py`](python/openjevx.py), one file, same answers as the server (the container is still the recommended way to run it)
 - **jevx CLI:** [github.com/muthuishere/jevx](https://github.com/muthuishere/jevx)
 
 Default port: **21118**
