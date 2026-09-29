@@ -47,46 +47,51 @@ fetch "$EVAL_URL" "$IN/$EV.jsonl.gz"
 fetch "$RUN_URL" "$IN/run.json"
 cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
 
-# Runtime from our R2 bucket: Python wheels + the base model's Hugging Face cache. If the bundle for this
-# requirements/image/base-model key exists, download and install it offline; otherwise install from
-# PyPI/Hugging Face as before and upload the bundle so the next box skips both.
-export HF_HOME=/root/hf
-# torch.compile (Triton) needs a C compiler; the PyTorch runtime image has none.
+# Runtime from our R2 bucket: the box starts from a bare python:3.11-slim image and gets EVERYTHING else
+# (PyTorch + CUDA libraries, all packages in a venv, and the base model) from R2 as a packed environment
+# split into parts. If the environment for this key is not in R2 yet, this box builds it from PyPI /
+# Hugging Face once and uploads it; every later box only downloads and unpacks.
+export HF_HOME=/root/hf VENV=/opt/venv
 command -v gcc >/dev/null || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gcc g++ >/dev/null; }
 command -v gcc >/dev/null || { echo "no C compiler, torch.compile will fail"; false; }
 REQ="$ROOT/finetuning/train/requirements-box.txt"
-# Download to a file (resumable, retried) rather than streaming into tar, so a dropped connection is retried;
-# if the bundle still cannot be fetched, fall back to PyPI + Hugging Face instead of failing.
-if [ -n "${WHEELS_URL:-}" ] && [ -n "${HF_URL:-}" ] && fetch "$WHEELS_URL" /root/wheels.tar && fetch "$HF_URL" /root/hf.tar; then
-  echo "runtime: from R2"
-  mkdir -p /root/wheels "$HF_HOME"
-  tar -xf /root/wheels.tar -C /root/wheels && tar -xf /root/hf.tar -C "$HF_HOME" && rm -f /root/wheels.tar /root/hf.tar
-  python -m pip install -q --no-index --no-deps /root/wheels/*.whl
+got_env() {
+  [ -n "${ENV_GET_URLS:-}" ] || return 1
+  i=0; rm -f /root/env.part.*
+  for u in $ENV_GET_URLS; do fetch "$u" "/root/env.part.$(printf %02d $i)" || return 1; i=$((i+1)); done
+  fetch "$HF_GET_URL" /root/hf.tar || return 1
+  cat /root/env.part.* | tar -xz -C /opt && mkdir -p "$HF_HOME" && tar -xf /root/hf.tar -C "$HF_HOME" \
+    && rm -f /root/env.part.* /root/hf.tar
+}
+if got_env; then
+  echo "runtime: from R2 ($(echo $ENV_GET_URLS | wc -w) parts)"
   export HF_HUB_OFFLINE=1
 else
-  [ -n "${WHEELS_URL:-}" ] && echo "runtime: R2 bundle download failed, falling back to PyPI + Hugging Face"
-  unset PUT_WHEELS_URL  # the bundle already exists; do not rebuild it
-  echo "runtime: from PyPI + Hugging Face (building the R2 bundle)"
-  python -m pip freeze | sort > /root/freeze-before.txt
-  python -m pip install -q -r "$REQ"
-  python -m pip uninstall -y onnxruntime onnxruntime-gpu >/dev/null 2>&1 || true
-  python -m pip install -q --force-reinstall --no-deps onnxruntime-gpu==1.22.0
-  python - <<'PY'
+  [ -n "${ENV_GET_URLS:-}" ] && echo "runtime: R2 download failed, building from PyPI + Hugging Face"
+  [ -z "${ENV_GET_URLS:-}" ] && echo "runtime: not in R2 yet, building from PyPI + Hugging Face and uploading it"
+  rm -rf "$VENV"; python3 -m venv "$VENV"
+  "$VENV/bin/pip" install -q --upgrade pip
+  "$VENV/bin/pip" install -q -r "$REQ"
+  "$VENV/bin/pip" uninstall -y onnxruntime onnxruntime-gpu >/dev/null 2>&1 || true
+  "$VENV/bin/pip" install -q --force-reinstall --no-deps onnxruntime-gpu==1.22.0
+  "$VENV/bin/python" - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 snapshot_download(os.environ.get("BASE_MODEL", "convaiinnovations/laya"))
 PY
-  if [ -n "${PUT_WHEELS_URL:-}" ]; then
-    # Wheels for exactly what this install added or changed, nothing from the image itself.
-    python -m pip freeze | sort > /root/freeze-after.txt
-    comm -13 /root/freeze-before.txt /root/freeze-after.txt > /root/added.txt
-    mkdir -p /root/wheels
-    python -m pip wheel -q --no-deps -w /root/wheels -r /root/added.txt \
-      && tar -C /root/wheels -cf /root/wheels.tar . && tar -C "$HF_HOME" -cf /root/hf.tar . \
-      && put "$PUT_WHEELS_URL" /root/wheels.tar && put "$PUT_HF_URL" /root/hf.tar \
-      && echo "runtime bundle uploaded" || echo "runtime bundle upload failed (next box installs from PyPI again)"
+  if [ -n "${ENV_PUT_URLS:-}" ] && [ -z "${ENV_GET_URLS:-}" ]; then
+    # 1000 MB parts: one signed PUT is limited to 5 GB.
+    ( tar -C /opt -czf - venv | split -b 1000m - /root/env.part. \
+      && tar -C "$HF_HOME" -cf /root/hf.tar . \
+      && parts=$(ls /root/env.part.* | wc -l) && [ "$parts" -le "$(echo $ENV_PUT_URLS | wc -w)" ] \
+      && set -- $ENV_PUT_URLS && for f in /root/env.part.*; do put "$1" "$f" || exit 1; shift; done \
+      && put "$HF_PUT_URL" /root/hf.tar \
+      && echo "$parts" > /root/env.count && put "$ENV_COUNT_PUT_URL" /root/env.count \
+      && echo "runtime: uploaded to R2 ($parts parts)" ) || echo "runtime: upload to R2 failed (the next box builds again)"
+    rm -f /root/env.part.* /root/hf.tar
   fi
 fi
+export PATH="$VENV/bin:$PATH"
 python - <<'PY'
 import torch, onnxruntime as ort
 assert torch.cuda.is_available(), "CUDA unavailable"

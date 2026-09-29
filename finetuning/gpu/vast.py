@@ -6,8 +6,9 @@ usage: vast.py SHARD_DIR SHARD [--max-price-per-hour 0.6] [--timeout-hours 7]
   Needs $OPENJEVX_KILL_TOKEN (ft.py runs this under `sec run OPENJEVX_KILL_TOKEN`).
 
 1. HEAD must be on origin (the box clones that exact commit).
-   The box's Python packages and base model come from an R2 bundle (runtime/<key>/) when it exists;
-   the first box for a new key installs from PyPI/Hugging Face and uploads the bundle.
+   The box image is bare python:3.11-slim; PyTorch, CUDA libraries, all packages and the base model come
+   from R2 (runtime/<key>/, a packed venv in 1000 MB parts + hf.tar); the first box for a new key builds
+   them from PyPI/Hugging Face and uploads them.
 2. Upload the shard to R2 (private bucket) and a job.env of signed links + the kill token (from memory).
 3. Rent the cheapest verified GPU; onstart clones the commit and runs finetuning/train/run_job.sh detached.
    The box trains, uploads its results to R2 and destroys itself through the destroy endpoint.
@@ -24,7 +25,7 @@ import paths  # noqa: E402
 import r2  # noqa: E402
 
 KILL_URL = os.environ.get("OPENJEVX_KILL_URL", "https://openjevx-destroy.pages.dev/destroy")
-IMAGE = os.environ.get("VAST_IMAGE", "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime")  # runtime: ~1/3 of devel
+IMAGE = os.environ.get("VAST_IMAGE", "python:3.11-slim")  # ~50 MB; PyTorch + CUDA libs come from R2
 SSH_PUB = Path.home() / ".ssh/id_ed25519_muthuishere.pub"
 MAX_W8_MB = os.environ.get("MAX_W8_MB", "750")
 START_MIN = int(os.environ.get("VAST_START_MINUTES", "15"))
@@ -100,25 +101,32 @@ def main():
            "EVAL_URL": r2.link_get(f"{shard_key}/eval.jsonl.gz", link_s),
            "RUN_URL": r2.link_get(f"{shard_key}/run.json", link_s)}
     env.update({f"PUT_{k}_URL": r2.link_put(f"runs/{name}/{v}", link_s) for k, v in RESULTS.items()})
-    # Runtime bundle (Python wheels + base model) in R2, keyed by what it contains.
+    # Runtime environment in R2 (venv with PyTorch + CUDA libs + packages, and the base model), keyed by
+    # what it contains. Present -> the box downloads it; absent -> the box builds it once and uploads it.
     key = hashlib.sha1(((ROOT / "finetuning/train/requirements-box.txt").read_text() + IMAGE +
                         os.environ.get("BASE_MODEL", "convaiinnovations/laya")).encode()).hexdigest()[:12]
-    have = set(r2.ls(f"runtime/{key}/"))
-    if {f"runtime/{key}/wheels.tar", f"runtime/{key}/hf.tar"} <= have:
-        print(f"runtime bundle {key}: in R2, the box installs from it", flush=True)
-        env["WHEELS_URL"] = r2.link_get(f"runtime/{key}/wheels.tar", link_s)
-        env["HF_URL"] = r2.link_get(f"runtime/{key}/hf.tar", link_s)
+    rt = f"runtime/{key}"
+    have = set(r2.ls(rt + "/"))
+    if f"{rt}/env.count" in have and f"{rt}/hf.tar" in have:
+        r2.get(f"{rt}/env.count", run_dir / "env.count")
+        parts = int((run_dir / "env.count").read_text().strip())
+        print(f"runtime {key}: in R2 ({parts} parts), the box downloads it", flush=True)
+        env["ENV_GET_URLS"] = " ".join(r2.link_get(f"{rt}/env.part.{i:02d}", link_s) for i in range(parts))
+        env["HF_GET_URL"] = r2.link_get(f"{rt}/hf.tar", link_s)
     else:
-        print(f"runtime bundle {key}: not in R2 yet, this box builds and uploads it", flush=True)
-        env["PUT_WHEELS_URL"] = r2.link_put(f"runtime/{key}/wheels.tar", link_s)
-        env["PUT_HF_URL"] = r2.link_put(f"runtime/{key}/hf.tar", link_s)
+        print(f"runtime {key}: not in R2 yet, this box builds and uploads it", flush=True)
+        env["ENV_PUT_URLS"] = " ".join(r2.link_put(f"{rt}/env.part.{i:02d}", link_s) for i in range(12))
+        env["HF_PUT_URL"] = r2.link_put(f"{rt}/hf.tar", link_s)
+        env["ENV_COUNT_PUT_URL"] = r2.link_put(f"{rt}/env.count", link_s)
     body = "".join(f"{k}={shlex.quote(v)}\n" for k, v in env.items())
     r2.client().put_object(Bucket=r2.PRIVATE, Key=f"runs/{name}/job.env", Body=body.encode())
     job_env_url = r2.link_get(f"runs/{name}/job.env", link_s)
 
     # If anything before run_job.sh fails (clone, checkout), report it and destroy the box anyway:
     # run_job.sh's own cleanup only exists once it runs.
-    job = (f"export GIT_TERMINAL_PROMPT=0 JOB_ENV_URL={shlex.quote(job_env_url)}; "
+    job = ("command -v git >/dev/null && command -v curl >/dev/null || { apt-get update -qq && "
+           "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends git curl ca-certificates; }; "
+           f"export GIT_TERMINAL_PROMPT=0 JOB_ENV_URL={shlex.quote(job_env_url)}; "
            "curl -fsSL --retry 5 -o /root/job.env \"$JOB_ENV_URL\" && . /root/job.env; "
            f"{{ git clone --filter=blob:none {shlex.quote(repo)} /root/job && "
            f"git -C /root/job checkout --detach {ref} && "

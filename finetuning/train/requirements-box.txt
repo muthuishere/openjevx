@@ -1,5 +1,8 @@
 # Python packages the GPU box adds on top of the PyTorch image. Changing this file changes the
-# R2 bundle key, so the next box rebuilds and re-uploads the bundle.
+# R2 environment key, so the next box rebuilds and re-uploads it. The box image is bare python:3.11-slim,
+# so PyTorch (with its CUDA libraries) is listed here too.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
 laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec
 transformers==4.57.6
 datasets
