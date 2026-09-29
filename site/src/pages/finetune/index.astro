@@ -26,7 +26,7 @@ import Base from '../../layouts/Base.astro';
     <li><strong>Data.</strong> Rows of <code>&#123;state, questions: &#123;id: &#123;type: noul|choice|score, instructions, criteria&#125;&#125;, gold&#125;</code>.
       <code>scripts/data/gen_it_worker.py</code> generates rule-labelled software-work decisions —
       add your own rows in the same shape.</li>
-    <li><strong>Shard.</strong> <code>scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>{' '}
+    <li><strong>Shard.</strong> <code>scripts/train/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>{' '}
       adapts gold into targets, samples, and drops any question that also appears in your test sets.</li>
     <li><strong>Train</strong> on any CUDA box: <code>SHARD=full bash scripts/vast/run_job.sh</code>.
       Knobs in <code>run.json</code>: <code>EPOCHS</code>, <code>MAX_LEN</code>, <code>AMP=bf16</code>,
@@ -47,7 +47,7 @@ import Base from '../../layouts/Base.astro';
     <li><code>scripts/export_onnx_gpu.py</code> — export the trained model to ONNX (CUDA)</li>
     <li><code>scripts/quantize_w8.py</code> / <code>scripts/quantize_w4.py</code> — weight-only quantization</li>
     <li><code>scripts/data/gen_it_worker.py</code> — rule-labelled software-role decision generator</li>
-    <li><code>scripts/train/package_kaggle.py</code> — shard builder with leak exclusion</li>
+    <li><code>scripts/train/package_shards.py</code> — shard builder with leak exclusion</li>
     <li><code>scripts/vast/run_job.sh</code> — the vast.ai training job runner</li>
   </ul>
 

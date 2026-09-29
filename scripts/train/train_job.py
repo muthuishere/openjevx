@@ -22,17 +22,17 @@ from safetensors.torch import load_file
 from transformers import AutoTokenizer
 
 import adapter
-import kaggle_eval
+import eval_job
 import train_openjevx
 
-WORK = Path(os.environ.get("WORK_DIR", "/kaggle/working"))
-INPUT = Path(os.environ.get("INPUT_DIR", "/kaggle/input"))
+WORK = Path(os.environ["WORK_DIR"])
+INPUT = Path(os.environ["INPUT_DIR"])
 MODEL_DIR = WORK / "openjevx-model"
 
 
 def require_cuda():
     if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is required; Kaggle notebook must enable GPU")
+        raise RuntimeError("CUDA is required")
     print("CUDA:", torch.cuda.get_device_name(0), flush=True)
 
 
@@ -168,7 +168,7 @@ def main():
             break
         print(f"epoch {epoch + 1} complete in {time.time() - started:.1f}s", flush=True)
 
-    temperatures, accuracy = kaggle_eval.calibrate_and_eval(
+    temperatures, accuracy = eval_job.calibrate_and_eval(
         model, tokenizer, cfg, calibration, eval_rows, eval_max, acc_gate, MODEL_DIR)
     print("temperatures:", temperatures, "accuracy:", accuracy, flush=True)
     del model

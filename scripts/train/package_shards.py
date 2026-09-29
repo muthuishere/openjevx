@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Kaggle dataset staging directory for an openjevx training run.
+"""Build the staging directory for an openjevx training run.
 
 Uses the gold adapter (scripts/train/adapter.py) on data/train_openjevx.jsonl
 and data/eval_openjevx.jsonl, writes gzipped shards (priority sources our-cases-*
 and typed-decisions/* kept in full, tasksource-train hash-stratified to fit the
-upload budget), plus the trainer, driver and runner code and run.json /
-dataset-metadata.json for `kaggle datasets create -p <out>`.
+upload budget), plus the trainer, driver and runner code and run.json.
 """
 
 import argparse
@@ -17,14 +16,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-KAGGLE_DIR = Path(__file__).resolve().parent
+TRAIN_DIR = Path(__file__).resolve().parent
 
 TRAIN_SMOKE_ROWS = 2000
 EVAL_SMOKE_ROWS = 300
 DEFAULT_BUDGET_GB = 1.8
 
 COPY_FILES = ("train_openjevx.py", "export_onnx_gpu.py",
-              "kaggle_train.py", "kaggle_eval.py", "adapter.py")
+              "train_job.py", "eval_job.py", "adapter.py")
 
 
 def question_key(state, instructions):
@@ -128,7 +127,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
     eval_bytes = write_gzip_jsonl(eval_out, eval_rows)
 
     for name in COPY_FILES:
-        source = KAGGLE_DIR / name if (KAGGLE_DIR / name).exists() else ROOT / "scripts" / name
+        source = TRAIN_DIR / name if (TRAIN_DIR / name).exists() else ROOT / "scripts" / name
         shutil.copy2(source, out_dir / name)
 
     env = {
@@ -140,9 +139,6 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
         "ACC_GATE": os.environ.get("ACC_GATE", "0.0" if smoke else "0.55"),
     }
     (out_dir / "run.json").write_text(json.dumps({"smoke": smoke, "env": env}))
-    (out_dir / "dataset-metadata.json").write_text(json.dumps(
-        {"title": "openjevx-" + ("smoke-" if smoke else "train-") + out_dir.name.split(".")[-1][:20],
-         "licenses": [{"name": "other"}]}))
 
     manifest = {
         "mode": plan.get("mode", "full"),

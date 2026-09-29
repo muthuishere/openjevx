@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local CPU gate for the Kaggle pipeline: dry-parse N real rows through the adapter."""
+"""Local CPU gate for the training pipeline: dry-parse N real rows through the adapter."""
 
 import json
 import sys

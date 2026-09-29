@@ -27,7 +27,7 @@ if [ "$SHARD" = smoke ]; then
 else
   mv "$IN/openjevx-${SHARD}-train.jsonl.gz" "$IN/train.jsonl.gz"; mv "$IN/openjevx-${SHARD}-eval.jsonl.gz" "$IN/eval.jsonl.gz"
 fi
-cp "$ROOT"/scripts/train/{kaggle_train.py,kaggle_eval.py,adapter.py} "$ROOT"/scripts/{train_openjevx.py,export_onnx_gpu.py} "$JOB/"
+cp "$ROOT"/scripts/train/{train_job.py,eval_job.py,adapter.py} "$ROOT"/scripts/{train_openjevx.py,export_onnx_gpu.py} "$JOB/"
 
 python -m pip install -q "laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec" \
   transformers==4.57.6 datasets sentencepiece protobuf safetensors accelerate huggingface_hub tokenizers onnx
@@ -42,7 +42,7 @@ print("preflight CUDA OK", torch.cuda.get_device_name(0), ort.__version__, flush
 PY
 
 cd "$JOB"
-INPUT_DIR="$IN" WORK_DIR="$OUT" PYTHONPATH="$JOB" python kaggle_train.py
+INPUT_DIR="$IN" WORK_DIR="$OUT" PYTHONPATH="$JOB" python train_job.py
 PYTHONPATH="$JOB" python export_onnx_gpu.py --model "$OUT/openjevx-model" --output "$OUT/openjevx-model/openjevx.onnx"
 cp /root/job.log "$OUT/" || true
 touch /root/JOB_COMPLETE
