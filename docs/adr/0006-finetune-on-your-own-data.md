@@ -1,6 +1,6 @@
 # ADR 0006 — Fine-tune OpenJevX on your own data: the guide, the toolkit, the skill
 
-Status: proposed
+Status: accepted
 Date: 2026-09-29
 
 ## Context
