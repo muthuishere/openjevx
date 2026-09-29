@@ -131,7 +131,7 @@ def main():
                f"printf '%s\\n' {shlex.quote(SSH_PUB.read_text().strip())} >> /root/.ssh/authorized_keys; "
                "chmod 600 /root/.ssh/authorized_keys; "
                f"python3 -c 'import os,sys; os.setsid(); os.execvp(\"bash\", [\"bash\", \"-c\", sys.argv[1]])' "
-               f"{shlex.quote(job + ' > /root/job.log 2>&1')} &")
+               f"{shlex.quote('{ ' + job + '; } > /root/job.log 2>&1')} &")  # the whole job, not just its last command
     # Some hosts never finish pulling the image. Give each box START_MIN minutes to reach "running",
     # otherwise destroy it and try the next machine (up to 3).
     bad, iid = set(), None
