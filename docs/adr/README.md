@@ -9,3 +9,6 @@ Read these before the next OpenJevX training run. Do not revive the Qwen path in
 | [0003](0003-export-and-release.md) | Exporting ONNX and publishing |
 | [0004](0004-training-data-for-v0.5.md) | Gathering training data for the next model |
 | [0005](0005-report-output-folder.md) | Writing agent reports or result files |
+| [0006](0006-finetune-on-your-own-data.md) | Writing the fine-tune-on-your-own-data guide, toolkit or skill |
+| [0007](0007-managed-finetune-service.md) | Building the managed service: customers bring data, we return their ONNX |
+| [0008](0008-self-hosted-appliance.md) | Packaging the self-hosted appliance (DigitalOcean/AWS marketplace) and its training UI |
