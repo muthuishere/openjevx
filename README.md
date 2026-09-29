@@ -1,6 +1,14 @@
 # OpenJevX
 
-Open, local decision model server for [jevx](https://github.com/muthuishere/jevx). Source: [github.com/muthuishere/openjevx](https://github.com/muthuishere/openjevx) · Releases: [latest](https://github.com/muthuishere/openjevx/releases/latest)
+Open, local decision model server for [jevx](https://github.com/muthuishere/jevx): yes/no, pick-one and rating
+decisions in milliseconds, on your own machine.
+
+- **Site:** [muthuishere.github.io/openjevx](https://muthuishere.github.io/openjevx/)
+- **Source:** [github.com/muthuishere/openjevx](https://github.com/muthuishere/openjevx)
+- **Releases:** [latest](https://github.com/muthuishere/openjevx/releases/latest) (macOS, Linux, Windows, Docker image tars)
+- **Model:** [huggingface.co/muthuishere/openjevx](https://huggingface.co/muthuishere/openjevx)
+- **Recipes:** [recipes/](recipes/README.md) (runnable examples) · [what you get](recipes/what-you-get.md) (measured size and latency)
+- **jevx CLI:** [github.com/muthuishere/jevx](https://github.com/muthuishere/jevx)
 
 Default port: **21118**
 
@@ -65,7 +73,13 @@ jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
 ```
 
-Apache-2.0. Credits: `CREDITS`. Next training: `docs/adr/0002-training-run.md`.
+## Recipes
+
+18 runnable decisions (curl and jevx), each with the real answer and what to do next, plus a page of measured
+facts. In the repo: [`recipes/`](recipes/README.md). In a running server: http://127.0.0.1:21118/recipes (dashboard
+password). In the Docker image: `/usr/share/openjevx/recipes`.
+
+Apache-2.0. Credits: `CREDITS`. Decisions behind the project: [`docs/adr/`](docs/adr/README.md).
 
 ## Dashboard
 
@@ -91,5 +105,9 @@ The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay flo
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `finetuning/dataprep/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.
-3. **Train** on any CUDA box: `SHARD=full bash finetuning/train/run_job.sh` (data copied to `/root/in`, then `/root/in/READY`). Knobs in `run.json`: `EPOCHS`, `MAX_LEN`, `AMP=bf16`, `MAX_HOURS`.
-4. **Ship**: `python finetuning/export/quantize_w8.py openjevx.onnx openjevx.w8.onnx`, then set `"model"` in `openjevx.json` or rebuild with `task package`.
+3. **Train**: `cd finetuning && task all` runs data → leakage check → smoke run → full run → gate as one job. The GPU box
+   pulls its data and runtime from a Cloudflare R2 bucket, uploads the 8-bit ONNX (≤ 750 MB) and the checkpoint, and
+   destroys itself ([ADR 0009](docs/adr/0009-one-job-gpu-run-via-r2.md)). Settings live in
+   `~/.config/openjevx/config.json`, data in `~/openjevx/data`. On your own CUDA box, run the steps in
+   [`finetuning/ft.py`](finetuning/ft.py) and [`finetuning/train/run_job.sh`](finetuning/train/run_job.sh) directly.
+4. **Ship**: the job already produces `openjevx.w8.onnx` (or run `python finetuning/export/quantize_w8.py openjevx.onnx openjevx.w8.onnx`), then set `"model"` in `openjevx.json` or rebuild with `task package`.
