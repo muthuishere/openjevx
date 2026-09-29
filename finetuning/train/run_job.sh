@@ -18,7 +18,8 @@ curl -fsSL --retry 5 -o /root/job.env "${JOB_ENV_URL:?set JOB_ENV_URL}"
 . /root/job.env
 INSTANCE_ID="${CONTAINER_ID:-${VAST_CONTAINERLABEL#C.}}"
 
-put() { curl -fsS --retry 5 -X PUT -T "$2" "$1" >/dev/null; }
+fetch() { curl -fsSL --retry 8 --retry-all-errors --retry-delay 5 --connect-timeout 20 -C - -o "$2" "$1"; }
+put() { curl -fsS --retry 8 --retry-all-errors --retry-delay 5 --connect-timeout 20 -X PUT -T "$2" "$1" >/dev/null; }
 destroy() {
   curl -fsS --retry 5 -X POST "$KILL_URL" -H "X-Kill-Token: $KILL_TOKEN" -H "Content-Type: application/json" \
     -d "{\"instance_id\": ${INSTANCE_ID:-0}}" || true
@@ -37,9 +38,9 @@ setsid bash -c "sleep $(python3 -c "print(int(float('${DEADLINE_HOURS:-7}') * 36
   >/dev/null 2>&1 < /dev/null &
 
 if [ "$SHARD" = smoke ]; then TR=train_smoke; EV=eval_smoke; else TR=train; EV=eval; fi
-curl -fsSL --retry 5 -o "$IN/$TR.jsonl.gz" "$TRAIN_URL"
-curl -fsSL --retry 5 -o "$IN/$EV.jsonl.gz" "$EVAL_URL"
-curl -fsSL --retry 5 -o "$IN/run.json" "$RUN_URL"
+fetch "$TRAIN_URL" "$IN/$TR.jsonl.gz"
+fetch "$EVAL_URL" "$IN/$EV.jsonl.gz"
+fetch "$RUN_URL" "$IN/run.json"
 cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
 
 # Runtime from our R2 bucket: Python wheels + the base model's Hugging Face cache. If the bundle for this
@@ -50,14 +51,17 @@ export HF_HOME=/root/hf
 command -v gcc >/dev/null || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gcc g++ >/dev/null; }
 command -v gcc >/dev/null || { echo "no C compiler, torch.compile will fail"; false; }
 REQ="$ROOT/finetuning/train/requirements-box.txt"
-if [ -n "${WHEELS_URL:-}" ] && [ -n "${HF_URL:-}" ]; then
+# Download to a file (resumable, retried) rather than streaming into tar, so a dropped connection is retried;
+# if the bundle still cannot be fetched, fall back to PyPI + Hugging Face instead of failing.
+if [ -n "${WHEELS_URL:-}" ] && [ -n "${HF_URL:-}" ] && fetch "$WHEELS_URL" /root/wheels.tar && fetch "$HF_URL" /root/hf.tar; then
   echo "runtime: from R2"
   mkdir -p /root/wheels "$HF_HOME"
-  curl -fsSL --retry 5 "$WHEELS_URL" | tar -x -C /root/wheels
-  curl -fsSL --retry 5 "$HF_URL" | tar -x -C "$HF_HOME"
+  tar -xf /root/wheels.tar -C /root/wheels && tar -xf /root/hf.tar -C "$HF_HOME" && rm -f /root/wheels.tar /root/hf.tar
   python -m pip install -q --no-index --no-deps /root/wheels/*.whl
   export HF_HUB_OFFLINE=1
 else
+  [ -n "${WHEELS_URL:-}" ] && echo "runtime: R2 bundle download failed, falling back to PyPI + Hugging Face"
+  unset PUT_WHEELS_URL  # the bundle already exists; do not rebuild it
   echo "runtime: from PyPI + Hugging Face (building the R2 bundle)"
   python -m pip freeze | sort > /root/freeze-before.txt
   python -m pip install -q -r "$REQ"
