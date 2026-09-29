@@ -84,14 +84,6 @@ git clone https://github.com/muthuishere/openjevx.git && cd openjevx
 docker compose up -d --build
 ```
 
-No clone? Load a prebuilt image from the release (`amd64` or `arm64`):
-
-```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
-docker load -i openjevx-docker-amd64.tar
-docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64
-```
-
 ## jevx
 
 Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
@@ -100,6 +92,8 @@ Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
 jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
 ```
+
+Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.0`).
 
 ## Recipes
 
@@ -129,7 +123,7 @@ Release from this machine, no CI: `task package` builds the macOS, Linux and Win
 
 The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
 
-**Fine-tune kit (v0.4.0, 2.2 GB):** [openjevx-finetune-v0.4.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz.sha256)). It holds the fine-tuned checkpoint (`model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`), both ONNX files (8-bit and fp32), and the training scripts. No training data. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
+**Fine-tune kit (v0.5.0, 815 MB):** [openjevx-finetune-v0.5.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz.sha256)). It holds the trainable fine-tuned checkpoint (`openjevx-model/`: `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`). No training data. The 8-bit ONNX is on the GitHub release and Hugging Face; the training scripts are in `finetuning/` in this repo. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `finetuning/dataprep/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.

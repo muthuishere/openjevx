@@ -12,21 +12,16 @@ import CodeCard from '../../components/CodeCard.astro';
 openjevx</CodeCard>
   <p>or download a package for your platform from the{' '}
     <a href="https://github.com/muthuishere/openjevx/releases/latest">latest release</a>:</p>
-  <CodeCard label="macOS">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
+  <CodeCard label="macOS">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-darwin-arm64.tar
 tar -xf openjevx-darwin-arm64.tar && ./openjevx</CodeCard>
-  <CodeCard label="Linux">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
+  <CodeCard label="Linux">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-linux-amd64.tar
 tar -xf openjevx-linux-amd64.tar && ./openjevx</CodeCard>
   <p>Windows: download and run{' '}
-    <a href="https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a>.</p>
+    <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a>.</p>
 
   <h2>Docker</h2>
   <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-docker compose up -d --build
-
-# or load a prebuilt image tar from the release
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
-docker load -i openjevx-docker-amd64.tar
-docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64</CodeCard>
+docker compose up -d --build</CodeCard>
 
   <h2>Wire it into jevx</h2>
   <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
