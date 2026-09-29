@@ -17,7 +17,7 @@ const base = import.meta.env.BASE_URL;
           <code>typed-decisions</code> dataset. That fine-tune scored <strong>77.4%</strong> on its own
           benchmark, measured on PyTorch with a GPU
           (<a href={`${base}/results/`}>see the quantization table</a>,
-          source: <code>clauderesults/01-quantization-and-everyday-domain-report.md</code>).</p>
+          source: <code>llmresults/01-quantization-and-everyday-domain-report.md</code>).</p>
       </div>
     </div>
 
@@ -27,7 +27,7 @@ const base = import.meta.env.BASE_URL;
         <div class="tl-tag">v0.2 — what broke</div>
         <h3>An int8 bug, and a near-chance everyday model</h3>
         <p>Two separate problems showed up once the shipped file was actually tested, not just the
-          training checkpoint (<code>clauderesults/01-quantization-and-everyday-domain-report.md</code>):</p>
+          training checkpoint (<code>llmresults/01-quantization-and-everyday-domain-report.md</code>):</p>
         <ul>
           <li><strong>The shipped int8 file lost ~12 points.</strong> ADR 0003 had called int8 quantization
             "no material quality loss" based on a PyTorch/GPU number. On the actual shipped ONNX file,
@@ -43,7 +43,7 @@ const base = import.meta.env.BASE_URL;
             0.117 vs. 0.102 at 5,000 units for "reorder now"; checkout at 95% errors scored 0.15 vs. 0.07
             at 0% errors for "urgent." Through jevx's own default thresholds, most obvious answers came
             back "unsure" — confidence around 0.59–0.68 on facts like "stock is 0, is it out of stock,"
-            below jevx's yes ≥ 0.8 bar (<code>clauderesults/02-v0.3.0-release-and-jevx-report.md</code>).</li>
+            below jevx's yes ≥ 0.8 bar (<code>llmresults/02-v0.3.0-release-and-jevx-report.md</code>).</li>
         </ul>
       </div>
     </div>
@@ -58,7 +58,7 @@ const base = import.meta.env.BASE_URL;
           composition. Result: <strong>77.0%</strong> on the public test at 461 MB, vs. 65.1% for the
           retired int8 at 598 MB. An 8-bit weight-only variant was also built for comparison
           (76.9%, 598 MB, slower) — not shipped, since 4-bit was equally accurate and smaller
-          (<code>clauderesults/02-v0.3.0-release-and-jevx-report.md</code>).</p>
+          (<code>llmresults/02-v0.3.0-release-and-jevx-report.md</code>).</p>
       </div>
     </div>
 
@@ -71,7 +71,7 @@ const base = import.meta.env.BASE_URL;
           families and 7 roles (ops, developers, testers, leads, managers, and agent-style checks like
           claim verification and ticket routing), plus a stratified sample of the original{' '}
           <code>train_openjevx</code> data and the typed-decisions set oversampled 4x
-          (<code>clauderesults/08-morning-report.md</code>, <code>.local/release/v0.4.0/benchmark.json</code>).</p>
+          (<code>llmresults/08-morning-report.md</code>, <code>.local/release/v0.4.0/benchmark.json</code>).</p>
 
         <p>Before training, <strong>22,576 leaked test questions</strong> were found and removed —{' '}
           <code>train_openjevx.jsonl</code> contained 18,269 questions that also appeared in the{' '}
@@ -84,7 +84,7 @@ const base = import.meta.env.BASE_URL;
           accuracy bar required to trust a verdict — the best, Selene on yes/no questions, topped out at
           73% — so per the standing rule, <strong>no judge was allowed to delete or flag any row</strong>.
           Zero rows were removed by any automated judge; the fine-tune data quality reports
-          (<code>clauderesults/06-data-quality-report.md</code>, <code>clauderesults/07-local-quality-report.md</code>)
+          (<code>llmresults/06-data-quality-report.md</code>, <code>llmresults/07-local-quality-report.md</code>)
           document why and leave every source formally "unverified," not "bad."</p>
 
         <p>Training ran on a single rented RTX 4090 (vast.ai): a $0.27 smoke test, then a $1.53 full run
@@ -109,7 +109,7 @@ const base = import.meta.env.BASE_URL;
     accuracy on questions the labellers themselves couldn't agree on — the original
     typed-decisions-only fine-tune topped out at 76.8% for the same structural reason. This is a
     ceiling in the public test's labelling, not a training gap
-    (<code>clauderesults/08-morning-report.md</code>).
+    (<code>llmresults/08-morning-report.md</code>).
   </div>
 
   <p>The v0.4.0 release was <strong>staged, not auto-published</strong>, because the public test

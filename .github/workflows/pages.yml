@@ -39,6 +39,10 @@ jobs:
         working-directory: site
         run: npm run build
 
+      - name: Test
+        working-directory: site
+        run: node --test tests/*.test.mjs
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
