@@ -18,3 +18,4 @@ data/*.jsonl
 data/*.jsonl.gz
 data/raw/
 clauderesults/*.jsonl
+data/incoming/
