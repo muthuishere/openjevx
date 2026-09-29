@@ -1,0 +1,40 @@
+state,question,type,options,answer,split,source
+"{""day"": ""Monday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,,hr-policy
+"{""day"": ""Tuesday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,,hr-policy
+"{""day"": ""Wednesday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,gate,hr-policy
+"{""day"": ""Thursday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,,hr-policy
+"{""day"": ""Friday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,no,,hr-policy
+"{""day"": ""Saturday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,no,gate,hr-policy
+"{""day"": ""Sunday""}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,no,,hr-policy
+"{""hours_logged_today"": 2.5}",Is this over the 3 working hours we allow per day?,noul,,no,,hr-policy
+"{""hours_logged_today"": 2.9}",Is this over the 3 working hours we allow per day?,noul,,no,,hr-policy
+"{""hours_logged_today"": 3.0}",Is this over the 3 working hours we allow per day?,noul,,no,gate,hr-policy
+"{""hours_logged_today"": 3.1}",Is this over the 3 working hours we allow per day?,noul,,yes,,hr-policy
+"{""hours_logged_today"": 4}",Is this over the 3 working hours we allow per day?,noul,,yes,,hr-policy
+"{""hours_logged_today"": 6}",Is this over the 3 working hours we allow per day?,noul,,yes,gate,hr-policy
+"{""promised_by"": ""2026-10-03"", ""delivered_on"": ""2026-10-02""}",Is the parcel late?,noul,,no,,shipping
+"{""promised_by"": ""2026-10-03"", ""delivered_on"": ""2026-10-03""}",Is the parcel late?,noul,,no,gate,shipping
+"{""promised_by"": ""2026-10-03"", ""delivered_on"": ""2026-10-04""}",Is the parcel late?,noul,,yes,,shipping
+"{""promised_by"": ""2026-10-03"", ""delivered_on"": null, ""today"": ""2026-10-05""}",Is the parcel late?,noul,,yes,gate,shipping
+"{""promised_by"": ""2026-10-03"", ""delivered_on"": null, ""today"": ""2026-10-01""}",Is the parcel late?,noul,,no,,shipping
+"Promised for Friday, arrived the following Monday.",Is the parcel late?,noul,,yes,,shipping
+"{""order_total_rs"": 499}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,,shop
+"{""order_total_rs"": 500}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,gate,shop
+"{""order_total_rs"": 501}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,,shop
+"{""order_total_rs"": 750}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,,shop
+"{""order_total_rs"": 120}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,,shop
+"{""order_total_rs"": 1200}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,gate,shop
+"{""repo"": ""payments-core"", ""title"": ""Refund rounds down""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments,,eng-routing
+"{""repo"": ""billing"", ""title"": ""Invoice PDF missing tax line""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments,gate,eng-routing
+"{""repo"": ""infra-terraform"", ""title"": ""Bump node pool size""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,platform,,eng-routing
+"{""repo"": ""api-gateway"", ""title"": ""Rate limit 429 on /login""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,platform,,eng-routing
+"{""repo"": ""web-frontend"", ""title"": ""Checkout button misaligned""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,web,,eng-routing
+"{""repo"": ""admin-console"", ""title"": ""Export CSV times out""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,web,gate,eng-routing
+"{""repo"": ""api-gateway"", ""title"": ""Charge shown twice on receipt page""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,platform,,eng-routing
+"{""customers_affected"": 0, ""payments_failing"": false, ""workaround"": true}",How urgent is this ticket?,score,low|medium|high|critical,low,,support
+"{""customers_affected"": 3, ""payments_failing"": false, ""workaround"": true}",How urgent is this ticket?,score,low|medium|high|critical,medium,,support
+"{""customers_affected"": 40, ""payments_failing"": false, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,high,gate,support
+"{""customers_affected"": 40, ""payments_failing"": true, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,critical,,support
+"{""customers_affected"": 1, ""payments_failing"": true, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,critical,,support
+"{""customers_affected"": 0, ""payments_failing"": false, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,1,gate,support
+A typo on the About page. Nobody has complained.,How urgent is this ticket?,score,low|medium|high|critical,0,,support
