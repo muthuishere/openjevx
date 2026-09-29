@@ -24,7 +24,7 @@ tasks:
         fi
       - |
         if [ ! -f {{.LOCAL}}/openjevx.w8.onnx ]; then
-          curl -fsSL -o {{.LOCAL}}/openjevx.w8.onnx https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx
+          curl -fsSL -o {{.LOCAL}}/openjevx.w8.onnx.zip https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx.zip && unzip -p {{.LOCAL}}/openjevx.w8.onnx.zip openjevx.w8.onnx > {{.LOCAL}}/openjevx.w8.onnx && rm {{.LOCAL}}/openjevx.w8.onnx.zip
         fi
 
   build:

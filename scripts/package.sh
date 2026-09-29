@@ -10,7 +10,7 @@ CACHE=$ROOT/.local/ort
 MODEL=$ROOT/.local/openjevx.w8.onnx
 cd "$ROOT"
 mkdir -p "$OUT" "$CACHE"
-[ -f "$MODEL" ] || curl -fsSL -o "$MODEL" https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx
+[ -f "$MODEL" ] || { curl -fsSL -o "$MODEL.zip" https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx.zip && unzip -p "$MODEL.zip" openjevx.w8.onnx > "$MODEL" && rm "$MODEL.zip"; }
 
 fetch() { # $1 package name, $2 extension, $3 library path inside
   [ -f "$CACHE/$(basename "$3")" ] && return
