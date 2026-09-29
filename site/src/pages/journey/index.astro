@@ -2,48 +2,32 @@
 import Base from '../../layouts/Base.astro';
 const base = import.meta.env.BASE_URL;
 ---
-<Base title="The journey" description="How OpenJevX went from a 77.4% fine-tune to a stable, calibrated model, told as a changelog.">
+<Base title="The journey" description="How OpenJevX got from v0.1 to v0.4, in four steps.">
   <h1>The journey</h1>
-  <p class="lead">A plain engineering changelog, not a highlight reel. Every number below is
-    quoted from a report or file in this repo — sources are named as we go.</p>
+  <p class="lead">Four releases, what each one fixed. Full numbers on the
+    <a href={`${base}/results/`}>results page</a>.</p>
 
   <div class="timeline">
     <div class="tl-item">
       <div class="tl-dot"></div>
       <div class="tl-card">
-        <div class="tl-tag">v0.1 — where we started</div>
+        <div class="tl-tag">v0.1</div>
         <h3>Laya, fine-tuned on public data</h3>
-        <p>v0.1 was Laya (<code>convaiinnovations/laya</code>) fine-tuned on the public{' '}
-          <code>typed-decisions</code> dataset. That fine-tune scored <strong>77.4%</strong> on its own
-          benchmark, measured on PyTorch with a GPU
-          (<a href={`${base}/results/`}>see the quantization table</a>,
-          source: <code>llmresults/01-quantization-and-everyday-domain-report.md</code>).</p>
+        <p><code>convaiinnovations/laya</code> trained on the public typed-decisions set:
+          <strong>77.4%</strong> on its benchmark.</p>
       </div>
     </div>
 
     <div class="tl-item">
       <div class="tl-dot"></div>
       <div class="tl-card">
-        <div class="tl-tag">v0.2 — what broke</div>
-        <h3>An int8 bug, and a near-chance everyday model</h3>
-        <p>Two separate problems showed up once the shipped file was actually tested, not just the
-          training checkpoint (<code>llmresults/01-quantization-and-everyday-domain-report.md</code>):</p>
+        <div class="tl-tag">v0.2</div>
+        <h3>Two problems</h3>
         <ul>
-          <li><strong>The shipped int8 file lost ~12 points.</strong> ADR 0003 had called int8 quantization
-            "no material quality loss" based on a PyTorch/GPU number. On the actual shipped ONNX file,
-            the public test dropped to <strong>65.1%</strong> vs. <strong>76.8%</strong> for fp32 on the
-            same weights. Root cause: dynamic int8 quantizes activations per batch, so the same question
-            could get a different answer depending on what else was in the request — verified directly,
-            the same 6 yes/no questions asked alone vs. in a batch of 6 gave <strong>0 of 6</strong>
-            matching answers on int8.</li>
-          <li><strong>On everyday software decisions, the model was near chance.</strong> On a 5,200-case
-            rule-labelled everyday set (20 domains: incidents, refunds, invoices, fraud, deploys,
-            security, and others), even fp32 landed at <strong>46.8%</strong> — 30% on score questions,
-            38% on choice questions. Yes/no answers largely ignored the state: stock at 0 units scored
-            0.117 vs. 0.102 at 5,000 units for "reorder now"; checkout at 95% errors scored 0.15 vs. 0.07
-            at 0% errors for "urgent." Through jevx's own default thresholds, most obvious answers came
-            back "unsure" — confidence around 0.59–0.68 on facts like "stock is 0, is it out of stock,"
-            below jevx's yes ≥ 0.8 bar (<code>llmresults/02-v0.3.0-release-and-jevx-report.md</code>).</li>
+          <li><strong>int8 lost 12 points</strong> (65.1% vs 76.8% fp32): the same question got a
+            different answer depending on what else was in the batch.</li>
+          <li><strong>Near chance on everyday software decisions</strong> (46.8%), and too unsure to
+            pass jevx's 0.8 bar even on "stock is 0, is it out of stock?".</li>
         </ul>
       </div>
     </div>
@@ -51,70 +35,31 @@ const base = import.meta.env.BASE_URL;
     <div class="tl-item">
       <div class="tl-dot"></div>
       <div class="tl-card">
-        <div class="tl-tag">v0.3 — 4-bit weight-only</div>
-        <h3>Fixing the quantization, no retrain needed</h3>
-        <p>Switched to a 4-bit weight-only ONNX graph (<code>MatMulNBits</code>, block 32, symmetric):
-          weights are quantized, activations stay float, so the answer no longer depends on batch
-          composition. Result: <strong>77.0%</strong> on the public test at 461 MB, vs. 65.1% for the
-          retired int8 at 598 MB. An 8-bit weight-only variant was also built for comparison
-          (76.9%, 598 MB, slower) — not shipped, since 4-bit was equally accurate and smaller
-          (<code>llmresults/02-v0.3.0-release-and-jevx-report.md</code>).</p>
+        <div class="tl-tag">v0.3</div>
+        <h3>Fix the quantization</h3>
+        <p>4-bit weight-only: activations stay float, so batching no longer changes answers.
+          <strong>77.0%</strong> at 461 MB, no retrain.</p>
       </div>
     </div>
 
     <div class="tl-item">
       <div class="tl-dot"></div>
       <div class="tl-card">
-        <div class="tl-tag">v0.4 — fine-tune on real work</div>
-        <h3>443,394 software-role decisions, $1.80 to train</h3>
-        <p>Trained on 443,394 decisions: 183,543 rule-labelled software-role decisions across 56
-          families and 7 roles (ops, developers, testers, leads, managers, and agent-style checks like
-          claim verification and ticket routing), plus a stratified sample of the original{' '}
-          <code>train_openjevx</code> data and the typed-decisions set oversampled 4x
-          (<code>llmresults/08-morning-report.md</code>, <code>.local/release/v0.4.0/benchmark.json</code>).</p>
-
-        <p>Before training, <strong>22,576 leaked test questions</strong> were found and removed —{' '}
-          <code>train_openjevx.jsonl</code> contained 18,269 questions that also appeared in the{' '}
-          <code>eval_openjevx</code> test set, 8,372 from the opencode test set, 972 from the owner's own
-          CSV, and all 1,194 rule-set questions. Every number in the results table is measured after that
-          cleanup, so it's honest about generalisation, not memorisation.</p>
-
-        <p>Quality judges (NLI DeBERTa and Selene-1-Mini locally, plus free OpenRouter models) were
-          calibrated against a trusted key before being allowed near the data. None reached the 90%
-          accuracy bar required to trust a verdict — the best, Selene on yes/no questions, topped out at
-          73% — so per the standing rule, <strong>no judge was allowed to delete or flag any row</strong>.
-          Zero rows were removed by any automated judge; the fine-tune data quality reports
-          (<code>llmresults/06-data-quality-report.md</code>, <code>llmresults/07-local-quality-report.md</code>)
-          document why and leave every source formally "unverified," not "bad."</p>
-
-        <p>Training ran on a single rented RTX 4090 (vast.ai): a $0.27 smoke test, then a $1.53 full run
-          capped at a 2.75-hour budget (~90% of one full pass over the data, ~40 decisions/second).
-          <strong>Total cost: $1.80.</strong> Both boxes were destroyed after; no training data was left on
-          any box or bucket.</p>
+        <div class="tl-tag">v0.4</div>
+        <h3>Fine-tune on real software work — $1.80</h3>
+        <p>443,394 decisions across 7 roles and 56 families, after removing 22,576 questions that
+          leaked from the test sets. One rented RTX 4090, under 3 hours.</p>
+        <p>Software-role accuracy <strong>63.7% → 98.1%</strong>; families never seen in training
+          <strong>66.1% → 87.3%</strong>.</p>
       </div>
     </div>
   </div>
 
-  <h2>Results, before → after</h2>
-  <p>See the full table on the <a href={`${base}/results/`}>before/after page</a>. Headline:
-    software-role held-out accuracy went from <strong>63.7% → 98.1%</strong>, and previously-unseen
-    software-role families went from <strong>66.1% → 87.3%</strong>. The public typed-decisions test
-    barely moved: <strong>76.1% → 76.2%</strong>.</p>
-
   <div class="note">
-    <strong>Why 80% on the public test isn't reachable by more training.</strong> Where the human
-    labellers who built that test agreed with each other, every model version already scores
-    ~87–89%. Where they disagreed (41% of the test), every version scores ~60%, because the
-    "right" answer there is a split vote among humans. Hitting 80% overall would require ~68%
-    accuracy on questions the labellers themselves couldn't agree on — the original
-    typed-decisions-only fine-tune topped out at 76.8% for the same structural reason. This is a
-    ceiling in the public test's labelling, not a training gap
-    (<code>llmresults/08-morning-report.md</code>).
+    <strong>Why the public test stays at ~76%.</strong> On the 41% of questions where its human
+    labellers disagreed, every version scores ~60% — there's no single right answer to learn.
+    Where they agreed, every version already scores ~87–89%.
   </div>
 
-  <p>The v0.4.0 release was <strong>staged, not auto-published</strong>, because the public test
-    stayed under the owner's 80% publish bar; it shipped once the owner reviewed the full picture
-    above and judged the software-role and calibration gains worth it on their own terms.</p>
-
-  <p><a href={`${base}/results/`}>See the numbers →</a></p>
+  <p><a href={`${base}/results/`}>See all the numbers →</a></p>
 </Base>
