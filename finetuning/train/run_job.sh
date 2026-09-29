@@ -46,6 +46,9 @@ cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.
 # requirements/image/base-model key exists, download and install it offline; otherwise install from
 # PyPI/Hugging Face as before and upload the bundle so the next box skips both.
 export HF_HOME=/root/hf
+# torch.compile (Triton) needs a C compiler; the PyTorch runtime image has none.
+command -v gcc >/dev/null || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gcc g++ >/dev/null; }
+command -v gcc >/dev/null || { echo "no C compiler, torch.compile will fail"; false; }
 REQ="$ROOT/finetuning/train/requirements-box.txt"
 if [ -n "${WHEELS_URL:-}" ] && [ -n "${HF_URL:-}" ]; then
   echo "runtime: from R2"
