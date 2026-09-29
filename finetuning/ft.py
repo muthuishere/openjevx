@@ -2,17 +2,19 @@
 """OpenJevX fine-tuning pipeline. Every step fails loudly.
 
 Settings: ~/.config/openjevx/config.json (or $OPENJEVX_FT_CONFIG). On first run it is created from
-finetuning/config.example.json; edit it there. Relative data paths are relative to the repo root.
+finetuning/config.example.json; edit it there. Data paths are relative to the data folder
+(~/openjevx/data or $OPENJEVX_DATA, see finetuning/paths.py).
 
-  ft.py dataprep        generate the rule-labelled sets into data/
-  ft.py validate        adapter dry-parse + leakage check (writes .local/ft/leaked_keys.json)
-  ft.py package [--smoke]   build the shard in .local/ft/<version>[-smoke]/
+  ft.py dataprep        generate the rule-labelled sets into <data>/{train,eval,gate}
+  ft.py validate        adapter dry-parse + leakage check (writes <data>/work/leak/leaked_keys.json)
+  ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/
   ft.py train [--smoke]     run the shard on config.provider (gpu/<provider>.py), get the 8-bit ONNX back
   ft.py gate MODEL.onnx     serve MODEL locally and score it; exit 1 if it misses the config thresholds
   ft.py all             every step in order, with a smoke run before the full run
 
 A provider is finetuning/gpu/<name>.py taking `SHARD_DIR SHARD` plus its own options from
-config.providers.<name>; it must leave SHARD_DIR/../<dir>_<shard>_run/out/openjevx.w8.onnx.
+config.providers.<name>; it must print RUN_DIR=<dir> and leave <dir>/out/openjevx.w8.onnx
+(runs go under <data>/work/runs/).
 """
 import json, os, shutil, subprocess, sys, time, urllib.request
 from pathlib import Path
@@ -25,7 +27,9 @@ if not CFG_PATH.exists():
     shutil.copy2(FT / "config.example.json", CFG_PATH)
     print(f"created {CFG_PATH} from config.example.json", flush=True)
 CFG = json.loads(CFG_PATH.read_text())
-WORK = ROOT / ".local" / "ft"
+sys.path.insert(0, str(FT))
+import paths  # noqa: E402
+WORK = paths.WORK
 PY = str(ROOT / ".local/eval/venv/bin/python") if (ROOT / ".local/eval/venv/bin/python").exists() else sys.executable
 
 
@@ -35,7 +39,7 @@ def sh(*args, env=None):
 
 
 def shard_dir(smoke):
-    return WORK / (CFG["version"] + ("-smoke" if smoke else ""))
+    return WORK / "shards" / (CFG["version"] + ("-smoke" if smoke else ""))
 
 
 def dataprep():
@@ -44,15 +48,15 @@ def dataprep():
 
 
 def validate():
-    WORK.mkdir(parents=True, exist_ok=True)
+    (WORK / "leak").mkdir(parents=True, exist_ok=True)
     sh(PY, FT / "datavalidate/check_adapter.py")
     v = CFG["datavalidate"]
-    args = [PY, FT / "datavalidate/leak_check.py", "--out", WORK / "leaked_keys.json"]
+    args = [PY, FT / "datavalidate/leak_check.py", "--out", WORK / "leak/leaked_keys.json"]
     for f in v["leak_train"]:
-        args += ["--train", ROOT / f]
+        args += ["--train", paths.DATA / f]
     for f in v["leak_eval"]:
-        if (ROOT / f).exists():
-            args += ["--eval", ROOT / f]
+        if (paths.DATA / f).exists():
+            args += ["--eval", paths.DATA / f]
         else:
             print(f"note: test file {f} not present, skipped in the leakage check")
     sh(*args)
@@ -61,13 +65,13 @@ def validate():
 def package(smoke):
     d = CFG["dataprep"]
     args = [PY, FT / "dataprep/package_shards.py", "--out", shard_dir(smoke),
-            "--budget-gb", d["budget_gb"], "--exclude-keys", WORK / "leaked_keys.json"]
+            "--budget-gb", d["budget_gb"], "--exclude-keys", WORK / "leak/leaked_keys.json"]
     if smoke:
         args.append("--smoke")
     for x in d["extra_train"]:
-        args += ["--extra-train", ROOT / x["file"]] * x.get("repeat", 1)
+        args += ["--extra-train", paths.DATA / x["file"]] * x.get("repeat", 1)
     for f in d["extra_eval"]:
-        args += ["--extra-eval", ROOT / f]
+        args += ["--extra-eval", paths.DATA / f]
     sh(*args, env=CFG["train"])
 
 
@@ -75,10 +79,18 @@ def train(smoke):
     name = CFG["provider"]
     opts = CFG["providers"].get(name, {})
     flags = [f"--{k.replace('_', '-')}={v}" for k, v in opts.items() if k != "gpu"]
-    sh(PY, FT / "gpu" / f"{name}.py", shard_dir(smoke), "smoke" if smoke else "full", *flags,
-       env={"MAX_W8_MB": str(CFG["model"]["max_w8_mb"]), "GPU_NAME": opts.get("gpu", "")})
-    d = shard_dir(smoke)
-    return d.parent / f"{d.name}_{'smoke' if smoke else 'full'}_run" / "out" / "openjevx.w8.onnx"
+    cmd = [PY, FT / "gpu" / f"{name}.py", shard_dir(smoke), "smoke" if smoke else "full", *flags]
+    print("+", " ".join(map(str, cmd)), flush=True)
+    proc = subprocess.Popen([str(c) for c in cmd], cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                            env={**os.environ, "MAX_W8_MB": str(CFG["model"]["max_w8_mb"]), "GPU_NAME": opts.get("gpu", "")})
+    run_dir = None
+    for line in proc.stdout:
+        print(line, end="", flush=True)
+        if line.startswith("RUN_DIR="):
+            run_dir = Path(line.strip().split("=", 1)[1])
+    if proc.wait() != 0 or run_dir is None:
+        sys.exit(f"{name} provider failed")
+    return run_dir / "out" / "openjevx.w8.onnx"
 
 
 def gate(model):
@@ -91,7 +103,7 @@ def gate(model):
     if not binary.exists() or runtime is None:
         sh("task", "build")
         runtime = next(ROOT.glob(".local/libonnxruntime.*"))
-    srv = WORK / "gate-server"
+    srv = WORK / "gate" / "server"
     srv.mkdir(parents=True, exist_ok=True)
     (srv / "openjevx.json").write_text(json.dumps(
         {"listen": f"127.0.0.1:{g['port']}", "device": "cpu", "model": str(model), "runtime": str(runtime)}))
@@ -110,7 +122,7 @@ def gate(model):
         url = f"http://127.0.0.1:{g['port']}/v1/systemone"
         report, failures = {"model": str(model), "size_mb": mb, "files": {}}, []
         for f in g["files"]:
-            m = gate_eval.score(url, ROOT / f)
+            m = gate_eval.score(url, paths.DATA / f)
             report["files"][f] = m
             print(f"{f:40s} n={m['n']:6d} accuracy {m['accuracy']:6.1%} right&confident {m['confident_right']:6.1%} "
                   f"confidently WRONG {m['confident_wrong']:5.1%}", flush=True)
@@ -126,7 +138,7 @@ def gate(model):
         if correct < g["min_jevx13_correct"]:
             failures.append(f"jevx 13 fundamentals: {correct}/13 < {g['min_jevx13_correct']}")
         report["pass"], report["failures"] = not failures, failures
-        (WORK / f"gate-{model.stem}.json").write_text(json.dumps(report, indent=2))
+        (WORK / "gate" / f"{model.stem}.json").write_text(json.dumps(report, indent=2))
         print("GATE PASS" if not failures else "GATE FAIL:\n  " + "\n  ".join(failures))
         if failures:
             sys.exit(1)

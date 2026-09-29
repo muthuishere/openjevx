@@ -2,13 +2,15 @@
 """Convert downloaded HF datasets into openjevx premise/hypothesis JSONL (ADR 0004 slots A, B, E).
 
 No model labels: bug/label ground truth comes from real fixes and real review outcomes.
-Writes to data/incoming/. Run: ./.venv-dl/bin/python finetuning/dataprep/convert_hf_haul.py
+Writes to <data>/incoming/. Run: ./.venv-dl/bin/python finetuning/dataprep/convert_hf_haul.py
 """
 import pyarrow.parquet as pq
-import glob, json, random, hashlib, argparse, os
+import glob, json, random, hashlib, argparse, os, sys
 
-IN = os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "hf")
-OUT = os.path.join(os.path.dirname(__file__), "..", "..", "data", "incoming")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import paths  # noqa: E402
+IN = str(paths.RAW / "hf")
+OUT = str(paths.INCOMING)
 random.seed(7)
 
 

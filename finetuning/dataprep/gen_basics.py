@@ -7,12 +7,15 @@ polarities, several phrasings. Gold is computed by evaluating the rule, never wr
 The last phrasing of every rule is reserved for the gate file, so the gate tests the rule,
 not a memorised sentence.
 
-Outputs (gitignored): data/basics_train.jsonl, data/basics_gate.jsonl
+Outputs: <data>/train/basics_train.jsonl, <data>/gate/basics_gate.jsonl (see finetuning/paths.py)
 """
 import datetime as dt
 import json
 import random
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 YN = {"false": "no", "true": "yes"}
@@ -253,7 +256,9 @@ def main():
     train = [r for r in train if json.dumps([r["state"], r["questions"]], sort_keys=True) not in gate_keys]
     random.Random(5).shuffle(train)
     for name, rows in (("basics_train", train), ("basics_gate", gate)):
-        with open(ROOT / "data" / f"{name}.jsonl", "w") as f:
+        out = (paths.GATE if name.endswith("_gate") else paths.TRAIN) / f"{name}.jsonl"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         yes = sum(r["gold"]["q"] == "true" for r in rows)

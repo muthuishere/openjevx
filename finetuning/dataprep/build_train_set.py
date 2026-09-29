@@ -11,8 +11,10 @@ others -> 2 (neutral), matching the openjev scoring scheme P(entailment) per opt
 import gzip, glob, json, os, sys
 from collections import Counter
 
-RAW = os.path.join(os.path.dirname(__file__), "raw")
-OUT = os.path.join(os.path.dirname(__file__), "jev_train_all.jsonl")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import paths  # noqa: E402
+RAW = str(paths.RAW)
+OUT = str(paths.TRAIN / "jev_train_all.jsonl")
 OURS = {"contradiction": 0, "entailment": 1, "neutral": 2}
 
 def is_english(meta_lang=None, probe=""):

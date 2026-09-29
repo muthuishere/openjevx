@@ -13,9 +13,11 @@ import os
 import shutil
 from collections import Counter
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
+DATA = paths.DATA
 TRAIN_DIR = ROOT / "finetuning" / "train"
 EXPORT_DIR = ROOT / "finetuning" / "export"
 
@@ -75,7 +77,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
     import adapter
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    train_path = DATA / "train_openjevx.jsonl"
+    train_path = paths.TRAIN / "train_openjevx.jsonl"
     budget_bytes = int(budget_gb * 1e9)
 
     skips = Counter()
@@ -105,7 +107,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
             train_rows.append(shaped)
 
     eval_rows = []
-    for row in adapter.read_jsonl(DATA / "eval_openjevx.jsonl"):
+    for row in adapter.read_jsonl(paths.EVAL / "eval_openjevx.jsonl"):
         shaped = adapter.adapt_row(row)
         if shaped is None:
             skips[row["source"]] += 1

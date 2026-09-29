@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Consolidate ALL gathered sources into ONE final training set for openjevx.
 
-Outputs under data/:
+Outputs under <data>/train and <data>/eval (finetuning/paths.py):
   train_openjevx.jsonl - typed-decision records, exact OpenJevX format:
       {"source","domain","state","questions":{qid:{type,instructions,criteria}},"gold"}
   eval_openjevx.jsonl  - same shape, held-out rows (typed-decisions test split, tasksource holdout)
@@ -9,13 +9,15 @@ Outputs under data/:
 
 English-only via language field or ASCII heuristic. No license text is emitted into the data.
 """
-import glob, gzip, json, os, time
+import glob, gzip, json, os, sys, time
 from collections import Counter
 
 T0 = time.time()
 HERE = os.path.dirname(os.path.abspath(__file__))
-RAW = os.path.join(HERE, "raw")
-CLAUDE = os.path.join(os.path.dirname(HERE), "clauderesults")
+sys.path.insert(0, os.path.dirname(HERE))
+import paths  # noqa: E402
+RAW = str(paths.RAW)
+CLAUDE = os.path.join(os.path.dirname(os.path.dirname(HERE)), "llmresults")
 OURS = {"contradiction": 0, "entailment": 1, "neutral": 2}
 
 import pyarrow.parquet as pq
@@ -127,9 +129,9 @@ def hard_target(kind, opts, tgt):
     return None
 
 
-ftr = open(os.path.join(HERE, "train_openjevx.jsonl"), "w", encoding="utf-8")
-fev = open(os.path.join(HERE, "eval_openjevx.jsonl"), "w", encoding="utf-8")
-fflat = open(os.path.join(HERE, "jev_train_all.jsonl"), "w", encoding="utf-8")
+ftr = open(os.path.join(paths.TRAIN, "train_openjevx.jsonl"), "w", encoding="utf-8")
+fev = open(os.path.join(paths.EVAL, "eval_openjevx.jsonl"), "w", encoding="utf-8")
+fflat = open(os.path.join(paths.TRAIN, "jev_train_all.jsonl"), "w", encoding="utf-8")
 
 try:
     # 1) LocalLLaMA typed-decisions (train split -> train, test split -> eval)

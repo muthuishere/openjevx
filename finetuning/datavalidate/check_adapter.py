@@ -5,6 +5,8 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "train"))
 import adapter
@@ -17,7 +19,7 @@ def main():
     seen = 0
     qtypes = Counter()
     examples = []
-    rows = adapter.read_jsonl(ROOT / "data" / "train_openjevx.jsonl")
+    rows = adapter.read_jsonl(paths.TRAIN / "train_openjevx.jsonl")
     for row in rows:
         shaped = adapter.adapt_row(row)
         if shaped is None:

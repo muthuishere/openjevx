@@ -54,14 +54,16 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-LOCAL = ROOT / ".local"
+DATA = paths.DATA
+LOCAL = paths.WORK / "samples"
 
-TRAIN_PATH = DATA / "conditions_train.jsonl"
-EVAL_PATH = DATA / "conditions_eval.jsonl"
-GATE_PATH = DATA / "conditions_basics_gate.jsonl"
+TRAIN_PATH = paths.TRAIN / "conditions_train.jsonl"
+EVAL_PATH = paths.EVAL / "conditions_eval.jsonl"
+GATE_PATH = paths.GATE / "conditions_basics_gate.jsonl"
 SAMPLES_PATH = LOCAL / "conditions_samples.txt"
 
 TRAIN_SEED = 20260929
@@ -1552,7 +1554,8 @@ def main():
     for d in sorted(HELD_OUT_DOMAINS):
         print(f"  held out: {d}")
 
-    DATA.mkdir(exist_ok=True)
+    for d in (paths.TRAIN, paths.EVAL, paths.GATE):
+        d.mkdir(parents=True, exist_ok=True)
 
     print("\nGenerating train...")
     train_stats = generate(TRAIN_PATH, TRAIN_TARGET, TRAIN_SEED, TRAIN_DOMAIN_IDS, "train")
@@ -1602,7 +1605,7 @@ def main():
           f"train∩gate={len(train_keys & gate_keys)} eval∩gate={len(eval_keys & gate_keys)}")
 
     # ---- sample rows ----
-    LOCAL.mkdir(exist_ok=True)
+    LOCAL.mkdir(parents=True, exist_ok=True)
     rng = random.Random(1)
     all_rows = list(open(TRAIN_PATH, encoding="utf-8"))
     sample_lines = rng.sample(all_rows, 40)

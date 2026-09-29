@@ -2,41 +2,87 @@
   "version": "v0.4.2",
   "provider": "vast",
   "providers": {
-    "vast": {"gpu": "RTX_4090", "max_price_per_hour": 0.6, "timeout_hours": 7}
+    "vast": {
+      "gpu": "RTX_4090",
+      "max_price_per_hour": 0.6,
+      "timeout_hours": 7
+    }
   },
   "model": {
     "format": "8-bit ONNX (weight-only int8)",
     "max_w8_mb": 750
   },
   "dataprep": {
-    "generators": ["gen_basics.py", "gen_conditions.py", "gen_it_worker.py"],
-    "extra_train": [
-      {"file": "data/it_worker_train.jsonl", "repeat": 1},
-      {"file": "data/conditions_train.jsonl", "repeat": 1},
-      {"file": "data/basics_train.jsonl", "repeat": 5}
+    "generators": [
+      "gen_basics.py",
+      "gen_conditions.py",
+      "gen_it_worker.py"
     ],
-    "extra_eval": ["data/it_worker_eval.jsonl", "data/conditions_eval.jsonl"],
+    "extra_train": [
+      {
+        "file": "train/it_worker_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "train/conditions_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "train/basics_train.jsonl",
+        "repeat": 5
+      }
+    ],
+    "extra_eval": [
+      "eval/it_worker_eval.jsonl",
+      "eval/conditions_eval.jsonl"
+    ],
     "budget_gb": 0.2
   },
   "datavalidate": {
-    "leak_train": ["data/train_openjevx.jsonl", "data/it_worker_train.jsonl",
-                   "data/conditions_train.jsonl", "data/basics_train.jsonl"],
-    "leak_eval": ["data/eval_openjevx.jsonl", "data/it_worker_eval.jsonl", "data/conditions_eval.jsonl",
-                  "data/conditions_basics_gate.jsonl", "data/basics_gate.jsonl",
-                  ".local/eval/cases_rules.jsonl", ".local/eval/cases_llm.jsonl",
-                  ".local/eval/test.json", ".local/eval/questions_1000.csv"]
+    "leak_train": [
+      "train/train_openjevx.jsonl",
+      "train/it_worker_train.jsonl",
+      "train/conditions_train.jsonl",
+      "train/basics_train.jsonl"
+    ],
+    "leak_eval": [
+      "eval/eval_openjevx.jsonl",
+      "eval/it_worker_eval.jsonl",
+      "eval/conditions_eval.jsonl",
+      "gate/conditions_basics_gate.jsonl",
+      "gate/basics_gate.jsonl",
+      "eval/cases_rules.jsonl",
+      "eval/cases_llm.jsonl",
+      "eval/test.json",
+      "eval/questions_1000.csv"
+    ]
   },
   "train": {
-    "EPOCHS": "1", "MICRO_BATCH": "16", "GRAD_ACCUM": "4", "MAX_LEN": "512", "AMP": "bf16",
-    "GRAD_CKPT": "0", "MAX_HOURS": "5.0", "CALIB_MAX": "400", "EVAL_MAX": "3000", "ACC_GATE": "0.55"
+    "EPOCHS": "1",
+    "MICRO_BATCH": "16",
+    "GRAD_ACCUM": "4",
+    "MAX_LEN": "512",
+    "AMP": "bf16",
+    "GRAD_CKPT": "0",
+    "MAX_HOURS": "5.0",
+    "CALIB_MAX": "400",
+    "EVAL_MAX": "3000",
+    "ACC_GATE": "0.55"
   },
   "gate": {
     "port": 21126,
     "jevx_profile": "openjevx-new",
-    "files": ["data/basics_gate.jsonl", "data/conditions_basics_gate.jsonl",
-              "data/conditions_eval.jsonl", "data/it_worker_eval.jsonl"],
-    "basics_files": ["data/basics_gate.jsonl", "data/conditions_basics_gate.jsonl"],
-    "min_basics_confident_right": 0.90,
+    "files": [
+      "gate/basics_gate.jsonl",
+      "gate/conditions_basics_gate.jsonl",
+      "eval/conditions_eval.jsonl",
+      "eval/it_worker_eval.jsonl"
+    ],
+    "basics_files": [
+      "gate/basics_gate.jsonl",
+      "gate/conditions_basics_gate.jsonl"
+    ],
+    "min_basics_confident_right": 0.9,
     "max_basics_confident_wrong": 0.02,
     "min_jevx13_correct": 12
   }

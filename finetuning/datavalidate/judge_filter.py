@@ -34,9 +34,11 @@ from collections import defaultdict, Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-DATA_A = os.path.join(ROOT, "data", "it_worker_train.jsonl")
-DATA_B = os.path.join(ROOT, "data", "train_openjevx.jsonl")
-QDIR = os.path.join(ROOT, ".local", "quality")
+sys.path.insert(0, os.path.dirname(HERE))
+import paths  # noqa: E402
+DATA_A = str(paths.TRAIN / "it_worker_train.jsonl")
+DATA_B = str(paths.TRAIN / "train_openjevx.jsonl")
+QDIR = str(paths.WORK / "quality")
 os.makedirs(QDIR, exist_ok=True)
 SAMPLE_A_PATH = os.path.join(QDIR, "sample_a.jsonl")
 SAMPLE_B_PATH = os.path.join(QDIR, "sample_b.jsonl")
@@ -44,7 +46,7 @@ JUDGED_PATH = os.path.join(QDIR, "judged.jsonl")
 REPORT_JSON = os.path.join(QDIR, "report.json")
 REVIEW_PATH = os.path.join(QDIR, "review_sources.txt")
 CALIBRATION_PATH = os.path.join(QDIR, "calibration.json")
-TRUSTED_KEY_PATH = os.path.join(ROOT, ".local", "eval", "test.json")
+TRUSTED_KEY_PATH = str(paths.EVAL / "test.json")
 REPORT_MD = os.path.join(ROOT, "clauderesults", "06-data-quality-report.md")
 LOG_PATH = os.path.join(QDIR, "run.log")
 TRUST_THRESHOLD = 0.90

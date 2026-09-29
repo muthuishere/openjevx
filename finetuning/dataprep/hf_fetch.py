@@ -2,11 +2,13 @@
 """Download HF dataset files via the resolve-cache path (bypasses /resolve 401-gate on this IP).
 
 Usage: python hf_fetch.py DATASET_ID [DATASET_ID ...]
-Saves into data/raw/hf/<flattened names>.
+Saves into <data>/raw/hf/<flattened names>.
 """
 import sys, os, json, urllib.request, urllib.parse, pathlib, time
 
-BASE = pathlib.Path(__file__).resolve().parents[2] / "data" / "raw" / "hf"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
+BASE = paths.RAW / "hf"
 
 
 def api_json(url):

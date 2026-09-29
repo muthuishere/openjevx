@@ -48,13 +48,15 @@ import random
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-LOCAL = ROOT / ".local"
+DATA = paths.DATA
+LOCAL = paths.WORK / "samples"
 
-TRAIN_PATH = DATA / "it_worker_train.jsonl"
-EVAL_PATH = DATA / "it_worker_eval.jsonl"
+TRAIN_PATH = paths.TRAIN / "it_worker_train.jsonl"
+EVAL_PATH = paths.EVAL / "it_worker_eval.jsonl"
 SAMPLES_PATH = LOCAL / "it_worker_samples.txt"
 
 TRAIN_SEED = 20260928
@@ -1905,7 +1907,7 @@ def main():
           f"eval {eval_total} rows, {eval_skipped} skipped")
 
     # ---- sample rows ----
-    LOCAL.mkdir(exist_ok=True)
+    LOCAL.mkdir(parents=True, exist_ok=True)
     rng = random.Random(1)
     all_rows = list(open(TRAIN_PATH, encoding="utf-8"))
     sample_lines = rng.sample(all_rows, 30)

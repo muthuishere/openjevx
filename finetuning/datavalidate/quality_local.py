@@ -69,6 +69,8 @@ import time
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 # NOTE: a separate agent shares .local/quality/ and periodically wipes its
@@ -77,12 +79,12 @@ REPO = Path(__file__).resolve().parents[2]
 # real working state lives in .local/quality_local_work/ instead, and only
 # the mandated final deliverable filenames are copied into .local/quality/
 # as the very last step (see cmd_publish / --publish).
-QDIR = REPO / ".local" / "quality_local_work"
+QDIR = paths.WORK / "quality_local_work"
 QDIR.mkdir(parents=True, exist_ok=True)
-PUBLISH_DIR = REPO / ".local" / "quality"
-EVAL_DIR = REPO / ".local" / "eval"
-DATA_A = REPO / "data" / "it_worker_train.jsonl"
-DATA_B = REPO / "data" / "train_openjevx.jsonl"
+PUBLISH_DIR = paths.WORK / "quality"
+EVAL_DIR = paths.EVAL
+DATA_A = paths.TRAIN / "it_worker_train.jsonl"
+DATA_B = paths.TRAIN / "train_openjevx.jsonl"
 
 SAMPLE_B_PATH = QDIR / "sample_b.jsonl"
 CALIB_PATH = QDIR / "calibration_local.json"

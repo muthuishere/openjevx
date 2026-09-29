@@ -65,8 +65,9 @@ def main():
         out("git", "push", "origin", "HEAD")
     repo = out("git", "remote", "get-url", "origin")
 
-    run_dir = shard_dir.parent / f"{shard_dir.name}_{a.shard}_run"
-    run_dir.mkdir(exist_ok=True)
+    run_dir = shard_dir.parent.parent / "runs" / f"{shard_dir.name}-{time.strftime('%Y%m%d-%H%M')}"
+    run_dir.mkdir(parents=True)
+    print(f"RUN_DIR={run_dir}", flush=True)
     artifacts = run_dir / "out"
     launch = json.loads(out(
         sys.executable, str(ONE_SHOT / "launch.py"), "--offer", str(pick_offer(a.max_price_per_hour)),

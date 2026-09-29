@@ -1,3 +1,36 @@
+# OpenJevX: how we work
+
+## Where things live
+- **Code is in the repo. Data, settings and generated output are not.**
+- Fine-tuning code: `finetuning/` → `dataprep/` · `datavalidate/` · `train/` · `export/` · `gate/` · `gpu/<provider>.py`.
+  One runner, `finetuning/ft.py`; Taskfile in `finetuning/` (`task all`, `task smoke`, `task train`, `task gate -- model.onnx`).
+- Settings: `~/.config/openjevx/config.json` (created from `finetuning/config.example.json`; override with
+  `$OPENJEVX_FT_CONFIG`). Change the example when defaults change; never hard-code a setting in a script.
+- Data: `~/openjevx/data/` (override with `$OPENJEVX_DATA`). All paths come from `finetuning/paths.py`:
+  `raw/` · `incoming/` · `train/` · `eval/` · `gate/` · `work/{leak,shards,runs,gate,quality,samples}`.
+  Never write data into the repo, and never add a new data path outside `paths.py`.
+- Agent reports: `llmresults/` (ADR 0005). Decisions: `docs/adr/`.
+
+## Model rules
+- We ship **one model file: 8-bit ONNX, at most 750 MB** (`model.max_w8_mb`). The GPU job quantizes on the
+  box and fails over the limit; the gate checks it again. We also keep the trainable checkpoint so the
+  model can be fine-tuned again.
+- Every run is one job, end to end: data ready → validate (leakage check) → smoke run → full run → gate.
+  Freeze the data before renting a GPU. A model ships only when the gate passes, not when training ends.
+- The gate is right AND confident on the everyday basics, never accuracy alone. Thresholds live in the config.
+- Labels come from reality or from evaluating a rule, never from a model's guess. Test and gate questions
+  never appear in training (the leakage check removes them).
+
+## GPUs
+- GPU work runs on a rented provider, **not Kaggle**. Today it is Vast.ai (`gpu/vast.py`); a new provider is one
+  `gpu/<name>.py` that prints `RUN_DIR=<dir>` and leaves `<dir>/out/openjevx.w8.onnx`, plus one line in the config.
+- Label boxes `openjevx-...-DESTROY-AFTER`; a detached watcher always destroys the box. The box clones a pushed
+  commit, so commit `finetuning/` before training.
+
+## Style
+- Match the surrounding code; small, plain scripts; fail loudly with a clear message.
+- Secrets only by env-var name or through `sec`; never in code, config or output.
+
 <!-- ctx-optimize:begin -->
 <ctx-optimize>
   <precondition>Run `command -v ctx-optimize` first. If it is NOT installed, IGNORE this entire
