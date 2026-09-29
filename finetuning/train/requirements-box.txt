@@ -1,0 +1,12 @@
+# Python packages the GPU box adds on top of the PyTorch image. Changing this file changes the
+# R2 bundle key, so the next box rebuilds and re-uploads the bundle.
+laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec
+transformers==4.57.6
+datasets
+sentencepiece
+protobuf
+safetensors
+accelerate
+huggingface_hub
+tokenizers
+onnx

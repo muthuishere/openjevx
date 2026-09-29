@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # One-shot OpenJevX fine-tune on a rented CUDA box. The box does everything and cleans up after itself:
+#   0. runtime (Python wheels + base model) from our R2 bundle when it exists
 #   1. fetch its settings from JOB_ENV_URL (a signed R2 link; the file holds only signed links + the kill token)
 #   2. download the shard from R2, train, calibrate, export ONNX on CUDA, quantize to 8-bit
 #   3. fail if the 8-bit ONNX is over MAX_W8_MB (750); upload the 8-bit ONNX, the trainable checkpoint,
@@ -41,10 +42,40 @@ curl -fsSL --retry 5 -o "$IN/$EV.jsonl.gz" "$EVAL_URL"
 curl -fsSL --retry 5 -o "$IN/run.json" "$RUN_URL"
 cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
 
-python -m pip install -q "laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec" \
-  transformers==4.57.6 datasets sentencepiece protobuf safetensors accelerate huggingface_hub tokenizers onnx
-python -m pip uninstall -y onnxruntime onnxruntime-gpu >/dev/null 2>&1 || true
-python -m pip install -q --force-reinstall --no-deps onnxruntime-gpu==1.22.0
+# Runtime from our R2 bucket: Python wheels + the base model's Hugging Face cache. If the bundle for this
+# requirements/image/base-model key exists, download and install it offline; otherwise install from
+# PyPI/Hugging Face as before and upload the bundle so the next box skips both.
+export HF_HOME=/root/hf
+REQ="$ROOT/finetuning/train/requirements-box.txt"
+if [ -n "${WHEELS_URL:-}" ] && [ -n "${HF_URL:-}" ]; then
+  echo "runtime: from R2"
+  mkdir -p /root/wheels "$HF_HOME"
+  curl -fsSL --retry 5 "$WHEELS_URL" | tar -x -C /root/wheels
+  curl -fsSL --retry 5 "$HF_URL" | tar -x -C "$HF_HOME"
+  python -m pip install -q --no-index --no-deps /root/wheels/*.whl
+  export HF_HUB_OFFLINE=1
+else
+  echo "runtime: from PyPI + Hugging Face (building the R2 bundle)"
+  python -m pip freeze | sort > /root/freeze-before.txt
+  python -m pip install -q -r "$REQ"
+  python -m pip uninstall -y onnxruntime onnxruntime-gpu >/dev/null 2>&1 || true
+  python -m pip install -q --force-reinstall --no-deps onnxruntime-gpu==1.22.0
+  python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+snapshot_download(os.environ.get("BASE_MODEL", "convaiinnovations/laya"))
+PY
+  if [ -n "${PUT_WHEELS_URL:-}" ]; then
+    # Wheels for exactly what this install added or changed, nothing from the image itself.
+    python -m pip freeze | sort > /root/freeze-after.txt
+    comm -13 /root/freeze-before.txt /root/freeze-after.txt > /root/added.txt
+    mkdir -p /root/wheels
+    python -m pip wheel -q --no-deps -w /root/wheels -r /root/added.txt \
+      && tar -C /root/wheels -cf /root/wheels.tar . && tar -C "$HF_HOME" -cf /root/hf.tar . \
+      && put "$PUT_WHEELS_URL" /root/wheels.tar && put "$PUT_HF_URL" /root/hf.tar \
+      && echo "runtime bundle uploaded" || echo "runtime bundle upload failed (next box installs from PyPI again)"
+  fi
+fi
 python - <<'PY'
 import torch, onnxruntime as ort
 assert torch.cuda.is_available(), "CUDA unavailable"

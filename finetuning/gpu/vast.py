@@ -6,6 +6,8 @@ usage: vast.py SHARD_DIR SHARD [--max-price-per-hour 0.6] [--timeout-hours 7]
   Needs $OPENJEVX_KILL_TOKEN (ft.py runs this under `sec run OPENJEVX_KILL_TOKEN`).
 
 1. HEAD must be on origin (the box clones that exact commit).
+   The box's Python packages and base model come from an R2 bundle (runtime/<key>/) when it exists;
+   the first box for a new key installs from PyPI/Hugging Face and uploads the bundle.
 2. Upload the shard to R2 (private bucket) and a job.env of signed links + the kill token (from memory).
 3. Rent the cheapest verified GPU; onstart clones the commit and runs finetuning/train/run_job.sh detached.
    The box trains, uploads its results to R2 and destroys itself through the destroy endpoint.
@@ -13,7 +15,7 @@ usage: vast.py SHARD_DIR SHARD [--max-price-per-hour 0.6] [--timeout-hours 7]
    Backstop: if the box is still alive past the deadline, destroy it from here.
 Prints RUN_DIR=<dir>; results land in <dir>/out/ (openjevx.w8.onnx, checkpoint.tar.gz, eval_report.json, job.log).
 """
-import argparse, json, os, shlex, subprocess, sys, time
+import argparse, hashlib, json, os, shlex, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -94,6 +96,18 @@ def main():
            "EVAL_URL": r2.link_get(f"{shard_key}/eval.jsonl.gz", link_s),
            "RUN_URL": r2.link_get(f"{shard_key}/run.json", link_s)}
     env.update({f"PUT_{k}_URL": r2.link_put(f"runs/{name}/{v}", link_s) for k, v in RESULTS.items()})
+    # Runtime bundle (Python wheels + base model) in R2, keyed by what it contains.
+    key = hashlib.sha1(((ROOT / "finetuning/train/requirements-box.txt").read_text() + IMAGE +
+                        os.environ.get("BASE_MODEL", "convaiinnovations/laya")).encode()).hexdigest()[:12]
+    have = set(r2.ls(f"runtime/{key}/"))
+    if {f"runtime/{key}/wheels.tar", f"runtime/{key}/hf.tar"} <= have:
+        print(f"runtime bundle {key}: in R2, the box installs from it", flush=True)
+        env["WHEELS_URL"] = r2.link_get(f"runtime/{key}/wheels.tar", link_s)
+        env["HF_URL"] = r2.link_get(f"runtime/{key}/hf.tar", link_s)
+    else:
+        print(f"runtime bundle {key}: not in R2 yet, this box builds and uploads it", flush=True)
+        env["PUT_WHEELS_URL"] = r2.link_put(f"runtime/{key}/wheels.tar", link_s)
+        env["PUT_HF_URL"] = r2.link_put(f"runtime/{key}/hf.tar", link_s)
     body = "".join(f"{k}={shlex.quote(v)}\n" for k, v in env.items())
     r2.client().put_object(Bucket=r2.PRIVATE, Key=f"runs/{name}/job.env", Body=body.encode())
     job_env_url = r2.link_get(f"runs/{name}/job.env", link_s)
