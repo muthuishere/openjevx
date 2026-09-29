@@ -4,6 +4,9 @@ version: "3"
 # data mix, training knobs, gate thresholds). Run from this folder: `task all`.
 
 tasks:
+  cloud-setup:
+    desc: Create/refresh the Cloudflare side (private R2 bucket, self-destroy endpoint + its secrets from sec) and check it
+    cmds: [./cloud_setup.sh]
   dataprep:
     desc: Generate the rule-labelled sets (basics, conditions, IT-worker) into data/
     cmds: [python3 ft.py dataprep]
