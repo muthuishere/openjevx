@@ -22,7 +22,10 @@
     "generators": [
       "gen_basics.py",
       "gen_conditions.py",
-      "gen_it_worker.py"
+      "gen_it_worker.py",
+      "gen_logs.py",
+      "convert_public.py",
+      "convert_loghub_labels.py"
     ],
     "extra_train": [
       {
@@ -36,11 +39,46 @@
       {
         "file": "train/basics_train.jsonl",
         "repeat": 5
+      },
+      {
+        "file": "train/logs_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/bigvul_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/defect_detection_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/hdfs_logs_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/code_search_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/ms_marco_train.jsonl",
+        "repeat": 1
+      },
+      {
+        "file": "incoming/public/bgl_logs_train.jsonl",
+        "repeat": 1
       }
     ],
     "extra_eval": [
       "eval/it_worker_eval.jsonl",
-      "eval/conditions_eval.jsonl"
+      "eval/conditions_eval.jsonl",
+      "eval/logs_eval.jsonl",
+      "incoming/public/bigvul_eval.jsonl",
+      "incoming/public/defect_detection_eval.jsonl",
+      "incoming/public/hdfs_logs_eval.jsonl",
+      "incoming/public/code_search_eval.jsonl",
+      "incoming/public/ms_marco_eval.jsonl",
+      "incoming/public/bgl_logs_eval.jsonl"
     ],
     "budget_gb": 0.2
   },
@@ -49,7 +87,8 @@
       "train/train_openjevx.jsonl",
       "train/it_worker_train.jsonl",
       "train/conditions_train.jsonl",
-      "train/basics_train.jsonl"
+      "train/basics_train.jsonl",
+      "train/logs_train.jsonl"
     ],
     "leak_eval": [
       "eval/eval_openjevx.jsonl",
@@ -60,7 +99,10 @@
       "eval/cases_rules.jsonl",
       "eval/cases_llm.jsonl",
       "eval/test.json",
-      "eval/questions_1000.csv"
+      "eval/questions_1000.csv",
+      "eval/logs_eval.jsonl",
+      "gate/logs_gate.jsonl",
+      "gate/public_danluu_postmortems.jsonl"
     ]
   },
   "train": {
@@ -82,7 +124,8 @@
       "gate/basics_gate.jsonl",
       "gate/conditions_basics_gate.jsonl",
       "eval/conditions_eval.jsonl",
-      "eval/it_worker_eval.jsonl"
+      "eval/it_worker_eval.jsonl",
+      "gate/logs_gate.jsonl"
     ],
     "basics_files": [
       "gate/basics_gate.jsonl",
