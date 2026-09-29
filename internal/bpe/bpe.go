@@ -19,7 +19,13 @@ type Tokenizer struct {
 	re    *regexp2.Regexp
 }
 
+// Load returns the embedded tokenizer (ModernBERT / laya).
 func Load() (*Tokenizer, error) {
+	return Parse(tokenizerJSON)
+}
+
+// Parse reads a Hugging Face tokenizer.json (a model folder's own tokenizer).
+func Parse(tokenizerJSON []byte) (*Tokenizer, error) {
 	var raw struct {
 		Model struct {
 			Vocab  map[string]int `json:"vocab"`

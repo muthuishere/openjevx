@@ -4,8 +4,9 @@
 # Windows:        README.cmd
 # Config file openjevx.json next to this file:
 #   { "listen": "127.0.0.1:8000", "device": "cpu" }
-# device: cpu uses the embedded int8 model. gpu requires "model" and a CUDA
-# ONNX Runtime and refuses to fall back to CPU.
+# The model is the folder model/ next to this file (from openjevx-model-<version>.tar.gz);
+# "model" in openjevx.json points elsewhere. gpu needs a CUDA ONNX Runtime and
+# refuses to fall back to CPU.
 cd "$(dirname "$0")" || exit 1
 if [ ! -x ./openjevx ]; then
   echo "OpenJevX: missing ./openjevx next to README" >&2

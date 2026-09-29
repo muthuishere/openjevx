@@ -10,11 +10,12 @@ finetuning/config.example.json; edit it there. Data paths are relative to the da
   ft.py package [--smoke]   build the shard in <data>/work/shards/<version>[-smoke]/ and run every
                             row through the trainer's build_item on CPU (needs uv)
   ft.py train [--smoke]     run the shard on config.provider (gpu/<provider>.py), get the 8-bit ONNX back
-  ft.py gate MODEL.onnx     serve MODEL locally and score it; exit 1 if it misses the config thresholds
+  ft.py gate MODEL          serve MODEL (a model folder, or a .onnx for old models) locally and score it;
+                           exit 1 if it misses the config thresholds
   ft.py all             every step in order, with a smoke run before the full run
 
 A provider is finetuning/gpu/<name>.py taking `SHARD_DIR SHARD` plus its own options from
-config.providers.<name>; it must print RUN_DIR=<dir> and leave <dir>/out/openjevx.w8.onnx
+config.providers.<name>; it must print RUN_DIR=<dir> and leave the model folder <dir>/out/model/
 (runs go under <data>/work/runs/).
 """
 import json, os, shutil, subprocess, sys, time, urllib.request
@@ -105,7 +106,10 @@ def train(smoke):
             run_dir = Path(line.strip().split("=", 1)[1])
     if proc.wait() != 0 or run_dir is None:
         sys.exit(f"{name} provider failed")
-    return run_dir / "out" / "openjevx.w8.onnx"
+    model = run_dir / "out" / "model"
+    if not (model / "config.json").exists():
+        sys.exit(f"{name} provider left no model folder at {model}")
+    return model
 
 
 def free_port():
@@ -121,7 +125,12 @@ def gate(model):
     # instead of this model (that happened once). Use a free port and a temporary jevx profile.
     g["port"] = free_port()
     model = Path(model).resolve()
-    mb = model.stat().st_size // 2**20
+    graph = model / "openjevx.w8.onnx" if model.is_dir() else model
+    if not graph.is_file() or (model.is_dir() and not (model / "config.json").is_file()):
+        sys.exit(f"GATE FAIL: {model} is not a model folder (openjevx.w8.onnx + config.json) or a .onnx file")
+    mb = graph.stat().st_size // 2**20
+    # A run's folder is <run>/out/model: name its gate report after the run, not "model".
+    label = model.stem if not model.is_dir() else model.parent.parent.name if model.name == "model" else model.name
     if mb > CFG["model"]["max_w8_mb"]:
         sys.exit(f"GATE FAIL: {model.name} is {mb} MB, limit {CFG['model']['max_w8_mb']}")
     binary, runtime = ROOT / ".local/openjevx", next(ROOT.glob(".local/libonnxruntime.*"), None)
@@ -160,7 +169,7 @@ def gate(model):
                 if m["confident_wrong"] > g["max_basics_confident_wrong"]:
                     failures.append(f"{f}: confidently wrong {m['confident_wrong']:.1%} > {g['max_basics_confident_wrong']:.0%}")
         profile = f"openjevx-gate-{g['port']}"
-        subprocess.run(["jevx", "profile", "add", profile, url, "--model", f"openjevx-gate-{model.stem}"],
+        subprocess.run(["jevx", "profile", "add", profile, url, "--model", f"openjevx-gate-{label}"],
                        capture_output=True, check=True)
         try:
             j = subprocess.run(["bash", FT / "gate/jevx13.sh", profile], text=True, capture_output=True, cwd=ROOT)
@@ -172,7 +181,7 @@ def gate(model):
         if correct < g["min_jevx13_correct"]:
             failures.append(f"jevx 13 fundamentals: {correct}/13 < {g['min_jevx13_correct']}")
         report["pass"], report["failures"] = not failures, failures
-        (WORK / "gate" / f"{model.stem}.json").write_text(json.dumps(report, indent=2))
+        (WORK / "gate" / f"{label}.json").write_text(json.dumps(report, indent=2))
         print("GATE PASS" if not failures else "GATE FAIL:\n  " + "\n  ".join(failures))
         if failures:
             sys.exit(1)

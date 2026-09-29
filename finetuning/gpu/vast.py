@@ -12,9 +12,10 @@ usage: vast.py SHARD_DIR SHARD [--max-price-per-hour 0.6] [--timeout-hours 7]
    The box trains, uploads its results to R2 and destroys itself through the destroy endpoint.
 4. Wait for runs/<run>/status.json in R2, download the results, make sure the box is gone.
    Backstop: if the box is still alive past the deadline, destroy it from here.
-Prints RUN_DIR=<dir>; results land in <dir>/out/ (openjevx.w8.onnx, checkpoint.tar.gz, eval_report.json, job.log).
+Prints RUN_DIR=<dir>; results land in <dir>/out/ (model/ = the model folder the server runs,
+openjevx.w8.onnx, checkpoint.tar.gz, eval_report.json, job.log).
 """
-import argparse, hashlib, json, os, shlex, subprocess, sys, time
+import argparse, hashlib, json, os, shlex, subprocess, sys, tarfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,7 +28,7 @@ IMAGE = os.environ.get("VAST_IMAGE", "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runt
 SSH_PUB = Path.home() / ".ssh/id_ed25519_muthuishere.pub"
 MAX_W8_MB = os.environ.get("MAX_W8_MB", "750")
 START_MIN = int(os.environ.get("VAST_START_MINUTES", "15"))
-RESULTS = {"W8": "openjevx.w8.onnx", "CKPT": "checkpoint.tar.gz", "REPORT": "eval_report.json",
+RESULTS = {"W8": "openjevx.w8.onnx", "MODEL": "model.tar", "CKPT": "checkpoint.tar.gz", "REPORT": "eval_report.json",
            "LOG": "job.log", "STATUS": "status.json"}
 
 
@@ -93,7 +94,8 @@ def main():
     for s, f in files.items():
         print(f"uploading {f.name} to r2://{r2.PRIVATE}/{shard_key}/", flush=True)
         r2.put(f, f"{shard_key}/{s}")
-    env = {"SHARD": a.shard, "MAX_W8_MB": MAX_W8_MB, "DEADLINE_HOURS": str(a.timeout_hours),
+    env = {"SHARD": a.shard, "MAX_W8_MB": MAX_W8_MB,
+           "MODEL_VERSION": shard_dir.name.removeprefix("v").removesuffix("-smoke"), "DEADLINE_HOURS": str(a.timeout_hours),
            "KILL_URL": KILL_URL, "KILL_TOKEN": kill_token,
            "TRAIN_URL": r2.link_get(f"{shard_key}/train.jsonl.gz", link_s),
            "EVAL_URL": r2.link_get(f"{shard_key}/eval.jsonl.gz", link_s),
@@ -175,7 +177,14 @@ def main():
     print(f"status: {status or 'none (box died or timed out)'}", flush=True)
     if not status or status.get("status") != "complete":
         raise SystemExit(f"run did not complete; log: {run_dir / 'out/job.log'}")
-    w8 = run_dir / "out/openjevx.w8.onnx"
+    model_tar = run_dir / "out/model.tar"
+    if not model_tar.exists():
+        raise SystemExit(f"run completed but model.tar is missing; log: {run_dir / 'out/job.log'}")
+    with tarfile.open(model_tar) as tar:  # -> <run>/out/model/
+        tar.extractall(run_dir / "out", filter="data")
+    model_tar.unlink()
+    print(f"model folder: {run_dir / 'out/model'}", flush=True)
+    w8 = run_dir / "out/model/openjevx.w8.onnx"
     mb = w8.stat().st_size // 2**20
     print(f"8-bit ONNX: {w8} ({mb} MB, limit {MAX_W8_MB})", flush=True)
     if mb > int(MAX_W8_MB):

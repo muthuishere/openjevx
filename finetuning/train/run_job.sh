@@ -3,8 +3,9 @@
 #   0. runtime (Python wheels + base model) from our R2 bundle when it exists
 #   1. fetch its settings from JOB_ENV_URL (a signed R2 link; the file holds only signed links + the kill token)
 #   2. download the shard from R2, train, calibrate, export ONNX on CUDA, quantize to 8-bit
-#   3. fail if the 8-bit ONNX is over MAX_W8_MB (750); upload the 8-bit ONNX, the trainable checkpoint,
-#      the eval report, the log and a status file to R2 through signed PUT links
+#   3. fail if the 8-bit ONNX is over MAX_W8_MB (750); build the model folder (ONNX + config.json with the
+#      calibrated temperatures + tokenizer.json) as model.tar; upload it, the 8-bit ONNX, the trainable
+#      checkpoint, the eval report, the log and a status file to R2 through signed PUT links
 #   4. destroy itself through the destroy endpoint (which holds the Vast key; this box never does)
 # A timer destroys the box after DEADLINE_HOURS whatever happens. Markers: /root/JOB_COMPLETE or /root/JOB_FAILED.
 # Usage: JOB_ENV_URL=<signed link> bash finetuning/train/run_job.sh
@@ -45,7 +46,7 @@ if [ "$SHARD" = smoke ]; then TR=train_smoke; EV=eval_smoke; else TR=train; EV=e
 fetch "$TRAIN_URL" "$IN/$TR.jsonl.gz"
 fetch "$EVAL_URL" "$IN/$EV.jsonl.gz"
 fetch "$RUN_URL" "$IN/run.json"
-cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
+cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py,make_model_folder.py} "$JOB/"
 
 # Runtime: the stock PyTorch image already has PyTorch + CUDA; install the few extra packages from PyPI.
 export HF_HOME=/root/hf
@@ -72,8 +73,14 @@ echo "8-bit ONNX: ${MB} MB (limit ${MAX_W8_MB:-750})"
 rm -rf "$OUT/fp32"
 # The trainable checkpoint (weights, tokenizer, config) so the model can be fine-tuned again.
 tar -C "$OUT" -czf "$OUT/checkpoint.tar.gz" openjevx-model
+# The model folder the server runs: graph + config.json (this model's temperatures) + tokenizer.json.
+MAX_LEN=$(python -c "import json; print(json.load(open('$IN/run.json')).get('env', {}).get('MAX_LEN', 1024))")
+python make_model_folder.py "$OUT/model" "$OUT/openjevx.w8.onnx" "$OUT/openjevx-model/eval_report.json" \
+  "$OUT/openjevx-model/tokenizer/tokenizer.json" --version "${MODEL_VERSION:-0.0.0}" --max-len "$MAX_LEN"
+tar -C "$OUT" -cf "$OUT/model.tar" model
 put "$PUT_W8_URL" "$OUT/openjevx.w8.onnx"
 put "$PUT_CKPT_URL" "$OUT/checkpoint.tar.gz"
+put "$PUT_MODEL_URL" "$OUT/model.tar"
 put "$PUT_REPORT_URL" "$OUT/openjevx-model/eval_report.json"
 touch /root/JOB_COMPLETE
 trap - ERR

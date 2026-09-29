@@ -2,11 +2,12 @@ version: "3"
 
 vars:
   ORT_VERSION: 1.22.0
+  MODEL_VERSION: 0.5.0
   LOCAL: .local
 
 tasks:
   setup:
-    desc: Fetch the ONNX Runtime library and the 4-bit model into .local/
+    desc: Fetch the ONNX Runtime library and the model folder (.local/model/) into .local/
     cmds:
       - mkdir -p {{.LOCAL}}
       - |
@@ -23,8 +24,10 @@ tasks:
           rm -rf {{.LOCAL}}/$pkg
         fi
       - |
-        if [ ! -f {{.LOCAL}}/openjevx.w8.onnx ]; then
-          curl -fsSL -o {{.LOCAL}}/openjevx.w8.onnx.zip https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx.zip && unzip -p {{.LOCAL}}/openjevx.w8.onnx.zip openjevx.w8.onnx > {{.LOCAL}}/openjevx.w8.onnx && rm {{.LOCAL}}/openjevx.w8.onnx.zip
+        # The model is a folder (graph + config.json with its temperatures + tokenizer.json); the server
+        # finds .local/model/ next to .local/openjevx. An old .local/openjevx.w8.onnx still works as a fallback.
+        if [ ! -f {{.LOCAL}}/model/config.json ] && [ ! -f {{.LOCAL}}/openjevx.w8.onnx ]; then
+          curl -fsSL https://github.com/muthuishere/openjevx/releases/download/v{{.MODEL_VERSION}}/openjevx-model-{{.MODEL_VERSION}}.tar.gz | tar -xz -C {{.LOCAL}}
         fi
 
   build:
@@ -45,7 +48,7 @@ tasks:
       - go test ./...
 
   package:
-    desc: Build macOS, Linux and Windows release packages here (needs zig)
+    desc: Build macOS, Linux and Windows packages plus the model folder archive here (needs zig; MODEL_DIR=.local/model)
     cmds:
       - ./scripts/package.sh
 
@@ -63,4 +66,4 @@ tasks:
     requires: {vars: [VERSION]}
     cmds:
       - gh release view {{.VERSION}} >/dev/null 2>&1 || gh release create {{.VERSION}} --title "OpenJevX {{.VERSION}}" --notes "OpenJevX server {{.VERSION}}"
-      - gh release upload {{.VERSION}} --clobber {{.LOCAL}}/dist/openjevx-*.tar {{.LOCAL}}/dist/openjevx-*.zip {{.LOCAL}}/dist/SHA256SUMS-server
+      - gh release upload {{.VERSION}} --clobber {{.LOCAL}}/dist/openjevx-*.tar {{.LOCAL}}/dist/openjevx-*.zip {{.LOCAL}}/dist/openjevx-model-*.tar.gz {{.LOCAL}}/dist/SHA256SUMS-server

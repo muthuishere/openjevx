@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { chmodSync, createWriteStream, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform, arch } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
 
-const version = "v0.4.0";
+const version = "v0.5.0";
+const modelAsset = `openjevx-model-${version.slice(1)}.tar.gz`;
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;
 const home = process.env.OPENJEVX_HOME || join(homedir(), ".local", "share", "openjevx");
 const binDir = process.env.OPENJEVX_BIN || join(homedir(), ".local", "bin");
@@ -39,15 +40,28 @@ function download(url, dest) {
   });
 }
 
-if (!existsSync(exe)) {
-  mkdirSync(home, { recursive: true });
-  const archive = join(home, asset);
-  console.log(`Downloading ${asset} over HTTPS...`);
-  await download(`${base}/${asset}`, archive);
+// A release is a small binary per platform plus one model folder (model/: graph, config.json, tokenizer.json).
+const stamp = join(home, "VERSION");
+let installed = "";
+try { installed = readFileSync(stamp, "utf8").trim(); } catch {}
+async function fetchAndUnpack(name) {
+  const archive = join(home, name);
+  console.log(`Downloading ${name} over HTTPS...`);
+  await download(`${base}/${name}`, archive);
   const extracted = spawnSync("tar", ["-xf", archive, "-C", home], { stdio: "inherit" });
   if (extracted.status !== 0) process.exit(extracted.status || 1);
+  rmSync(archive, { force: true });
+}
+if (!existsSync(exe) || installed !== version) {
+  mkdirSync(home, { recursive: true });
+  await fetchAndUnpack(asset);
   if (!windows) chmodSync(exe, 0o755);
-  writeFileSync(join(home, "openjevx.json"), JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
+  rmSync(join(home, "model"), { recursive: true, force: true });
+  await fetchAndUnpack(modelAsset);
+  if (!existsSync(join(home, "openjevx.json"))) {
+    writeFileSync(join(home, "openjevx.json"), JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
+  }
+  writeFileSync(stamp, version + "\n");
 }
 
 mkdirSync(binDir, { recursive: true });

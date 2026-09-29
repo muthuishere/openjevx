@@ -20,10 +20,10 @@ tasks:
     desc: Package and run the ~10-minute smoke job on the GPU provider
     cmds: [python3 ft.py package --smoke, python3 ft.py train --smoke]
   train:
-    desc: Package and run the full job; brings back the 8-bit ONNX (<= 750 MB) and the checkpoint
+    desc: Package and run the full job; brings back the model folder (8-bit ONNX <= 750 MB + config + tokenizer) and the checkpoint
     cmds: [python3 ft.py package, python3 ft.py train]
   gate:
-    desc: "Serve a model locally and score it against the thresholds (task gate -- path/to/openjevx.w8.onnx)"
+    desc: "Serve a model locally and score it against the thresholds (task gate -- path/to/model-folder, or an old .onnx)"
     cmds: [python3 ft.py gate {{.CLI_ARGS}}]
   all:
     desc: dataprep -> validate -> smoke -> full train -> gate, stopping at the first failure

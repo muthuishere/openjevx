@@ -18,10 +18,33 @@ http://127.0.0.1:21118/v1/systemone
 Change it in `openjevx.json`:
 
 ```json
-{ "listen": "127.0.0.1:21118", "device": "auto" }
+{ "listen": "127.0.0.1:21118", "device": "auto", "model": "model" }
 ```
 
 `device` is `auto`, `cpu`, or `gpu`. `auto` uses the GPU when CUDA loads, otherwise CPU. `gpu` does not fall back.
+
+## The model is a folder
+
+The binary holds no model. A model is a folder, shipped in a release as `openjevx-model-<version>.tar.gz`:
+
+```
+model/
+  openjevx.w8.onnx   the graph (8-bit weight-only)
+  config.json        {"name":"openjevx","version":"0.5.0",
+                      "temperature":{"choice":..,"score":..,"noul":..},
+                      "max_len":1024,"head_max":256,
+                      "special_ids":{"cls":50281,"sep":50282,"pad":50283,"mask":50284},
+                      "quantization":"8-bit weight-only","base_model":"convaiinnovations/laya",
+                      "sha256":"<of the onnx>"}
+  tokenizer.json     optional; the built-in ModernBERT tokenizer otherwise
+```
+
+`temperature` is that model's own confidence calibration, so each model carries its own. `"model"` in
+`openjevx.json` names a folder (or, for old models, a bare `.onnx` file, which gets the old built-in settings).
+Unset, the server looks next to itself for `model/`, then `models/openjevx/`, then `openjevx.w8.onnx`. At startup
+it logs the model path, version, temperatures and sha256 (and refuses a graph whose sha256 does not match
+`config.json`); `GET /health` reports `version` and `sha256`. Build a folder with
+`python finetuning/export/make_model_folder.py OUT_DIR model.onnx eval_report.json [tokenizer.json] --version X`.
 
 ## One step
 
@@ -37,18 +60,22 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
-tar -xf openjevx-darwin-arm64.tar && ./openjevx
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
 ```
 
 Linux:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
-tar -xf openjevx-linux-amd64.tar && ./openjevx
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip and run `openjevx.exe`.
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-windows-amd64.zip and
+https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz, unpack both into the
+same folder (`tar -xzf openjevx-model-0.5.0.tar.gz`) and run `openjevx.exe`.
 
 ## Docker
 
@@ -94,13 +121,13 @@ Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
 
 ## Run locally from source
 
-Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the 8-bit model into `.local/`, builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
+Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 
-Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
+Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
 ## Fine-tune it further
 
-The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
+The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
 
 **Fine-tune kit (v0.4.0, 2.2 GB):** [openjevx-finetune-v0.4.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz.sha256)). It holds the fine-tuned checkpoint (`model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`), both ONNX files (8-bit and fp32), and the training scripts. No training data. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
@@ -111,4 +138,6 @@ The shipped model is `openjevx.w8.onnx` (8-bit weight-only; activations stay flo
    destroys itself ([ADR 0009](docs/adr/0009-one-job-gpu-run-via-r2.md)). Settings live in
    `~/.config/openjevx/config.json`, data in `~/openjevx/data`. On your own CUDA box, run the steps in
    [`finetuning/ft.py`](finetuning/ft.py) and [`finetuning/train/run_job.sh`](finetuning/train/run_job.sh) directly.
-4. **Ship**: the job already produces `openjevx.w8.onnx` (or run `python finetuning/export/quantize_w8.py openjevx.onnx openjevx.w8.onnx`), then set `"model"` in `openjevx.json` or rebuild with `task package`.
+4. **Ship**: the job already produces the model folder `<run>/out/model/` with that run's calibration temperatures
+   (or build one with `finetuning/export/make_model_folder.py`), then set `"model"` in `openjevx.json` to it, or
+   `MODEL_DIR=<folder> task package`.

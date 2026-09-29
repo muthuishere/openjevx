@@ -14,8 +14,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - name: Embed the small int8 model
-        run: curl -fsSL -o internal/assets/model.onnx https://huggingface.co/muthuishere/openjevx/resolve/main/openjevx.int8.onnx
       - name: ONNX Runtime CPU
         run: |
           curl -fsSL -o ort.tgz https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz
@@ -34,8 +32,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - name: Embed the small int8 model
-        run: curl.exe -fsSL -o internal/assets/model.onnx https://huggingface.co/muthuishere/openjevx/resolve/main/openjevx.int8.onnx
       - name: ONNX Runtime CPU
         run: |
           curl.exe -fsSL -o ort.zip https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-1.22.0.zip

@@ -3,7 +3,7 @@
 ## Where things live
 - **Code is in the repo. Data, settings and generated output are not.**
 - Fine-tuning code: `finetuning/` → `dataprep/` · `datavalidate/` · `train/` · `export/` · `gate/` · `gpu/<provider>.py`.
-  One runner, `finetuning/ft.py`; Taskfile in `finetuning/` (`task all`, `task smoke`, `task train`, `task gate -- model.onnx`).
+  One runner, `finetuning/ft.py`; Taskfile in `finetuning/` (`task all`, `task smoke`, `task train`, `task gate -- <model folder>`).
 - Settings: `~/.config/openjevx/config.json` (created from `finetuning/config.example.json`; override with
   `$OPENJEVX_FT_CONFIG`). Change the example when defaults change; never hard-code a setting in a script.
 - Data: `~/openjevx/data/` (override with `$OPENJEVX_DATA`). All paths come from `finetuning/paths.py`:
@@ -12,7 +12,9 @@
 - Agent reports: `llmresults/` (ADR 0005). Decisions: `docs/adr/`.
 
 ## Model rules
-- We ship **one model file: 8-bit ONNX, at most 750 MB** (`model.max_w8_mb`). The GPU job quantizes on the
+- We ship **one model folder**: `openjevx.w8.onnx` (8-bit, at most 750 MB, `model.max_w8_mb`) + `config.json`
+  (that model's calibration temperatures, lengths, ids, sha256) + `tokenizer.json`. Never embed a model in the binary
+  and never hard-code temperatures in the server: they belong to one model. The GPU job quantizes on the
   box and fails over the limit; the gate checks it again. We also keep the trainable checkpoint so the
   model can be fine-tuned again.
 - Every run is one job, end to end: data ready → validate (leakage check) → smoke run → full run → gate.
@@ -23,7 +25,7 @@
 
 ## GPUs and storage
 - GPU work runs on a rented provider, **not Kaggle**. Today it is Vast.ai (`gpu/vast.py`); a new provider is one
-  `gpu/<name>.py` that prints `RUN_DIR=<dir>` and leaves `<dir>/out/openjevx.w8.onnx`, plus one line in the config.
+  `gpu/<name>.py` that prints `RUN_DIR=<dir>` and leaves the model folder `<dir>/out/model/`, plus one line in the config.
 - **The box does the whole job and cleans up after itself.** Inputs come from Cloudflare R2 through signed links;
   results (8-bit ONNX, checkpoint, eval report, log, status) go back to R2 the same way; then the box destroys
   itself by calling the destroy endpoint (`finetuning/destroy-worker/`, a Cloudflare Pages Function that holds the

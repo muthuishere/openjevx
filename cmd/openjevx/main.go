@@ -15,7 +15,6 @@ import (
 	ort "github.com/yalue/onnxruntime_go"
 
 	"github.com/muthuishere/openjevx/internal/assets"
-	"github.com/muthuishere/openjevx/internal/bpe"
 	"github.com/muthuishere/openjevx/internal/decide"
 	"github.com/muthuishere/openjevx/internal/stats"
 	"github.com/muthuishere/openjevx/recipes"
@@ -37,19 +36,28 @@ func main() {
 		return
 	}
 	cfg := loadConfig()
-	tok, err := bpe.Load()
+	exe, _ := os.Executable()
+	path, err := resolveModel(cfg.Model, filepath.Dir(exe))
 	if err != nil {
 		log.Fatal(err)
 	}
-	model, err := modelBytes(cfg)
+	m, err := loadModel(path)
 	if err != nil {
 		log.Fatal(err)
 	}
+	tokSrc := m.TokFile
+	if tokSrc == "" {
+		tokSrc = "embedded"
+	}
+	log.Printf("model %s version %s sha256 %s temperatures choice=%g score=%g noul=%g max_len %d head_max %d tokenizer %s",
+		m.Path, m.Version, m.SHA256[:12], m.Params.Temperature[0], m.Params.Temperature[1], m.Params.Temperature[2],
+		m.Params.MaxLen, m.Params.HeadMax, tokSrc)
 	if err := startRuntime(cfg); err != nil {
 		log.Fatal(err)
 	}
 	defer ort.DestroyEnvironment()
-	session, used, err := openSession(cfg, model)
+	session, used, err := openSession(cfg, m.Graph)
+	m.Graph = nil // the session holds its own copy
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +92,7 @@ func main() {
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"status": "ok", "device": cfg.Device, "model": "openjevx"})
+		writeJSON(w, map[string]any{"status": "ok", "device": cfg.Device, "model": m.Name, "version": m.Version, "sha256": m.SHA256})
 	})
 	http.HandleFunc("/v1/systemone", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -130,9 +138,9 @@ func main() {
 			answer(err.Error(), http.StatusBadRequest)
 			return
 		}
-		items := decide.Encode(tok, stateText(req.State), qs)
+		items := decide.Encode(m.Tokenizer, m.Params, stateText(req.State), qs)
 		inferMu.Lock()
-		logits, width, act, err := run(session, items)
+		logits, width, act, err := run(session, m.Params.PAD, items)
 		inferMu.Unlock()
 		if err != nil {
 			answer(err.Error(), http.StatusInternalServerError)
@@ -145,7 +153,7 @@ func main() {
 		tokens := tokenCount(items)
 		writeJSON(w, map[string]any{
 			"model":   "openjevx",
-			"answers": decide.Decode(ids, qs, items, logits, width, act),
+			"answers": decide.Decode(m.Params, ids, qs, items, logits, width, act),
 			"usage":   map[string]int{"input_tokens": tokens, "output_tokens": 0},
 		})
 		// Recorded after the answer is written so stats never delay the client.
@@ -159,7 +167,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
 
-func run(session *ort.DynamicAdvancedSession, items []decide.Item) ([]float32, int, []float32, error) {
+func run(session *ort.DynamicAdvancedSession, pad int, items []decide.Item) ([]float32, int, []float32, error) {
 	n := len(items)
 	length, markers := 0, 0
 	for _, item := range items {
@@ -177,7 +185,7 @@ func run(session *ort.DynamicAdvancedSession, items []decide.Item) ([]float32, i
 			attn[i*length+j] = 1
 		}
 		for j := len(item.IDs); j < length; j++ {
-			ids[i*length+j] = 50283
+			ids[i*length+j] = int64(pad)
 		}
 		for j, m := range item.Markers {
 			mpos[i*markers+j] = int64(m)
@@ -225,21 +233,6 @@ func run(session *ort.DynamicAdvancedSession, items []decide.Item) ([]float32, i
 		return nil, 0, nil, err
 	}
 	return outLogits.GetData(), markers, outAct.GetData(), nil
-}
-
-func modelBytes(cfg config) ([]byte, error) {
-	if cfg.Model != "" {
-		return os.ReadFile(cfg.Model)
-	}
-	if len(assets.Model) > 1024 {
-		return assets.Model, nil
-	}
-	path := cfg.Model
-	if path == "" {
-		exe, _ := os.Executable()
-		path = filepath.Join(filepath.Dir(exe), "openjevx.w8.onnx")
-	}
-	return os.ReadFile(path)
 }
 
 func startRuntime(cfg config) error {
@@ -400,18 +393,22 @@ func bytesHasPrefix(b, prefix []byte) bool {
 
 const usage = `OpenJevX
 
-One executable. No Python. The small int8 ONNX model is inside the release binary.
+One executable. No Python. The model is a folder next to it (model/): the 8-bit ONNX graph,
+config.json (its calibration temperatures) and tokenizer.json.
 
 Linux:    ./README
 Windows:  README.cmd
 
 Config file openjevx.json, next to the executable:
 
-  { "listen": "127.0.0.1:8000", "device": "cpu" }
+  { "listen": "127.0.0.1:8000", "device": "cpu", "model": "model" }
+
+model is a model folder (or, for old models, a .onnx file). Unset: model/ or models/openjevx/
+next to the executable, then openjevx.w8.onnx next to it.
 
 device is cpu or gpu. gpu refuses to start unless the CUDA ONNX Runtime provider loads.
-The embedded model is int8 and is the small CPU build. A gpu config can name a separate
-CUDA graph with "model".
+The shipped model is 8-bit and is the small CPU build. A gpu config can name a separate
+model folder with "model".
 
 jevx:
   jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx

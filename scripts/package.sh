@@ -1,16 +1,24 @@
 #!/bin/sh
 # Build every OpenJevX release package on this machine (no CI).
 # Go cross-compiles; zig is the C compiler for the cgo ONNX Runtime binding.
-# Output: .local/dist/openjevx-{darwin-arm64,linux-amd64}.tar, openjevx-windows-amd64.zip
+# A release is a small binary per platform plus ONE model folder archive (no model inside the binary):
+#   .local/dist/openjevx-{darwin-arm64,linux-amd64}.tar, openjevx-windows-amd64.zip
+#   .local/dist/openjevx-model-<version>.tar.gz   (model/: openjevx.w8.onnx, config.json, tokenizer.json)
+# Unpack both into the same directory: the server finds model/ next to itself.
+# MODEL_DIR (default .local/model) is the model folder to ship; build one with
+# finetuning/export/make_model_folder.py, or take <run>/out/model from a training run.
 set -eu
 ORT=${ORT_VERSION:-1.22.0}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$ROOT/.local/dist
 CACHE=$ROOT/.local/ort
-MODEL=$ROOT/.local/openjevx.w8.onnx
+MODEL_DIR=${MODEL_DIR:-$ROOT/.local/model}
 cd "$ROOT"
 mkdir -p "$OUT" "$CACHE"
-[ -f "$MODEL" ] || { curl -fsSL -o "$MODEL.zip" https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx.w8.onnx.zip && unzip -p "$MODEL.zip" openjevx.w8.onnx > "$MODEL" && rm "$MODEL.zip"; }
+for f in openjevx.w8.onnx config.json tokenizer.json; do
+  [ -f "$MODEL_DIR/$f" ] || { echo "MODEL_DIR=$MODEL_DIR is not a model folder (missing $f)" >&2; exit 1; }
+done
+VERSION=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$MODEL_DIR/config.json")
 
 fetch() { # $1 package name, $2 extension, $3 library path inside
   [ -f "$CACHE/$(basename "$3")" ] && return
@@ -21,11 +29,6 @@ fetch() { # $1 package name, $2 extension, $3 library path inside
 fetch onnxruntime-osx-arm64-$ORT tgz lib/libonnxruntime.dylib
 fetch onnxruntime-linux-x64-$ORT tgz lib/libonnxruntime.so
 fetch onnxruntime-win-x64-$ORT zip lib/onnxruntime.dll
-
-# Embed the real model for the build, restore the placeholder afterwards.
-cp internal/assets/model.onnx "$OUT/.placeholder.onnx"
-trap 'cp "$OUT/.placeholder.onnx" internal/assets/model.onnx' EXIT
-cp "$MODEL" internal/assets/model.onnx
 
 pack() { # $1 name, $2 GOOS, $3 CC target (empty = native), $4 exe, $5 lib, $6 launcher
   dir="$OUT/$1"; rm -rf "$dir"; mkdir -p "$dir"
@@ -41,4 +44,11 @@ pack windows-amd64 windows x86_64-windows-gnu openjevx.exe onnxruntime.dll READM
 (cd "$OUT/darwin-arm64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-darwin-arm64.tar README openjevx openjevx.json libonnxruntime.dylib)
 (cd "$OUT/linux-amd64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-linux-amd64.tar README openjevx openjevx.json libonnxruntime.so)
 (cd "$OUT/windows-amd64" && rm -f ../openjevx-windows-amd64.zip && zip -q ../openjevx-windows-amd64.zip README.cmd openjevx.exe openjevx.json onnxruntime.dll)
-(cd "$OUT" && shasum -a 256 openjevx-*.tar openjevx-*.zip > SHA256SUMS-server && cat SHA256SUMS-server)
+
+# The model folder, always unpacked as model/.
+rm -rf "$OUT/model" && mkdir -p "$OUT/model"
+for f in openjevx.w8.onnx config.json tokenizer.json; do ln "$MODEL_DIR/$f" "$OUT/model/$f" 2>/dev/null || cp "$MODEL_DIR/$f" "$OUT/model/$f"; done
+rm -f "$OUT"/openjevx-model-*.tar.gz
+(cd "$OUT" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -czf "openjevx-model-$VERSION.tar.gz" model && rm -rf model)
+echo "built openjevx-model-$VERSION.tar.gz"
+(cd "$OUT" && shasum -a 256 openjevx-*.tar openjevx-*.zip openjevx-model-*.tar.gz > SHA256SUMS-server && cat SHA256SUMS-server)
