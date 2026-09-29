@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +17,7 @@ import (
 	ort "github.com/yalue/onnxruntime_go"
 
 	"github.com/muthuishere/openjevx/internal/assets"
+	"github.com/muthuishere/openjevx/internal/bpe"
 	"github.com/muthuishere/openjevx/internal/decide"
 	"github.com/muthuishere/openjevx/internal/stats"
 	"github.com/muthuishere/openjevx/recipes"
@@ -30,12 +33,25 @@ type config struct {
 
 func main() {
 	help := flag.Bool("help", false, "show help")
+	modelFlag := flag.String("model", "", "ONNX model file to serve instead of the embedded one")
+	deviceFlag := flag.String("device", "", "auto, cpu or gpu")
 	flag.Parse()
 	if *help || (len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help")) {
 		fmt.Print(usage)
 		return
 	}
 	cfg := loadConfig()
+	// Precedence: flag, then environment, then openjevx.json, then the default model location.
+	for _, v := range []string{os.Getenv("OPENJEVX_MODEL"), *modelFlag} {
+		if v != "" {
+			cfg.Model = v
+		}
+	}
+	for _, v := range []string{os.Getenv("OPENJEVX_DEVICE"), *deviceFlag} {
+		if v != "" {
+			cfg.Device = normalDevice(v)
+		}
+	}
 	exe, _ := os.Executable()
 	path, err := resolveModel(cfg.Model, filepath.Dir(exe))
 	if err != nil {
@@ -56,7 +72,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer ort.DestroyEnvironment()
-	session, used, err := openSession(cfg, m.Graph)
+	probe, err := probeItems(m.Tokenizer, m.Params)
+	if err != nil {
+		log.Fatal(err)
+	}
+	session, used, err := openSession(cfg, m.Graph, probe)
 	m.Graph = nil // the session holds its own copy
 	if err != nil {
 		log.Fatal(err)
@@ -257,40 +277,117 @@ func startRuntime(cfg config) error {
 	return ort.InitializeEnvironment()
 }
 
-func openSession(cfg config, model []byte) (*ort.DynamicAdvancedSession, string, error) {
-	names := []string{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"}
-	outs := []string{"logits", "act_logits"}
-	if cfg.Device != "cpu" {
-		if session, err := sessionWithCUDA(model, names, outs); err == nil {
-			return session, "gpu", nil
-		} else if cfg.Device == "gpu" {
-			return nil, "", fmt.Errorf("device gpu was set and CUDA did not load: %w", err)
-		}
+// probeItems is one fixed request used to check that a GPU provider really runs the model.
+func probeItems(tok *bpe.Tokenizer, p decide.Params) ([]decide.Item, error) {
+	raw := map[string]json.RawMessage{
+		"a": json.RawMessage(`{"type":"noul","instructions":"Is the customer angry?"}`),
+		"b": json.RawMessage(`{"type":"choice","instructions":"Which team?","criteria":{"1":"Refunds","2":"Damaged parcels","3":"Login"}}`),
 	}
-	opts, err := ort.NewSessionOptions()
+	_, qs, err := decide.ParseQuestions(raw, []string{"a", "b"})
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	defer opts.Destroy()
-	session, err := ort.NewDynamicAdvancedSessionWithONNXData(model, names, outs, opts)
-	if err != nil {
-		return nil, "", err
-	}
-	return session, "cpu", nil
+	return decide.Encode(tok, p, "Refund request: the parcel arrived crushed and the customer is furious.", qs), nil
 }
 
-func sessionWithCUDA(model []byte, names, outs []string) (*ort.DynamicAdvancedSession, error) {
+// agree runs the probe on both sessions and fails unless the GPU logits match the CPU ones.
+func agree(gpu, cpu *ort.DynamicAdvancedSession, probe []decide.Item) error {
+	want, _, _, err := run(cpu, decide.Defaults().PAD, probe)
+	if err != nil {
+		return fmt.Errorf("cpu probe: %w", err)
+	}
+	got, _, _, err := run(gpu, decide.Defaults().PAD, probe)
+	if err != nil {
+		return fmt.Errorf("probe run: %w", err)
+	}
+	if len(got) != len(want) {
+		return fmt.Errorf("probe gave %d logits, cpu %d", len(got), len(want))
+	}
+	worst := 0.0
+	for i := range got {
+		d := math.Abs(float64(got[i] - want[i]))
+		if math.IsNaN(d) {
+			return fmt.Errorf("probe gave NaN")
+		}
+		worst = math.Max(worst, d)
+	}
+	if worst > 0.25 {
+		return fmt.Errorf("probe logits differ from cpu by %.3f", worst)
+	}
+	return nil
+}
+
+func openSession(cfg config, model []byte, probe []decide.Item) (*ort.DynamicAdvancedSession, string, error) {
+	names := []string{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"}
+	outs := []string{"logits", "act_logits"}
+	cpu, err := sessionWith(model, names, outs, func(*ort.SessionOptions) error { return nil })
+	if err != nil {
+		return nil, "", err
+	}
+	if cfg.Device == "cpu" {
+		return cpu, "cpu", nil
+	}
+	var failed []string
+	for _, p := range gpuProviders {
+		session, err := sessionWith(model, names, outs, p.add)
+		if err == nil {
+			if err = agree(session, cpu, probe); err == nil {
+				log.Printf("gpu provider %s", p.name)
+				cpu.Destroy()
+				return session, "gpu", nil
+			}
+			session.Destroy()
+		}
+		failed = append(failed, fmt.Sprintf("%s: %v", p.name, err))
+	}
+	if cfg.Device == "gpu" {
+		cpu.Destroy()
+		return nil, "", fmt.Errorf("device gpu was set and no GPU provider ran the model: %s", strings.Join(failed, "; "))
+	}
+	log.Printf("no GPU provider ran the model, using CPU: %s", strings.Join(failed, "; "))
+	return cpu, "cpu", nil
+}
+
+// gpuProviders are tried in order; the first one this ONNX Runtime build can load wins.
+var gpuProviders = []struct {
+	name string
+	add  func(*ort.SessionOptions) error
+}{
+	{"cuda", func(o *ort.SessionOptions) error {
+		cuda, err := ort.NewCUDAProviderOptions()
+		if err != nil {
+			return err
+		}
+		defer cuda.Destroy()
+		return o.AppendExecutionProviderCUDA(cuda)
+	}},
+	{"coreml", func(o *ort.SessionOptions) error {
+		if runtime.GOOS != "darwin" {
+			return fmt.Errorf("macOS only")
+		}
+		return o.AppendExecutionProviderCoreMLV2(map[string]string{"ModelFormat": "MLProgram", "MLComputeUnits": "ALL"})
+	}},
+	{"coreml-nn", func(o *ort.SessionOptions) error {
+		if runtime.GOOS != "darwin" {
+			return fmt.Errorf("macOS only")
+		}
+		return o.AppendExecutionProviderCoreMLV2(map[string]string{"ModelFormat": "NeuralNetwork", "MLComputeUnits": "ALL"})
+	}},
+	{"directml", func(o *ort.SessionOptions) error {
+		if runtime.GOOS != "windows" {
+			return fmt.Errorf("Windows only")
+		}
+		return o.AppendExecutionProviderDirectML(0)
+	}},
+}
+
+func sessionWith(model []byte, names, outs []string, add func(*ort.SessionOptions) error) (*ort.DynamicAdvancedSession, error) {
 	opts, err := ort.NewSessionOptions()
 	if err != nil {
 		return nil, err
 	}
 	defer opts.Destroy()
-	cuda, err := ort.NewCUDAProviderOptions()
-	if err != nil {
-		return nil, err
-	}
-	defer cuda.Destroy()
-	if err := opts.AppendExecutionProviderCUDA(cuda); err != nil {
+	if err := add(opts); err != nil {
 		return nil, err
 	}
 	return ort.NewDynamicAdvancedSessionWithONNXData(model, names, outs, opts)
@@ -307,14 +404,19 @@ func loadConfig() config {
 			break
 		}
 	}
-	cfg.Device = strings.ToLower(strings.TrimSpace(cfg.Device))
-	if cfg.Device != "cpu" && cfg.Device != "gpu" {
-		cfg.Device = "auto"
-	}
+	cfg.Device = normalDevice(cfg.Device)
 	if cfg.Listen == "" {
 		cfg.Listen = "127.0.0.1:21118"
 	}
 	return cfg
+}
+
+func normalDevice(d string) string {
+	d = strings.ToLower(strings.TrimSpace(d))
+	if d != "cpu" && d != "gpu" {
+		return "auto"
+	}
+	return d
 }
 
 func configPaths() []string {
@@ -406,9 +508,13 @@ Config file openjevx.json, next to the executable:
 model is a model folder (or, for old models, a .onnx file). Unset: model/ or models/openjevx/
 next to the executable, then openjevx.w8.onnx next to it.
 
-device is cpu or gpu. gpu refuses to start unless the CUDA ONNX Runtime provider loads.
-The shipped model is 8-bit and is the small CPU build. A gpu config can name a separate
-model folder with "model".
+device is auto (default), cpu or gpu. auto uses the first GPU provider that loads (CUDA, CoreML on
+macOS, DirectML on Windows) and whose answers match the CPU on a probe, otherwise CPU. gpu refuses to
+start unless one of them loads.
+
+model is a model folder (openjevx.w8.onnx + config.json + tokenizer.json) or a plain .onnx file.
+Unset: model/ or models/openjevx/ next to the executable, then openjevx.w8.onnx next to it.
+Flags and environment override the file: -model / OPENJEVX_MODEL, -device / OPENJEVX_DEVICE.
 
 jevx:
   jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
