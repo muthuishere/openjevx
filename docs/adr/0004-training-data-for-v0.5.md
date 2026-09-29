@@ -53,6 +53,24 @@ small amounts; real examples beat synthetic ones.
 | F | **Search / rerank judgments** | 1k queries, ~10 results each | Your docs search, code search, support-article search; clicks or "this answered it" | the query, the candidate results, which ones actually answered it (graded 0–3 if possible) |
 | G | **Domain rules as written by people** | as many as possible | Policy docs, pricing pages, terms, runbooks, validation code in your repos | the rule text and, where it exists, the code that implements it |
 
+| H | **Everyday basics, handmade** | 200–1,000 cases | Written by hand: the small rules people check every day | the rule, the facts, the right answer, and a near-miss twin that flips it |
+
+**H in detail.** Small everyday rules the model must never get wrong: can I get a driving
+licence (age >= 18), is the store open (time within opening hours), is the parcel late (today
+after the promised date), is the battery low (below 20%), does the discount apply (cart >= Rs 500),
+is it a fever (>= 38 C), does the bag fit (<= 23 kg), is the bill overdue, do two meetings clash.
+Put the rule in the state and ask the model to apply it; write each case with its near-miss twin:
+
+```json
+{"state": {"rule": "You can apply for a driving licence at 18 or older.", "person": {"age": 18}},
+ "question": "Can this person apply for a driving licence?", "type": "noul", "gold": "true"}
+{"state": {"rule": "You can apply for a driving licence at 18 or older.", "person": {"age": 17}},
+ "question": "Can this person apply for a driving licence?", "type": "noul", "gold": "false"}
+```
+
+Handmade cases are the most trusted part of the release gate; each can also be expanded by rule
+into many variations around the threshold for training.
+
 Useful format for all of them: one JSON object per line. The fields can be loose (we adapt them);
 what matters is that the **right answer is known and comes from reality** (a fix that shipped, a
 root cause that was confirmed, a call that succeeded), not from a model's guess.

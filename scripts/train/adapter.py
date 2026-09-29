@@ -33,19 +33,26 @@ def is_priority(source):
     return source.startswith(PRIORITY_PREFIXES)
 
 
-def spread(target_key, keys):
+# Target mass on the gold option. Rule-labelled data (our-cases-*: the answer is computed, so it
+# is certain) trains toward near-certainty; human-labelled sources keep 0.9 because some labels are
+# noisy. Soft gold that already carries probabilities (split human votes) is kept as-is.
+CERTAIN_PEAK = 0.99
+DEFAULT_PEAK = 0.9
+
+
+def spread(target_key, keys, peak=DEFAULT_PEAK):
     probability = {}
     for key in keys:
-        probability[key] = 0.9 if key == target_key else round(0.1 / max(1, len(keys) - 1), 6)
+        probability[key] = peak if key == target_key else round((1 - peak) / max(1, len(keys) - 1), 6)
     return probability
 
 
-def gold_to_probabilities(gold, question):
+def gold_to_probabilities(gold, question, peak=DEFAULT_PEAK):
     if isinstance(gold, dict):
         label = gold.get("label", gold)
         if "probabilities" in gold and isinstance(label, str):
             return gold
-        return gold_to_probabilities(label, question)
+        return gold_to_probabilities(label, question, peak)
     criteria = question.get("criteria")
     if isinstance(criteria, list):
         criteria = {str(index): str(value) for index, value in enumerate(criteria)}
@@ -58,9 +65,9 @@ def gold_to_probabilities(gold, question):
     if qtype == "noul":
         lowered = text.lower()
         if lowered in ("true", "yes", "1"):
-            return {"label": "true", "probabilities": spread("true", ("false", "true"))}
+            return {"label": "true", "probabilities": spread("true", ("false", "true"), peak)}
         if lowered in ("false", "no", "0"):
-            return {"label": "false", "probabilities": spread("false", ("false", "true"))}
+            return {"label": "false", "probabilities": spread("false", ("false", "true"), peak)}
         return None
     if len(criteria) < 2:
         return None
@@ -75,16 +82,17 @@ def gold_to_probabilities(gold, question):
     if qtype == "score":
         target_key = str(keys.index(target_key))
         keys = [str(index) for index in range(len(keys))]
-    return {"label": text, "probabilities": spread(target_key, keys)}
+    return {"label": text, "probabilities": spread(target_key, keys, peak)}
 
 
 def adapt_row(row):
+    peak = CERTAIN_PEAK if str(row.get("source", "")).startswith("our-cases-") else DEFAULT_PEAK
     kept = {}
     for question_id, question in row.get("questions", {}).items():
         gold = row.get("gold", {}).get(question_id)
         if gold is None:
             continue
-        shaped = gold_to_probabilities(gold, question)
+        shaped = gold_to_probabilities(gold, question, peak)
         if shaped is not None:
             kept[question_id] = shaped
     if not kept:
