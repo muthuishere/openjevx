@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Fine-tune it further" description="Take the fp32 OpenJevX weights and train them on your own decisions.">
+  <h1>Fine-tune it further</h1>
+  <p class="lead">The shipped model is <code>openjevx.w8.onnx</code> (8-bit weight-only: activations
+    stay float, so answers don't depend on what else is in the request). For further training, use
+    the full-precision files.</p>
+
+  <h2>Get the weights</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Fine-tune bundle (v0.4.0)</h3>
+      <p><a href="https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.4.0.tar.gz">openjevx-finetune-v0.4.0.tar.gz</a></p>
+    </div>
+    <div class="card">
+      <h3>Hugging Face</h3>
+      <p><a href="https://huggingface.co/muthuishere/openjevx">huggingface.co/muthuishere/openjevx</a> —
+        <code>model.safetensors</code>, <code>encoder/</code>, <code>tokenizer/</code>,
+        <code>rl_agent_config.json</code>, <code>openjevx.onnx</code> (fp32)</p>
+    </div>
+  </div>
+
+  <h2>Steps</h2>
+  <ol>
+    <li><strong>Data.</strong> Rows of <code>&#123;state, questions: &#123;id: &#123;type: noul|choice|score, instructions, criteria&#125;&#125;, gold&#125;</code>.
+      <code>scripts/data/gen_it_worker.py</code> generates rule-labelled software-work decisions —
+      add your own rows in the same shape.</li>
+    <li><strong>Shard.</strong> <code>scripts/train/package_kaggle.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json</code>
+      adapts gold into targets, samples, and drops any question that also appears in your test sets.</li>
+    <li><strong>Train</strong> on any CUDA box: <code>SHARD=full bash scripts/vast/run_job.sh</code>.
+      Knobs in <code>run.json</code>: <code>EPOCHS</code>, <code>MAX_LEN</code>, <code>AMP=bf16</code>,
+      <code>MAX_HOURS</code>. The actual training loop is <code>scripts/train_openjevx.py</code>.</li>
+    <li><strong>Ship.</strong> <code>python scripts/quantize_w8.py openjevx.onnx openjevx.w8.onnx</code>,
+      then set <code>"model"</code> in <code>openjevx.json</code> or rebuild with <code>task package</code>.</li>
+  </ol>
+
+  <h2>What the v0.4.0 run actually cost</h2>
+  <p>For reference (source: <code>clauderesults/08-morning-report.md</code>): 443,394 training
+    decisions, one rented RTX 4090 on vast.ai, capped at a 2.75-hour budget (~90% of one pass,
+    ~40 decisions/second). Smoke test $0.27, full run $1.53 — <strong>total $1.80</strong>. Both
+    boxes were destroyed after, no training data left on any box or bucket.</p>
+
+  <h2>Relevant scripts in this repo</h2>
+  <ul>
+    <li><code>scripts/train_openjevx.py</code> — fine-tune + RLCD + calibration + CUDA benchmark</li>
+    <li><code>scripts/export_onnx_gpu.py</code> — export the trained model to ONNX (CUDA)</li>
+    <li><code>scripts/quantize_w8.py</code> / <code>scripts/quantize_w4.py</code> — weight-only quantization</li>
+    <li><code>scripts/data/gen_it_worker.py</code> — rule-labelled software-role decision generator</li>
+    <li><code>scripts/train/package_kaggle.py</code> — shard builder with leak exclusion</li>
+    <li><code>scripts/vast/run_job.sh</code> — the vast.ai training job runner</li>
+  </ul>
+
+  <p>Questions or a bug in the pipeline: <a href="https://github.com/muthuishere/openjevx">open an issue</a>.</p>
+</Base>

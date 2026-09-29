@@ -1,0 +1,130 @@
+---
+import Base from '../../layouts/Base.astro';
+import comparison from '../../data/comparison.json';
+
+const gate = [
+  { test: 'Public typed-decisions test (2,000)', v03: '76.1%', v04: '76.2%' },
+  { test: 'Software-role held-out test (9,159)', v03: '63.7%', v04: '98.1%' },
+  { test: 'Software-role families never seen in training (1,158)', v03: '66.1%', v04: '87.3%' },
+  { test: 'Owner eval_openjevx, 1k sample (1,052)', v03: '49.6%', v04: '64.3%' },
+  { test: 'opencode + OpenRouter set (9,557)', v03: '63.2%', v04: '71.0%' },
+  { test: 'Rule-labelled everyday set (1,194)', v03: '45.1%', v04: '54.4%' },
+  { test: 'Owner 1,000-question CSV', v03: '46.9%', v04: '54.5%' },
+];
+
+const quant = [
+  { name: 'Shipped int8 (dynamic), v0.2.0', pub: '65.1% / 65.6%', size: '598 MB', time: '0.15 s' },
+  { name: 'int8 except one MLP matrix/layer', pub: '77.2%', size: '883 MB', time: '0.25 s' },
+  { name: '4-bit weight-only, v0.3.0 (shipped)', pub: '77.0%', size: '461 MB', time: '0.42 s' },
+  { name: '8-bit weight-only (not shipped)', pub: '76.9%', size: '598 MB', time: '0.55 s' },
+  { name: 'fp32', pub: '77.4% / 76.8–77.4%', size: '1.7 GB', time: '0.40 s' },
+];
+
+function badgeClass(v) {
+  if (v === 'yes' || v === 'no' || v === true) return 'v-right';
+  if (v === 'unsure') return 'v-unsure';
+  return 'v-wrong';
+}
+
+function cellFor(model, id) {
+  const rows = comparison.models[model];
+  if (!rows) return null;
+  return rows.find((r) => r.id === id) || null;
+}
+---
+<Base title="Before / after" description="OpenJevX quantization and fine-tune results, and a live three-way model comparison.">
+  <h1>Before / after</h1>
+  <p class="lead">Every number here comes straight from a report file in this repo, or from a live
+    run against the three servers below — nothing is invented.</p>
+
+  <h2>Quantization: fixing the batch-dependent int8 bug</h2>
+  <p>Source: <code>clauderesults/01-quantization-and-everyday-domain-report.md</code>,
+    <code>clauderesults/02-v0.3.0-release-and-jevx-report.md</code>. "Public test" is the
+    public typed-decisions test.</p>
+  <table>
+    <thead><tr><th>Variant</th><th>Public test accuracy</th><th>Size</th><th>Time / 5-q case</th></tr></thead>
+    <tbody>
+      {quant.map((r) => (
+        <tr><td>{r.name}</td><td>{r.pub}</td><td>{r.size}</td><td>{r.time}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Fine-tune: v0.3.0 (shipped) → v0.4.0 (new)</h2>
+  <p>Source: <code>clauderesults/08-morning-report.md</code>,
+    <code>.local/release/v0.4.0/benchmark.json</code>. Measured through the exact 8-bit ONNX file
+    each version ships, on the Go server, on CPU.</p>
+  <table>
+    <thead><tr><th>Test (held-out)</th><th>v0.3.0</th><th>v0.4.0</th></tr></thead>
+    <tbody>
+      {gate.map((r) => (
+        <tr><td>{r.test}</td><td>{r.v03}</td><td><strong>{r.v04}</strong></td></tr>
+      ))}
+    </tbody>
+  </table>
+  <div class="note">
+    The public typed-decisions test barely moved (76.1% → 76.2%) on purpose: where human labellers
+    agreed on the answer, every version already scores ~87–89%; where they split (41% of that
+    test), every version scores ~60%, because there is no single "right" answer to learn. Every
+    other number above measures generalisation to data neither version trained on directly.
+  </div>
+
+  <h2>Live three-way comparison</h2>
+  <p>Run for real on {new Date().toISOString().slice(0, 10)}, same 13 questions, through
+    <code>jevx</code>'s default thresholds (yes ≥ 0.8, no ≤ 0.2, choice/score min confidence 0.6)
+    against three servers on this machine: <strong>base</strong> = <code>convaiinnovations/laya</code>
+    exactly as released from Hugging Face, no fine-tune, exported to ONNX on CPU and 8-bit
+    weight-only quantized (<code>scripts/quantize_w8.py</code>) so it's comparable in format to the
+    other two; <strong>v0.3</strong> = the shipped v0.3.0 server on port 21118 (4-bit weight-only);
+    <strong>v0.4</strong> = the new fine-tuned server on port 21126 (8-bit weight-only).
+    Full raw output: <code>site/src/data/comparison.json</code>.</p>
+
+  <table>
+    <thead><tr><th>Question</th><th>Expected</th><th>base</th><th>v0.3</th><th>v0.4</th></tr></thead>
+    <tbody>
+      {comparison.cases.map((c) => (
+        <tr>
+          <td>{c.label}</td>
+          <td>{c.expected}</td>
+          {['base', 'v0.3', 'v0.4'].map((m) => {
+            const cell = cellFor(m, c.id);
+            if (!cell) return <td><span class="verdict v-na">not available</span></td>;
+            const cls = cell.correct ? 'v-right' : cell.verdict === 'unsure' ? 'v-unsure' : 'v-wrong';
+            return <td><span class={`verdict ${cls}`}>{cell.verdict}</span> <small>{cell.p}</small></td>;
+          })}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <p><small>Colour key: <span class="verdict v-right">green</span> = correct verdict,
+    <span class="verdict v-unsure">amber</span> = unsure (inside jevx's default dead zone),
+    <span class="verdict v-wrong">red</span> = wrong verdict,
+    <span class="verdict v-na">grey</span> = server not running for this comparison.</small></p>
+
+  <h2>Software-role accuracy, 300-case random sample</h2>
+  <p>Ran <code>.local/eval/run_jsonl.py</code> against a random 300-case sample (seed 42) of
+    <code>.local/gate/it_worker_eval.jsonl</code> (3,000 cases, 916 individual questions in this
+    sample) through each server that was live during this build.</p>
+  <table>
+    <thead><tr><th>Model</th><th>Decisions scored</th><th>Errors</th><th>Accuracy</th></tr></thead>
+    <tbody>
+      {['base', 'v0.3', 'v0.4'].map((m) => {
+        const g = comparison.gate_300_sample?.results?.[m];
+        if (!g) return <tr><td>{m}</td><td colspan="3">not available</td></tr>;
+        return (
+          <tr>
+            <td>{m}</td>
+            <td>{g.decisions}</td>
+            <td>{g.errors}</td>
+            <td><strong>{g.accuracy_pct}%</strong></td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+  <p><small>Source: <code>{comparison.gate_300_sample?.source}</code>. This is a fresh live run
+    against the base (as-released, no fine-tune), v0.3.0 and v0.4.0 servers, not a copy of the
+    training-time gate numbers above — the base row only exists here, since the base model was
+    never part of the training pipeline.</small></p>
+</Base>

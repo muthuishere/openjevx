@@ -1,0 +1,67 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Use it" description="Run OpenJevX and wire it into jevx.">
+  <h1>Use it</h1>
+  <p class="lead">One server, one endpoint: <code>POST /v1/systemone</code>. Everything below assumes
+    the default port <code>21118</code>.</p>
+
+  <h2>Run it</h2>
+  <pre><code>npx git+https://github.com/muthuishere/openjevx.git
+openjevx</code></pre>
+  <p>or download a package for your platform from the
+    <a href="https://github.com/muthuishere/openjevx/releases/latest">latest release</a>:</p>
+  <pre><code># macOS
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
+tar -xf openjevx-darwin-arm64.tar && ./openjevx
+
+# Linux
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
+tar -xf openjevx-linux-amd64.tar && ./openjevx
+
+# Windows: download and run
+# https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip</code></pre>
+
+  <h2>Docker</h2>
+  <pre><code>git clone https://github.com/muthuishere/openjevx.git && cd openjevx
+docker compose up -d --build
+
+# or load a prebuilt image tar from the release
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-docker-amd64.tar
+docker load -i openjevx-docker-amd64.tar
+docker run -d -p 127.0.0.1:21118:21118 ghcr.io/muthuishere/openjevx:latest-amd64</code></pre>
+
+  <h2>Wire it into jevx</h2>
+  <pre><code>jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+jevx profile use openjevx
+
+jevx is "Is this urgent?" &lt; email.txt
+jevx pick "Which team?" web=frontend api=backend billing=money --in "charged twice"
+jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_units": 0&#125;'</code></pre>
+
+  <h2>Config</h2>
+  <p><code>openjevx.json</code> next to the binary:</p>
+  <pre><code>&#123;
+  "listen": "127.0.0.1:21118",
+  "device": "auto",
+  "password": "adminadmin"
+&#125;</code></pre>
+  <p><code>device</code> is <code>auto</code> (GPU if CUDA loads, else CPU), <code>cpu</code>, or
+    <code>gpu</code> (no fallback).</p>
+
+  <h2>Dashboard and stats</h2>
+  <p>Open <code>http://127.0.0.1:21118/</code> while it runs — request counts, input tokens,
+    latency p50/p95/p99, errors, recent requests.</p>
+  <ul>
+    <li><code>GET /stats</code> — JSON snapshot (password-protected)</li>
+    <li><code>GET /metrics</code> — Prometheus format (password-protected)</li>
+    <li><code>GET /health</code> — open, no password</li>
+  </ul>
+
+  <h2>Downloads</h2>
+  <div class="cards">
+    <div class="card"><h3>Releases</h3><p><a href="https://github.com/muthuishere/openjevx/releases/latest">github.com/muthuishere/openjevx/releases/latest</a></p></div>
+    <div class="card"><h3>Hugging Face</h3><p><a href="https://huggingface.co/muthuishere/openjevx">huggingface.co/muthuishere/openjevx</a> — full precision + quantized weights</p></div>
+    <div class="card"><h3>jevx CLI</h3><p><a href="https://github.com/muthuishere/jevx">github.com/muthuishere/jevx</a></p></div>
+  </div>
+</Base>

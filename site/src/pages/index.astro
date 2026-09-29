@@ -1,0 +1,61 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
+---
+<Base title="Home" description="OpenJevX: an open, local decision model server for jevx.">
+  <h1>OpenJevX</h1>
+  <p class="lead">
+    An open, local decision model server for <a href="https://github.com/muthuishere/jevx">jevx</a>.
+    It answers yes/no, pick-one and rating questions about a JSON state — no cloud call, no API key.
+  </p>
+
+  <div class="btnrow">
+    <a class="btn" href="https://github.com/muthuishere/openjevx/releases/latest">Latest release</a>
+    <a class="btn ghost" href="https://github.com/muthuishere/openjevx">GitHub</a>
+    <a class="btn ghost" href="https://huggingface.co/muthuishere/openjevx">Hugging Face</a>
+    <a class="btn ghost" href={`${base}/results/`}>See the before/after</a>
+  </div>
+
+  <h2>One step</h2>
+  <pre><code>npx git+https://github.com/muthuishere/openjevx.git
+openjevx</code></pre>
+
+  <h2>Manual — macOS</h2>
+  <pre><code>curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-darwin-arm64.tar
+tar -xf openjevx-darwin-arm64.tar && ./openjevx</code></pre>
+
+  <h2>Manual — Linux</h2>
+  <pre><code>curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-linux-amd64.tar
+tar -xf openjevx-linux-amd64.tar && ./openjevx</code></pre>
+
+  <p>Windows: download <a href="https://github.com/muthuishere/openjevx/releases/download/v0.4.0/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> and run <code>openjevx.exe</code>.</p>
+
+  <h2>Docker</h2>
+  <pre><code>git clone https://github.com/muthuishere/openjevx.git && cd openjevx
+docker compose up -d --build</code></pre>
+
+  <h2>Talk to it from jevx</h2>
+  <pre><code>jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+jevx profile use openjevx
+jevx is "Is this urgent?" &lt; email.txt</code></pre>
+
+  <div class="cards">
+    <div class="card">
+      <h3>What it is</h3>
+      <p>Default port <code>21118</code>, endpoint <code>/v1/systemone</code>. <code>device</code> is
+        <code>auto</code>, <code>cpu</code>, or <code>gpu</code> in <code>openjevx.json</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Dashboard</h3>
+      <p>Open <code>http://127.0.0.1:21118/</code> while it runs: request counts, latency p50/p95/p99,
+        errors, recent requests. Default password <code>adminadmin</code>.</p>
+    </div>
+    <div class="card">
+      <h3>License</h3>
+      <p>Apache-2.0. Credits in <code>CREDITS</code>.</p>
+    </div>
+  </div>
+
+  <p><a href={`${base}/journey/`}>Read the journey →</a> how it went from a 77.4% fine-tune to a shipped
+    model that's 98.1% on held-out software-role decisions, and where it's still weak.</p>
+</Base>

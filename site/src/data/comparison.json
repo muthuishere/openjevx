@@ -1,0 +1,344 @@
+{
+  "cases": [
+    {
+      "id": "stock0",
+      "label": "stock 0 -> out of stock?",
+      "type": "noul",
+      "expected": "yes"
+    },
+    {
+      "id": "stock500",
+      "label": "stock 500 -> out of stock?",
+      "type": "noul",
+      "expected": "no"
+    },
+    {
+      "id": "age17",
+      "label": "age 17 -> adult?",
+      "type": "noul",
+      "expected": "no"
+    },
+    {
+      "id": "age30",
+      "label": "age 30 -> adult?",
+      "type": "noul",
+      "expected": "yes"
+    },
+    {
+      "id": "checkout_down",
+      "label": "checkout down for all users -> page on-call?",
+      "type": "noul",
+      "expected": "yes"
+    },
+    {
+      "id": "tea",
+      "label": "making tea, nothing pending -> page on-call?",
+      "type": "noul",
+      "expected": "no"
+    },
+    {
+      "id": "force_push",
+      "label": "git push --force origin main -> destroys/rewrites history?",
+      "type": "noul",
+      "expected": "yes"
+    },
+    {
+      "id": "ls",
+      "label": "ls -la -> destroys/rewrites history?",
+      "type": "noul",
+      "expected": "no"
+    },
+    {
+      "id": "log_health",
+      "label": "INFO GET /health 200 OK -> failure to act on?",
+      "type": "noul",
+      "expected": "no"
+    },
+    {
+      "id": "log_error",
+      "label": "ERROR payment-service db conn refused (500) -> failure to act on?",
+      "type": "noul",
+      "expected": "yes"
+    },
+    {
+      "id": "pick_first",
+      "label": "pick first: outage / tea / newsletter",
+      "type": "choice",
+      "expected": "outage"
+    },
+    {
+      "id": "pick_team",
+      "label": "pick team for 'I was charged twice'",
+      "type": "choice",
+      "expected": "billing"
+    },
+    {
+      "id": "score_severity",
+      "label": "score severity: site completely down for every user",
+      "type": "score",
+      "expected": "high"
+    }
+  ],
+  "models": {
+    "base": [
+      {
+        "id": "stock0",
+        "verdict": "yes",
+        "p": 0.9963,
+        "correct": true
+      },
+      {
+        "id": "stock500",
+        "verdict": "unsure",
+        "p": 0.2738,
+        "correct": false
+      },
+      {
+        "id": "age17",
+        "verdict": "yes",
+        "p": 0.858,
+        "correct": false
+      },
+      {
+        "id": "age30",
+        "verdict": "yes",
+        "p": 0.927,
+        "correct": true
+      },
+      {
+        "id": "checkout_down",
+        "verdict": "no",
+        "p": 0.0222,
+        "correct": false
+      },
+      {
+        "id": "tea",
+        "verdict": "no",
+        "p": 0.0151,
+        "correct": true
+      },
+      {
+        "id": "force_push",
+        "verdict": "yes",
+        "p": 0.8026,
+        "correct": true
+      },
+      {
+        "id": "ls",
+        "verdict": "no",
+        "p": 0.0253,
+        "correct": true
+      },
+      {
+        "id": "log_health",
+        "verdict": "no",
+        "p": 0.0037,
+        "correct": true
+      },
+      {
+        "id": "log_error",
+        "verdict": "no",
+        "p": 0.0251,
+        "correct": false
+      },
+      {
+        "id": "pick_first",
+        "verdict": "newsletter",
+        "p": 0.6499,
+        "correct": false
+      },
+      {
+        "id": "pick_team",
+        "verdict": "billing",
+        "p": 0.9999,
+        "correct": true
+      },
+      {
+        "id": "score_severity",
+        "verdict": "high",
+        "p": 0.9544,
+        "correct": true
+      }
+    ],
+    "v0.3": [
+      {
+        "id": "stock0",
+        "verdict": "yes",
+        "p": 0.8021,
+        "correct": true
+      },
+      {
+        "id": "stock500",
+        "verdict": "no",
+        "p": 0.1052,
+        "correct": true
+      },
+      {
+        "id": "age17",
+        "verdict": "unsure",
+        "p": 0.5387,
+        "correct": false
+      },
+      {
+        "id": "age30",
+        "verdict": "unsure",
+        "p": 0.7578,
+        "correct": false
+      },
+      {
+        "id": "checkout_down",
+        "verdict": "unsure",
+        "p": 0.6051,
+        "correct": false
+      },
+      {
+        "id": "tea",
+        "verdict": "no",
+        "p": 0.0686,
+        "correct": true
+      },
+      {
+        "id": "force_push",
+        "verdict": "unsure",
+        "p": 0.5556,
+        "correct": false
+      },
+      {
+        "id": "ls",
+        "verdict": "no",
+        "p": 0.1105,
+        "correct": true
+      },
+      {
+        "id": "log_health",
+        "verdict": "no",
+        "p": 0.0443,
+        "correct": true
+      },
+      {
+        "id": "log_error",
+        "verdict": "unsure",
+        "p": 0.3484,
+        "correct": false
+      },
+      {
+        "id": "pick_first",
+        "verdict": "unsure",
+        "p": 0.4733,
+        "correct": false
+      },
+      {
+        "id": "pick_team",
+        "verdict": "billing",
+        "p": 0.9825,
+        "correct": true
+      },
+      {
+        "id": "score_severity",
+        "verdict": "high",
+        "p": 0.8435,
+        "correct": true
+      }
+    ],
+    "v0.4": [
+      {
+        "id": "stock0",
+        "verdict": "yes",
+        "p": 0.8555,
+        "correct": true
+      },
+      {
+        "id": "stock500",
+        "verdict": "no",
+        "p": 0.1372,
+        "correct": true
+      },
+      {
+        "id": "age17",
+        "verdict": "unsure",
+        "p": 0.3733,
+        "correct": false
+      },
+      {
+        "id": "age30",
+        "verdict": "unsure",
+        "p": 0.7426,
+        "correct": false
+      },
+      {
+        "id": "checkout_down",
+        "verdict": "unsure",
+        "p": 0.7962,
+        "correct": false
+      },
+      {
+        "id": "tea",
+        "verdict": "no",
+        "p": 0.1394,
+        "correct": true
+      },
+      {
+        "id": "force_push",
+        "verdict": "yes",
+        "p": 0.8493,
+        "correct": true
+      },
+      {
+        "id": "ls",
+        "verdict": "no",
+        "p": 0.1218,
+        "correct": true
+      },
+      {
+        "id": "log_health",
+        "verdict": "no",
+        "p": 0.1236,
+        "correct": true
+      },
+      {
+        "id": "log_error",
+        "verdict": "yes",
+        "p": 0.8044,
+        "correct": true
+      },
+      {
+        "id": "pick_first",
+        "verdict": "outage",
+        "p": 0.6134,
+        "correct": true
+      },
+      {
+        "id": "pick_team",
+        "verdict": "billing",
+        "p": 0.9475,
+        "correct": true
+      },
+      {
+        "id": "score_severity",
+        "verdict": "unsure",
+        "p": 0.4028,
+        "correct": false
+      }
+    ]
+  },
+  "gate_300_sample": {
+    "source": ".local/gate/it_worker_eval.jsonl (3000 cases), random 300-case sample, seed 42, via .local/eval/run_jsonl.py",
+    "results": {
+      "base": {
+        "decisions": 916,
+        "errors": 0,
+        "accuracy_pct": 60.6
+      },
+      "v0.3": {
+        "decisions": 916,
+        "errors": 0,
+        "accuracy_pct": 64.1
+      },
+      "v0.4": {
+        "decisions": 916,
+        "errors": 0,
+        "accuracy_pct": 98.5
+      }
+    }
+  }
+}
