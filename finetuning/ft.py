@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""OpenJevX fine-tuning pipeline, driven by finetuning/config.json. Every step fails loudly.
+"""OpenJevX fine-tuning pipeline. Every step fails loudly.
+
+Settings: ~/.config/openjevx/config.json (or $OPENJEVX_FT_CONFIG). On first run it is created from
+finetuning/config.example.json; edit it there. Relative data paths are relative to the repo root.
 
   ft.py dataprep        generate the rule-labelled sets into data/
   ft.py validate        adapter dry-parse + leakage check (writes .local/ft/leaked_keys.json)
@@ -11,12 +14,17 @@
 A provider is finetuning/gpu/<name>.py taking `SHARD_DIR SHARD` plus its own options from
 config.providers.<name>; it must leave SHARD_DIR/../<dir>_<shard>_run/out/openjevx.w8.onnx.
 """
-import json, os, subprocess, sys, time, urllib.request
+import json, os, shutil, subprocess, sys, time, urllib.request
 from pathlib import Path
 
 FT = Path(__file__).resolve().parent
 ROOT = FT.parent
-CFG = json.loads((FT / "config.json").read_text())
+CFG_PATH = Path(os.environ.get("OPENJEVX_FT_CONFIG", Path.home() / ".config/openjevx/config.json"))
+if not CFG_PATH.exists():
+    CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(FT / "config.example.json", CFG_PATH)
+    print(f"created {CFG_PATH} from config.example.json", flush=True)
+CFG = json.loads(CFG_PATH.read_text())
 WORK = ROOT / ".local" / "ft"
 PY = str(ROOT / ".local/eval/venv/bin/python") if (ROOT / ".local/eval/venv/bin/python").exists() else sys.executable
 

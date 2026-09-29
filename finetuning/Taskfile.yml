@@ -1,5 +1,6 @@
 version: "3"
-# OpenJevX fine-tuning. Settings live in config.json (version, GPU provider, 750 MB 8-bit limit,
+# OpenJevX fine-tuning. Settings live in ~/.config/openjevx/config.json, created on first run
+# from config.example.json (version, GPU provider, 750 MB 8-bit limit,
 # data mix, training knobs, gate thresholds). Run from this folder: `task all`.
 
 tasks:
