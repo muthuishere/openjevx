@@ -38,25 +38,12 @@ function cellFor(model, id) {
     run against the three servers below — nothing is invented.</p>
 
   <h2>v0.5.0 release gate</h2>
-  <p>Source: the v0.5.0 gate run and <code>llmresults/10-v041-baseline.md</code>. The exact 8-bit ONNX file on
-    the Go server, on CPU. "Right and confident" = right AND past jevx's default thresholds (yes ≥ 0.8,
-    no ≤ 0.2, choice/score ≥ 0.6).</p>
-  <div class="table-scroll">
-  <table>
-    <thead><tr><th>Gate set</th><th>v0.4.0 right&nbsp;&amp;&nbsp;confident / confidently wrong</th><th>v0.5.0 right&nbsp;&amp;&nbsp;confident / confidently wrong</th></tr></thead>
-    <tbody>
-      <tr><td>Everyday basics (469)</td><td>46.9% / 17.9%</td><td><strong>98.9% / 0.6%</strong></td></tr>
-      <tr><td>Rules with conditions (300)</td><td>75.7% / 13.7%</td><td><strong>94.3% / 3.7%</strong></td></tr>
-      <tr><td>13 fundamentals through jevx</td><td>9 right, 4 unsure, 0 wrong</td><td><strong>11 right, 1 unsure, 0 wrong</strong></td></tr>
-    </tbody>
-  </table>
-  </div>
   <div class="note">
-    Known miss: on rules with conditions v0.5.0 is confidently wrong 3.7% of the time, over the 2% limit.
-    It was released anyway; fixing it is planned for v0.6. Against Jeff-0.8B (100 questions per set), OpenJevX is
-    right and confident on 83.5% of everyday rules and logs (Jeff 69.2%) but only 60.4% accurate on general
-    reasoning benchmarks (Jeff 75.4%), and it is confidently wrong on 18% of real public postmortems. Upgrading?
-    Run <code>jevx cache clear</code>: jevx caches answers by model name.
+    <strong>Pending re-gate.</strong> The first v0.5.0 gate run is not valid: the server applied an older
+    model's calibration temperatures, and the everyday-basics gate shared 79% of its states with training.
+    The gates are being regenerated with unseen states and re-run on the v0.5.0 model folder; numbers
+    will appear here when that run finishes. Upgrading? Run <code>jevx cache clear</code>: jevx caches
+    answers by model name.
   </div>
 
   <h2>Quantization: fixing the batch-dependent int8 bug</h2>
