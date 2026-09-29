@@ -17,6 +17,8 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /out/ /app/
+# The recipes are also served on /recipes from inside the binary; these are the same pages as files.
+COPY --from=build /src/recipes/*.md /usr/share/openjevx/recipes/
 RUN printf '{\n  "listen": "0.0.0.0:21118",\n  "device": "cpu",\n  "password": "adminadmin"\n}\n' > /app/openjevx.json
 EXPOSE 21118
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s CMD curl -fsS http://127.0.0.1:21118/health || exit 1

@@ -18,6 +18,7 @@ import (
 	"github.com/muthuishere/openjevx/internal/bpe"
 	"github.com/muthuishere/openjevx/internal/decide"
 	"github.com/muthuishere/openjevx/internal/stats"
+	"github.com/muthuishere/openjevx/recipes"
 )
 
 type config struct {
@@ -64,6 +65,13 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write(assets.Dashboard)
 		})
+	})
+	serveRecipes := recipesHandler(recipes.Files)
+	http.HandleFunc("/recipes", func(w http.ResponseWriter, r *http.Request) {
+		guard(w, r, func() { serveRecipes(w, r) })
+	})
+	http.HandleFunc("/recipes/", func(w http.ResponseWriter, r *http.Request) {
+		guard(w, r, func() { serveRecipes(w, r) })
 	})
 	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		guard(w, r, func() { writeJSON(w, stats.Snapshot(cfg.Device)) })
