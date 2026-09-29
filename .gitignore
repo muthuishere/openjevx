@@ -19,3 +19,5 @@ data/*.jsonl.gz
 data/raw/
 llmresults/*.jsonl
 data/incoming/
+
+.wrangler/

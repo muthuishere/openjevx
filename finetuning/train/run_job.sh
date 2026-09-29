@@ -1,33 +1,44 @@
 #!/usr/bin/env bash
-# One-shot OpenJevX fine-tune on a rented CUDA box (vast.ai or any Linux GPU).
-# Gets the private training shard (SSH copy or signed URLs), trains, calibrates,
-# exports ONNX on CUDA, quantizes to 8-bit and ships ONLY the 8-bit file, which must be
-# <= MAX_W8_MB (750). Markers: /root/JOB_COMPLETE or /root/JOB_FAILED.
-# Artifacts: /root/out/openjevx-model (openjevx.w8.onnx + tokenizer/config). Log: /root/job.log.
-# Usage: SHARD=full bash finetuning/train/run_job.sh   (data copied to /root/in over SSH, then /root/in/READY)
-#    or: SHARD=full TRAIN_URL=... EVAL_URL=... RUN_URL=... bash finetuning/train/run_job.sh
+# One-shot OpenJevX fine-tune on a rented CUDA box. The box does everything and cleans up after itself:
+#   1. fetch its settings from JOB_ENV_URL (a signed R2 link; the file holds only signed links + the kill token)
+#   2. download the shard from R2, train, calibrate, export ONNX on CUDA, quantize to 8-bit
+#   3. fail if the 8-bit ONNX is over MAX_W8_MB (750); upload the 8-bit ONNX, the trainable checkpoint,
+#      the eval report, the log and a status file to R2 through signed PUT links
+#   4. destroy itself through the destroy endpoint (which holds the Vast key; this box never does)
+# A timer destroys the box after DEADLINE_HOURS whatever happens. Markers: /root/JOB_COMPLETE or /root/JOB_FAILED.
+# Usage: JOB_ENV_URL=<signed link> bash finetuning/train/run_job.sh
 set -euo pipefail
-trap 'touch /root/JOB_FAILED' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SHARD="${SHARD:-full}"
-IN=/root/in; OUT=/root/out; JOB=/root/jobsrc
+IN=/root/in; OUT=/root/out; JOB=/root/jobsrc; LOG=/root/job.log
 mkdir -p "$IN" "$OUT" "$JOB"
-if [ -n "${TRAIN_URL:-}" ]; then
-  curl -fsSL -o "$IN/openjevx-${SHARD}-train.jsonl.gz" "$TRAIN_URL"
-  curl -fsSL -o "$IN/openjevx-${SHARD}-eval.jsonl.gz" "${EVAL_URL:?set EVAL_URL}"
-  curl -fsSL -o "$IN/openjevx-${SHARD}-run.json" "${RUN_URL:?set RUN_URL}"
-else
-  # No URLs: the data is copied onto this box over SSH, then $IN/READY is written.
-  for i in $(seq 1 270); do [ -f "$IN/READY" ] && break; sleep 10; done
-  [ -f "$IN/READY" ] || { echo "data never arrived"; false; }
-fi
-mv "$IN/openjevx-${SHARD}-run.json" "$IN/run.json"
-if [ "$SHARD" = smoke ]; then
-  mv "$IN/openjevx-smoke-train.jsonl.gz" "$IN/train_smoke.jsonl.gz"; mv "$IN/openjevx-smoke-eval.jsonl.gz" "$IN/eval_smoke.jsonl.gz"
-else
-  mv "$IN/openjevx-${SHARD}-train.jsonl.gz" "$IN/train.jsonl.gz"; mv "$IN/openjevx-${SHARD}-eval.jsonl.gz" "$IN/eval.jsonl.gz"
-fi
+curl -fsSL --retry 5 -o /root/job.env "${JOB_ENV_URL:?set JOB_ENV_URL}"
+# shellcheck disable=SC1091
+. /root/job.env
+INSTANCE_ID="${CONTAINER_ID:-${VAST_CONTAINERLABEL#C.}}"
+
+put() { curl -fsS --retry 5 -X PUT -T "$2" "$1" >/dev/null; }
+destroy() {
+  curl -fsS --retry 5 -X POST "$KILL_URL" -H "X-Kill-Token: $KILL_TOKEN" -H "Content-Type: application/json" \
+    -d "{\"instance_id\": ${INSTANCE_ID:-0}}" || true
+}
+finish() {  # $1 = complete | failed | timeout
+  printf '{"status":"%s","instance_id":"%s","finished":"%s","w8_mb":%s}\n' "$1" "$INSTANCE_ID" "$(date -u +%FT%TZ)" "${MB:-0}" > "$OUT/status.json"
+  put "$PUT_LOG_URL" "$LOG" || true
+  put "$PUT_STATUS_URL" "$OUT/status.json" || true
+  destroy
+}
+trap 'touch /root/JOB_FAILED; finish failed' ERR
+# Self-destroy timer, in its own session so it outlives this script.
+setsid bash -c "sleep $(python3 -c "print(int(float('${DEADLINE_HOURS:-7}') * 3600))"); \
+  [ -f /root/JOB_COMPLETE ] || { . /root/job.env; curl -fsS -X PUT -T $LOG \"\$PUT_LOG_URL\"; \
+  curl -fsS -X POST \"\$KILL_URL\" -H \"X-Kill-Token: \$KILL_TOKEN\" -d '{\"instance_id\": ${INSTANCE_ID:-0}}'; }" \
+  >/dev/null 2>&1 < /dev/null &
+
+if [ "$SHARD" = smoke ]; then TR=train_smoke; EV=eval_smoke; else TR=train; EV=eval; fi
+curl -fsSL --retry 5 -o "$IN/$TR.jsonl.gz" "$TRAIN_URL"
+curl -fsSL --retry 5 -o "$IN/$EV.jsonl.gz" "$EVAL_URL"
+curl -fsSL --retry 5 -o "$IN/run.json" "$RUN_URL"
 cp "$ROOT"/finetuning/train/{train_job.py,eval_job.py,adapter.py,train_openjevx.py} "$ROOT"/finetuning/export/{export_onnx_gpu.py,quantize_w8.py} "$JOB/"
 
 python -m pip install -q "laya @ git+https://github.com/NandhaKishorM/laya.git@9d955671415fc19f069b9cc998928075c1f255ec" \
@@ -45,10 +56,16 @@ PY
 cd "$JOB"
 INPUT_DIR="$IN" WORK_DIR="$OUT" PYTHONPATH="$JOB" python train_job.py
 PYTHONPATH="$JOB" python export_onnx_gpu.py --model "$OUT/openjevx-model" --output "$OUT/fp32/openjevx.onnx"
-python quantize_w8.py "$OUT/fp32/openjevx.onnx" "$OUT/openjevx-model/openjevx.w8.onnx"
-MB=$(( $(stat -c %s "$OUT/openjevx-model/openjevx.w8.onnx") / 1048576 ))
+python quantize_w8.py "$OUT/fp32/openjevx.onnx" "$OUT/openjevx.w8.onnx"
+MB=$(( $(stat -c %s "$OUT/openjevx.w8.onnx") / 1048576 ))
 echo "8-bit ONNX: ${MB} MB (limit ${MAX_W8_MB:-750})"
 [ "$MB" -le "${MAX_W8_MB:-750}" ] || { echo "8-bit ONNX over the size limit"; false; }
 rm -rf "$OUT/fp32"
-cp /root/job.log "$OUT/" || true
+# The trainable checkpoint (weights, tokenizer, config) so the model can be fine-tuned again.
+tar -C "$OUT" -czf "$OUT/checkpoint.tar.gz" openjevx-model
+put "$PUT_W8_URL" "$OUT/openjevx.w8.onnx"
+put "$PUT_CKPT_URL" "$OUT/checkpoint.tar.gz"
+put "$PUT_REPORT_URL" "$OUT/openjevx-model/eval_report.json"
 touch /root/JOB_COMPLETE
+trap - ERR
+finish complete

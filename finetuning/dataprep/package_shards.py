@@ -145,7 +145,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
     }
     env.update({k: os.environ[k] for k in ("MAX_LEN", "AMP", "GRAD_CKPT", "MAX_HOURS") if os.environ.get(k)})
     (out_dir / "run.json").write_text(json.dumps({"smoke": smoke, "env": env}))
-    # The names push_data.py / run_job.sh expect.
+    # The names the GPU provider uploads to R2.
     shard = "smoke" if smoke else "full"
     for src, suffix in ((train_out, "train.jsonl.gz"), (eval_out, "eval.jsonl.gz"), (out_dir / "run.json", "run.json")):
         shutil.copy2(src, out_dir / f"openjevx-{shard}-{suffix}")

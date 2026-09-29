@@ -21,11 +21,18 @@
 - Labels come from reality or from evaluating a rule, never from a model's guess. Test and gate questions
   never appear in training (the leakage check removes them).
 
-## GPUs
+## GPUs and storage
 - GPU work runs on a rented provider, **not Kaggle**. Today it is Vast.ai (`gpu/vast.py`); a new provider is one
   `gpu/<name>.py` that prints `RUN_DIR=<dir>` and leaves `<dir>/out/openjevx.w8.onnx`, plus one line in the config.
-- Label boxes `openjevx-...-DESTROY-AFTER`; a detached watcher always destroys the box. The box clones a pushed
-  commit, so commit `finetuning/` before training.
+- **The box does the whole job and cleans up after itself.** Inputs come from Cloudflare R2 through signed links;
+  results (8-bit ONNX, checkpoint, eval report, log, status) go back to R2 the same way; then the box destroys
+  itself by calling the destroy endpoint (`finetuning/destroy-worker/`, a Cloudflare Pages Function that holds the
+  Vast key). A timer on the box destroys it at the deadline whatever happens; the local run destroys it too if it
+  is still alive. No long-lived key ever goes on the box.
+- R2 buckets: `openjevx-train` is **private** (shards, runs, checkpoints, gate reports); `openjevx` is public and
+  holds only released models. `finetuning/r2.py` is the only R2 client.
+- Label boxes `openjevx-...-DESTROY-AFTER` (the endpoint refuses anything else). The box clones a pushed commit,
+  so commit `finetuning/` before training.
 
 ## Style
 - Match the surrounding code; small, plain scripts; fail loudly with a clear message.

@@ -8,6 +8,12 @@
       "timeout_hours": 7
     }
   },
+  "storage": {
+    "private_bucket": "openjevx-train",
+    "public_bucket": "openjevx",
+    "destroy_url": "https://openjevx-destroy.pages.dev/destroy",
+    "note": "shards, runs, checkpoints and gate reports go to the private bucket; only released 8-bit models go public"
+  },
   "model": {
     "format": "8-bit ONNX (weight-only int8)",
     "max_w8_mb": 750

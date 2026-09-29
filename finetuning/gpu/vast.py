@@ -1,46 +1,50 @@
 #!/usr/bin/env python3
-"""Run one packaged shard on a rented Vast.ai GPU, end to end, then wait for the result.
+"""Provider for ft.py train (config.providers.vast): one rented GPU box that does the whole job itself.
 
-Provider for ft.py train (config.providers.vast).
 usage: vast.py SHARD_DIR SHARD [--max-price-per-hour 0.6] [--timeout-hours 7]
   SHARD is smoke or full; SHARD_DIR holds openjevx-<SHARD>-{train.jsonl.gz,eval.jsonl.gz,run.json}.
+  Needs $OPENJEVX_KILL_TOKEN (ft.py runs this under `sec run OPENJEVX_KILL_TOKEN`).
 
-Steps: HEAD must be on origin (the box clones that exact commit) -> cheapest verified 4090 ->
-vast-one-shot launch.py (onstart job + detached watcher that pulls /root/out/openjevx-model and
-ALWAYS destroys the box) -> detached push_data.py -> wait until the box is gone, then check the
-8-bit ONNX came back and is within MAX_W8_MB (750). Exit 0 only when it did.
+1. HEAD must be on origin (the box clones that exact commit).
+2. Upload the shard to R2 (private bucket) and a job.env of signed links + the kill token (from memory).
+3. Rent the cheapest verified GPU; onstart clones the commit and runs finetuning/train/run_job.sh detached.
+   The box trains, uploads its results to R2 and destroys itself through the destroy endpoint.
+4. Wait for runs/<run>/status.json in R2, download the results, make sure the box is gone.
+   Backstop: if the box is still alive past the deadline, destroy it from here.
+Prints RUN_DIR=<dir>; results land in <dir>/out/ (openjevx.w8.onnx, checkpoint.tar.gz, eval_report.json, job.log).
 """
-import argparse, json, os, subprocess, sys, time
+import argparse, json, os, shlex, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ONE_SHOT = Path(os.environ.get("VAST_ONE_SHOT", Path.home() / ".claudedefault/skills/vast-one-shot/scripts"))
-KEY = Path.home() / ".ssh/id_ed25519_muthuishere"
-MAX_W8_MB = int(os.environ.get("MAX_W8_MB", "750"))
+sys.path.insert(0, str(ROOT / "finetuning"))
+import paths  # noqa: E402
+import r2  # noqa: E402
+
+KILL_URL = os.environ.get("OPENJEVX_KILL_URL", "https://openjevx-destroy.pages.dev/destroy")
+IMAGE = "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel"
+SSH_PUB = Path.home() / ".ssh/id_ed25519_muthuishere.pub"
+MAX_W8_MB = os.environ.get("MAX_W8_MB", "750")
+RESULTS = {"W8": "openjevx.w8.onnx", "CKPT": "checkpoint.tar.gz", "REPORT": "eval_report.json",
+           "LOG": "job.log", "STATUS": "status.json"}
 
 
 def out(*args):
     return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE, cwd=ROOT).stdout.strip()
 
 
-def detached(cmd, log):
-    """Start cmd in its own session so it survives this shell (and the agent session)."""
-    with open(log, "a") as f:
-        subprocess.Popen([sys.executable, "-c", "import os,sys;os.setsid();os.execvp(sys.argv[1],sys.argv[1:])", *cmd],
-                         stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, cwd=ROOT)
-
-
 def pick_offer(max_price):
-    query = f"gpu_name={os.environ.get('GPU_NAME') or 'RTX_4090'} num_gpus=1 verified=true reliability>0.99 disk_space>=80 inet_down>=200 dph<={max_price}"
+    gpu = os.environ.get("GPU_NAME") or "RTX_4090"
+    query = f"gpu_name={gpu} num_gpus=1 verified=true reliability>0.99 disk_space>=80 inet_down>=200 dph<={max_price}"
     offers = json.loads(out("vastai", "search", "offers", query, "-o", "dph", "--raw"))
     if not offers:
-        raise SystemExit(f"no verified GPU offer at <= ${max_price}/h")
+        raise SystemExit(f"no verified {gpu} offer at <= ${max_price}/h")
     o = offers[0]
-    print(f"offer {o['id']}: {o.get('geolocation')} ${o['dph_total']:.3f}/h reliability {o.get('reliability2', 0):.3f}")
+    print(f"offer {o['id']}: {o.get('geolocation')} ${o['dph_total']:.3f}/h reliability {o.get('reliability2', 0):.3f}", flush=True)
     return o["id"]
 
 
-def instance_alive(iid):
+def alive(iid):
     rows = json.loads(out("vastai", "show", "instances", "--raw") or "[]")
     return any(r["id"] == iid for r in rows)
 
@@ -52,48 +56,88 @@ def main():
     ap.add_argument("--max-price-per-hour", type=float, default=0.6)
     ap.add_argument("--timeout-hours", type=float, default=7)
     a = ap.parse_args()
+    kill_token = os.environ.get("OPENJEVX_KILL_TOKEN") or sys.exit("OPENJEVX_KILL_TOKEN missing; run under sec run")
     shard_dir = Path(a.shard_dir).resolve()
-    for s in ("train.jsonl.gz", "eval.jsonl.gz", "run.json"):
-        if not (shard_dir / f"openjevx-{a.shard}-{s}").exists():
-            raise SystemExit(f"missing {shard_dir}/openjevx-{a.shard}-{s}; run the package step first")
+    files = {s: shard_dir / f"openjevx-{a.shard}-{s}" for s in ("train.jsonl.gz", "eval.jsonl.gz", "run.json")}
+    for f in files.values():
+        if not f.exists():
+            raise SystemExit(f"missing {f}; run the package step first")
 
     if out("git", "status", "--porcelain", "--untracked-files=no", "--", "finetuning"):
         raise SystemExit("finetuning/ has uncommitted changes; commit them so the box runs what you tested")
     ref = out("git", "rev-parse", "HEAD")
     if ref not in out("git", "ls-remote", "origin"):
-        print("pushing HEAD so the box can clone it")
+        print("pushing HEAD so the box can clone it", flush=True)
         out("git", "push", "origin", "HEAD")
     repo = out("git", "remote", "get-url", "origin")
 
-    run_dir = shard_dir.parent.parent / "runs" / f"{shard_dir.name}-{time.strftime('%Y%m%d-%H%M')}"
-    run_dir.mkdir(parents=True)
+    name = f"{shard_dir.name}-{time.strftime('%Y%m%d-%H%M')}"
+    run_dir = paths.WORK / "runs" / name
+    (run_dir / "out").mkdir(parents=True)
     print(f"RUN_DIR={run_dir}", flush=True)
-    artifacts = run_dir / "out"
-    launch = json.loads(out(
-        sys.executable, str(ONE_SHOT / "launch.py"), "--offer", str(pick_offer(a.max_price_per_hour)),
-        "--repo", repo, "--ref", ref, "--run", f"SHARD={a.shard} MAX_W8_MB={MAX_W8_MB} bash finetuning/train/run_job.sh",
-        "--label", f"openjevx-{a.shard}-DESTROY-AFTER", "--artifact-remote", "/root/out/openjevx-model",
-        "--artifact-local", str(artifacts), "--disk", "80", "--timeout", str(int(a.timeout_hours * 3600)),
-        "--ssh-private-key", str(KEY), "--ssh-public-key", str(KEY) + ".pub",
-        "--watch-log", str(run_dir / "watch.log")))
-    iid = launch["instance_id"]
-    (run_dir / "instance.json").write_text(json.dumps(launch, indent=2))
-    print(f"instance {iid} running commit {ref[:10]}; watcher log {run_dir / 'watch.log'}")
-    detached([sys.executable, str(ROOT / "finetuning/train/push_data.py"), str(iid), str(shard_dir), a.shard],
-             run_dir / "push.log")
+    link_s = int((a.timeout_hours + 3) * 3600)
 
-    # The watcher owns pull + destroy; we only wait for the box to disappear.
+    shard_key = f"shards/{shard_dir.name}"
+    for s, f in files.items():
+        print(f"uploading {f.name} to r2://{r2.PRIVATE}/{shard_key}/", flush=True)
+        r2.put(f, f"{shard_key}/{s}")
+    env = {"SHARD": a.shard, "MAX_W8_MB": MAX_W8_MB, "DEADLINE_HOURS": str(a.timeout_hours),
+           "KILL_URL": KILL_URL, "KILL_TOKEN": kill_token,
+           "TRAIN_URL": r2.link_get(f"{shard_key}/train.jsonl.gz", link_s),
+           "EVAL_URL": r2.link_get(f"{shard_key}/eval.jsonl.gz", link_s),
+           "RUN_URL": r2.link_get(f"{shard_key}/run.json", link_s)}
+    env.update({f"PUT_{k}_URL": r2.link_put(f"runs/{name}/{v}", link_s) for k, v in RESULTS.items()})
+    body = "".join(f"{k}={shlex.quote(v)}\n" for k, v in env.items())
+    r2.client().put_object(Bucket=r2.PRIVATE, Key=f"runs/{name}/job.env", Body=body.encode())
+    job_env_url = r2.link_get(f"runs/{name}/job.env", link_s)
+
+    job = (f"git clone --filter=blob:none {shlex.quote(repo)} /root/job && "
+           f"git -C /root/job checkout --detach {ref} && "
+           f"JOB_ENV_URL={shlex.quote(job_env_url)} bash /root/job/finetuning/train/run_job.sh")
+    onstart = ("mkdir -p /root/.ssh; chmod 700 /root/.ssh; "
+               f"printf '%s\\n' {shlex.quote(SSH_PUB.read_text().strip())} >> /root/.ssh/authorized_keys; "
+               "chmod 600 /root/.ssh/authorized_keys; "
+               f"python3 -c 'import os,sys; os.setsid(); os.execvp(\"bash\", [\"bash\", \"-c\", sys.argv[1]])' "
+               f"{shlex.quote(job + ' > /root/job.log 2>&1')} &")
+    created = json.loads(out("vastai", "create", "instance", str(pick_offer(a.max_price_per_hour)), "--image", IMAGE,
+                             "--disk", "80", "--ssh", "--direct", "--label", f"openjevx-{a.shard}-DESTROY-AFTER",
+                             "--onstart-cmd", onstart, "--raw"))
+    iid = created["new_contract"]
+    (run_dir / "instance.json").write_text(json.dumps({"instance_id": iid, "commit": ref, "run": name}, indent=2))
+    print(f"instance {iid} running commit {ref[:10]}; results go to r2://{r2.PRIVATE}/runs/{name}/", flush=True)
+
     deadline = time.time() + a.timeout_hours * 3600 + 1800
-    while instance_alive(iid):
-        if time.time() > deadline:
-            raise SystemExit(f"instance {iid} still alive past the timeout; check {run_dir / 'watch.log'}")
+    status = None
+    while time.time() < deadline:
+        if f"runs/{name}/status.json" in r2.ls(f"runs/{name}/"):
+            r2.get(f"runs/{name}/status.json", run_dir / "out/status.json")
+            status = json.loads((run_dir / "out/status.json").read_text())
+            break
+        if not alive(iid):
+            time.sleep(60)  # the status upload may land just after the box goes
+            if f"runs/{name}/status.json" not in r2.ls(f"runs/{name}/"):
+                break
+            continue
         time.sleep(120)
-    w8 = artifacts / "openjevx.w8.onnx"
-    if not w8.exists():
-        raise SystemExit(f"box is gone but no 8-bit ONNX came back; see {run_dir / 'watch.log'}")
+    for _ in range(20):  # the box destroys itself right after the status file; make sure it did
+        if not alive(iid):
+            break
+        time.sleep(30)
+    else:
+        print(f"instance {iid} still alive; destroying it from here", flush=True)
+        out("vastai", "destroy", "instance", str(iid), "-y")
+
+    have = set(r2.ls(f"runs/{name}/"))
+    for v in RESULTS.values():
+        if f"runs/{name}/{v}" in have:
+            r2.get(f"runs/{name}/{v}", run_dir / "out" / v)
+    print(f"status: {status or 'none (box died or timed out)'}", flush=True)
+    if not status or status.get("status") != "complete":
+        raise SystemExit(f"run did not complete; log: {run_dir / 'out/job.log'}")
+    w8 = run_dir / "out/openjevx.w8.onnx"
     mb = w8.stat().st_size // 2**20
-    print(f"8-bit ONNX: {w8} ({mb} MB, limit {MAX_W8_MB})")
-    if mb > MAX_W8_MB:
+    print(f"8-bit ONNX: {w8} ({mb} MB, limit {MAX_W8_MB})", flush=True)
+    if mb > int(MAX_W8_MB):
         raise SystemExit("8-bit ONNX is over the size limit")
 
 

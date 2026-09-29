@@ -79,10 +79,14 @@ def train(smoke):
     name = CFG["provider"]
     opts = CFG["providers"].get(name, {})
     flags = [f"--{k.replace('_', '-')}={v}" for k, v in opts.items() if k != "gpu"]
-    cmd = [PY, FT / "gpu" / f"{name}.py", shard_dir(smoke), "smoke" if smoke else "full", *flags]
+    # The kill token reaches the provider only through sec; the provider hands it to the box in job.env.
+    cmd = ["sec", "run", "OPENJEVX_KILL_TOKEN", "--", PY, FT / "gpu" / f"{name}.py", shard_dir(smoke),
+           "smoke" if smoke else "full", *flags]
     print("+", " ".join(map(str, cmd)), flush=True)
     proc = subprocess.Popen([str(c) for c in cmd], cwd=ROOT, text=True, stdout=subprocess.PIPE,
-                            env={**os.environ, "MAX_W8_MB": str(CFG["model"]["max_w8_mb"]), "GPU_NAME": opts.get("gpu", "")})
+                            env={**os.environ, "MAX_W8_MB": str(CFG["model"]["max_w8_mb"]), "GPU_NAME": opts.get("gpu", ""),
+                                 "OPENJEVX_R2_BUCKET": CFG["storage"]["private_bucket"],
+                                 "OPENJEVX_KILL_URL": CFG["storage"]["destroy_url"]})
     run_dir = None
     for line in proc.stdout:
         print(line, end="", flush=True)
