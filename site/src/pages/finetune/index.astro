@@ -171,10 +171,12 @@ updated ~/.config/openjevx/config.json (backup: config.json.bak-…)</CodeCard>
     to the gate, and both to the leakage check. Re-running it does not add duplicates.</p>
 
   <h2>4. Test the current model on your gate first</h2>
-  <p>Before paying for a GPU, see how the shipped model already does on your rules. Download
-    <code>openjevx.w8.onnx</code> from the <a href={`${repo}/releases/latest`}>latest release</a>, then:</p>
-  <CodeCard label="shell">cd finetuning
-task gate -- ~/Downloads/openjevx.w8.onnx</CodeCard>
+  <p>Before paying for a GPU, see how the shipped model already does on your rules. Download the
+    v0.5.0 model folder, then point the gate at it:</p>
+  <CodeCard label="shell">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+tar -xzf openjevx-model-0.5.0.tar.gz        # -> model/ (openjevx.w8.onnx, config.json, tokenizer.json)
+cd finetuning
+task gate -- ../model</CodeCard>
   <p>This builds and serves the model on a free local port and scores every gate file, one line each:</p>
   <CodeCard label="output">gate/mydata_gate.jsonl   n=    15 accuracy  60.0% right&amp;confident  40.0% confidently WRONG 13.3%</CodeCard>
   <p>That line is your baseline. If your rules already score well, you may not need to train at all.</p>
@@ -246,15 +248,30 @@ jevx ask --noul discount="Does the order get the discount? Orders over Rs 500 ge
       does not crowd them out.</li>
   </ul>
 
-  <h2>Get the weights</h2>
-  <div class="cards">
-    <div class="card">
-      <h3>Hugging Face</h3>
-      <p><a href="https://huggingface.co/muthuishere/openjevx">huggingface.co/muthuishere/openjevx</a> —
-        <code>model.safetensors</code>, <code>encoder/</code>, <code>tokenizer/</code>,
-        <code>rl_agent_config.json</code>, <code>openjevx.onnx</code> (fp32)</p>
-    </div>
+  <h2>Downloads for v0.5.0</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>What</th><th>File</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td>Model folder (467 MB)</td>
+          <td><a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz">openjevx-model-0.5.0.tar.gz</a></td>
+          <td>run it: <code>openjevx.w8.onnx</code> + <code>config.json</code> (its calibration temperatures) + <code>tokenizer.json</code>; gate it (step 4)</td></tr>
+        <tr><td>Trainable checkpoint (777 MB)</td>
+          <td><a href="https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz">openjevx-finetune-v0.5.0.tar.gz</a>
+            (<a href="https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz.sha256">sha256</a>)</td>
+          <td>fine-tune further: <code>model.safetensors</code>, <code>encoder/</code>, <code>tokenizer/</code>, <code>rl_agent_config.json</code>; no training data</td></tr>
+        <tr><td>Hugging Face</td>
+          <td><a href="https://huggingface.co/muthuishere/openjevx">muthuishere/openjevx</a></td>
+          <td>the same model folder files and checkpoint; <code>v0.4.0</code> is a git tag there</td></tr>
+        <tr><td>Example CSV</td>
+          <td><a href={csvUrl} download>decisions.csv</a></td>
+          <td>the starting point for step 2</td></tr>
+      </tbody>
+    </table>
   </div>
+  <p>The v0.5.0 run: one RTX 4090 on vast.ai, 734,145 decisions, one full pass in 2.4 h at about 88 items/s,
+    about $1.10 in total. Test questions were removed first (22,592 leaked questions), and every row was
+    checked against the trainer before renting.</p>
 
   <p>Questions or a bug in the pipeline: <a href={`${repo}/issues`}>open an issue</a>.</p>
 </Base>

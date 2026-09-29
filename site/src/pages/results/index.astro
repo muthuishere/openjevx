@@ -38,12 +38,23 @@ function cellFor(model, id) {
     run against the three servers below — nothing is invented.</p>
 
   <h2>v0.5.0 release gate</h2>
+  <p>The v0.5.0 model folder (its own calibration temperatures) on the Go server, on CPU. The gates share
+    <strong>no state</strong> with training. "Right and confident" = right AND past jevx's default thresholds
+    (yes ≥ 0.8, no ≤ 0.2, choice/score ≥ 0.6). The v0.4.0 column is from the older gate files.</p>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Gate set</th><th>v0.4.0 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th><th>v0.5.0 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th></tr></thead>
+    <tbody>
+      <tr><td>Everyday basics (463)</td><td>66.3% / 46.9% / 17.9%</td><td><strong>96.3% / 96.3% / 3.0%</strong></td></tr>
+      <tr><td>Rule-checking basics (300)</td><td>81.0% / 75.7% / 13.7%</td><td><strong>94.7% / 94.3% / 3.7%</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
   <div class="note">
-    <strong>Pending re-gate.</strong> The first v0.5.0 gate run is not valid: the server applied an older
-    model's calibration temperatures, and the everyday-basics gate shared 79% of its states with training.
-    The gates are being regenerated with unseen states and re-run on the v0.5.0 model folder; numbers
-    will appear here when that run finishes. Upgrading? Run <code>jevx cache clear</code>: jevx caches
-    answers by model name.
+    Known miss: confidently wrong is 3.0–3.7% on the basics gates against our 2% target. The owner accepted it
+    for this release; the fix is planned for v0.5.1. The rest of the gate (held-out test sets, logs gate, 13
+    fundamentals) and the benchmarks against base Laya and v0.4.0 come in a follow-up. Upgrading? Run
+    <code>jevx cache clear</code>: jevx caches answers by model name.
   </div>
 
   <h2>Quantization: fixing the batch-dependent int8 bug</h2>

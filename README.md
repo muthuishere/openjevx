@@ -119,6 +119,22 @@ Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and t
 
 Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
+## What v0.5.0 was trained on
+
+734,795 decisions (408,505 rows). Labels come from evaluating rules or from real outcomes, never from another model's guesses.
+
+| Area | Decisions | Share |
+|---|---|---|
+| Rule-checking across 38 business domains (retail pricing, recruiting, real estate, CI/CD, insurance claims, pharmacy stock, HR payroll, gaming, ...) | 200,139 | 27.2% |
+| Software-work roles (developers, testers, tech leads, managers, operations, everyone, agent checks) | 183,543 | 25.0% |
+| tasksource decision corpus | 146,567 | 19.9% |
+| Public sets with real labels (CVE fixes from bigvul, defect detection, code search, ms_marco relevance, HDFS and BGL operator log alerts) | 104,990 | 14.3% |
+| Log triage: application (Java/Python/Node/Go/nginx), database (Postgres/MySQL, real SQLSTATE codes), frontend (browser/Sentry) | 60,001 | 8.2% |
+| Everyday basics (driving licence age, store hours, parcel late, discount thresholds, fever, bag weight, ...) | 30,405 | 4.1% |
+| Public typed-decisions | 9,150 | 1.2% |
+
+Run: one RTX 4090 on Vast.ai, 734,145 decisions after packaging, one full pass in 2.4 h at ~88 items/s, about $1.10 in total. Leakage-checked (22,592 test questions removed); every row checked against the trainer before renting.
+
 ## Fine-tune it further
 
 The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
