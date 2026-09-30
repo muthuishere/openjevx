@@ -1,0 +1,16 @@
+# "Deploy to DigitalOcean" button (App Platform): builds the repo's Dockerfile, which downloads the 8-bit model.
+# The app is public: the decision API has no password, so set a dashboard password and keep the URL private.
+spec:
+  name: openjevx
+  services:
+    - name: openjevx
+      dockerfile_path: Dockerfile
+      git:
+        repo_clone_url: https://github.com/muthuishere/openjevx.git
+        branch: main
+      http_port: 21118
+      instance_size_slug: apps-s-1vcpu-2gb
+      instance_count: 1
+      health_check:
+        http_path: /health
+        initial_delay_seconds: 60
