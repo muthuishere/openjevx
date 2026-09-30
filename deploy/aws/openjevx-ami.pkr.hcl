@@ -1,6 +1,6 @@
 # AWS Marketplace AMI: Ubuntu 24.04 + the OpenJevX server and 8-bit model as a service.
 #   AWS credentials from the environment (sec run AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY -- packer build .)
-#   packer init . && packer build -var openjevx_version=0.5.0 .
+#   packer init . && packer build .
 # Then add the AMI in the AWS Marketplace Management Portal (docs/DEPLOY.md).
 packer {
   required_plugins {
@@ -12,8 +12,13 @@ packer {
 }
 
 variable "openjevx_version" {
-  type    = string
-  default = "0.5.0"
+  type        = string
+  default     = ""
+  description = "Release to install; empty means deploy/VERSION."
+}
+
+locals {
+  version = var.openjevx_version != "" ? var.openjevx_version : trimspace(file("${path.root}/../VERSION"))
 }
 
 variable "openjevx_base" {
@@ -31,7 +36,7 @@ source "amazon-ebs" "openjevx" {
   region        = var.region
   instance_type = "t3.medium"
   ssh_username  = "ubuntu"
-  ami_name      = "openjevx-${var.openjevx_version}-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name      = "openjevx-${local.version}-${formatdate("YYYYMMDDhhmm", timestamp())}"
   imds_support  = "v2.0"
   source_ami_filter {
     filters = {
@@ -57,7 +62,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "OPENJEVX_VERSION=${var.openjevx_version}",
+      "OPENJEVX_VERSION=${local.version}",
       "OPENJEVX_BASE=${var.openjevx_base}",
       "OPENJEVX_NO_START=1",
     ]

@@ -1,6 +1,6 @@
 # DigitalOcean Marketplace 1-Click image: Ubuntu 24.04 + the OpenJevX server and 8-bit model as a service.
 #   export DIGITALOCEAN_TOKEN=...   (sec run DIGITALOCEAN_TOKEN -- packer build .)
-#   packer init . && packer build -var openjevx_version=0.5.0 .
+#   packer init . && packer build .
 # The snapshot lands in the account's images; submit it in the Vendor Portal (docs/DEPLOY.md).
 packer {
   required_plugins {
@@ -12,8 +12,13 @@ packer {
 }
 
 variable "openjevx_version" {
-  type    = string
-  default = "0.5.0"
+  type        = string
+  default     = ""
+  description = "Release to install; empty means deploy/VERSION."
+}
+
+locals {
+  version = var.openjevx_version != "" ? var.openjevx_version : trimspace(file("${path.root}/../VERSION"))
 }
 
 variable "openjevx_base" {
@@ -28,7 +33,7 @@ source "digitalocean" "openjevx" {
   region        = "nyc3"
   size          = "s-2vcpu-4gb"
   ssh_username  = "root"
-  snapshot_name = "openjevx-${var.openjevx_version}-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  snapshot_name = "openjevx-${local.version}-${formatdate("YYYYMMDDhhmm", timestamp())}"
 }
 
 build {
@@ -45,7 +50,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "OPENJEVX_VERSION=${var.openjevx_version}",
+      "OPENJEVX_VERSION=${local.version}",
       "OPENJEVX_BASE=${var.openjevx_base}",
       "OPENJEVX_NO_START=1",
     ]
