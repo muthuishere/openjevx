@@ -14,7 +14,17 @@ with `GET /health` as the health check. `deploy/install.sh` does the work for th
 **Security default.** `/v1/systemone` has no password. The images therefore open only SSH in the
 firewall (ufw); the customer opens port 21118 to their own network or uses an SSH tunnel. Each server
 writes its own random dashboard password on first boot to `/root/openjevx-password`.
+The Docker image has no default password: it refuses to start without `OPENJEVX_PASSWORD` (App Platform
+asks for it as a secret) or a mounted `/app/openjevx.json`. `install.sh` checks both downloads against the
+release's `SHA256SUMS-server` and swaps in a clean folder, so a re-run leaves no stale files and keeps the password.
+It allows every port sshd listens on before turning the firewall on.
 Minimum size: linux amd64, 2 vCPU, 4 GB RAM (the 8-bit model is 598 MB).
+
+**Version.** `deploy/VERSION` is the one place the release is set. `install.sh`, both Packer templates and the
+Dockerfile read it. `deploy/cloud-init.yaml` and `deploy/docker-compose.yml` are paste-able, so they are generated:
+after changing `VERSION`, `install.sh` or the Dockerfile, commit, run `deploy/render.sh`, and commit again.
+`deploy/render.sh --check` fails on a stale file. They pin the commit that last changed what they fetch, and
+install.sh's sha256, never the moving `main`.
 
 ## Public text
 
@@ -26,9 +36,9 @@ set `OPENJEVX_BASE` / `-var openjevx_base=` to a public R2 folder instead once t
 
 1. Build the snapshot (needs Packer and a DigitalOcean token; costs a few cents of droplet time):
    ```
-   cd deploy/digitalocean && packer init . && sec run DIGITALOCEAN_TOKEN -- packer build -var openjevx_version=0.5.0 .
+   cd deploy/digitalocean && packer init . && sec run DIGITALOCEAN_TOKEN -- packer build .
    ```
-   The build runs DigitalOcean's `99-img-check.sh`; it must pass.
+   The build runs DigitalOcean's `99-img-check.sh` (pinned to a commit and sha256); it must pass.
 2. Test: create a droplet from the snapshot, SSH in, read the login message, `curl http://127.0.0.1:21118/health`.
 3. Owner submits in the [Vendor Portal](https://cloud.digitalocean.com/vendorportal) with:
    - Name: OpenJevX · Vendor: deemwar · Category: Machine Learning / Developer Tools
@@ -51,7 +61,7 @@ so this path suits trials; production should use the 1-Click droplet or a VPS in
 
 - **cloud-init:** paste `deploy/cloud-init.yaml` as the instance's user data (EC2 "User data",
   Azure "Custom data", GCP `user-data` metadata, Hetzner/DO "User data").
-- **Docker:** copy `deploy/docker-compose.yml` to the box and run `docker compose up -d --build`.
+- **Docker:** copy `deploy/docker-compose.yml` to the box and run `OPENJEVX_PASSWORD=<12+ letters/digits> docker compose up -d --build`.
 
 ## AWS Marketplace (AMI first, container later)
 
