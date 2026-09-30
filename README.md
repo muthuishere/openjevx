@@ -113,6 +113,10 @@ Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
 - `GET /metrics` — Prometheus format (same password)
 - `GET /health` — open, no password
 
+## Deploy in your own cloud
+
+DigitalOcean 1-Click, cloud-init for any VPS, Docker Compose, and an AWS AMI: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Run locally from source
 
 Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
