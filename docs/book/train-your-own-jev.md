@@ -186,6 +186,15 @@ You should see `RUN_DIR=…` and, at the end, the model folder under `~/openjevx
 The box clones a pushed commit, so commit and push any change under `finetuning/` before training. Your
 data goes through R2, not git.
 
+**Working from a fork?** The box clones your checkout's `origin` remote at the current commit
+(`finetuning/gpu/vast.py`), over HTTPS and with no credentials, so `origin` must be a public repo you can
+push to. Check and set it:
+
+```sh
+git remote get-url origin
+git remote set-url origin https://your-git-host/you/openjevx.git
+```
+
 Another GPU provider is one file, `finetuning/gpu/<name>.py`, that prints `RUN_DIR=<dir>` and leaves the
 model folder in `<dir>/out/model/`, plus one line in the config. Today only Vast.ai is implemented.
 
@@ -239,7 +248,7 @@ The temperatures belong to this one model, so they live in its `config.json`, ne
 build a folder by hand from an ONNX file and its eval report:
 
 ```sh
-python finetuning/export/make_model_folder.py OUT_DIR model.onnx eval_report.json tokenizer.json --version 1.0.0
+python3 finetuning/export/make_model_folder.py OUT_DIR model.onnx eval_report.json tokenizer.json --version 1.0.0
 ```
 
 The server refuses a graph whose sha256 does not match `config.json`.
@@ -292,8 +301,9 @@ Your rules change and reality surprises you. The loop:
 
 ## Troubleshooting
 
-- **The GPU box is stuck loading.** Some hosts are slow to start. After 15 minutes the box is destroyed and
-  the next machine is tried, up to 3.
+- **The GPU box is stuck loading.** Some hosts are slow to start. A box not running after 15 minutes is
+  destroyed and the next machine is tried, up to 3 (`finetuning/gpu/vast.py`; change the wait with
+  `VAST_START_MINUTES`).
 - **Your network dropped.** The box does not depend on your laptop; results wait in R2. Run the step again
   to pick them up.
 - **The trainer rejects a row.** The CPU check names the row and its source before any GPU is rented. Fix

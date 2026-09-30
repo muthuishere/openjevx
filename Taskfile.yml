@@ -61,7 +61,7 @@ tasks:
       - docker save ghcr.io/muthuishere/openjevx:latest-amd64 -o {{.LOCAL}}/dist/openjevx-docker-amd64.tar
 
   book:
-    desc: "Build the training book as markdown + PDF into dist/book/ (PUBLIC=1 BOOK_SOURCE_URL=... for deemwar surfaces)"
+    desc: "Build the training book as markdown + PDF into dist/book/ (PUBLIC=1 for deemwar surfaces, source https://jev.deemwar.com/source)"
     cmds:
       - ./scripts/book.sh
 
