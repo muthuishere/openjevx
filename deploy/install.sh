@@ -1,11 +1,14 @@
 #!/bin/bash
 # Install the OpenJevX server and the current 8-bit model on a Linux box as a systemd service.
 # Used by the DigitalOcean 1-Click image, the AWS AMI, and cloud-init on any VPS.
-#   sudo OPENJEVX_VERSION=0.5.0 bash install.sh
+#   sudo bash install.sh                  (version from deploy/VERSION, or OPENJEVX_VERSION)
 # OPENJEVX_BASE is where the two release files are downloaded from (the release folder URL).
 set -euo pipefail
 
-VERSION="${OPENJEVX_VERSION:-0.5.0}"
+# The release version: $OPENJEVX_VERSION, else deploy/VERSION next to this script.
+here="$(cd "$(dirname "$0")" && pwd)"
+VERSION="${OPENJEVX_VERSION:-$(cat "$here/VERSION" 2>/dev/null || true)}"
+[ -n "$VERSION" ] || { echo "install.sh: set OPENJEVX_VERSION (no VERSION file next to this script)" >&2; exit 1; }
 BASE="${OPENJEVX_BASE:-https://github.com/muthuishere/openjevx/releases/download/v${VERSION}}"
 DIR=/opt/openjevx
 PORT=21118
@@ -14,10 +17,28 @@ PORT=21118
 [ "$(uname -m)" = x86_64 ] || { echo "install.sh: only linux amd64 is released today, not $(uname -m)" >&2; exit 1; }
 command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl ca-certificates; }
 
-mkdir -p "$DIR"
-curl -fsSL "$BASE/openjevx-linux-amd64.tar" | tar -x -C "$DIR"
-curl -fsSL "$BASE/openjevx-model-${VERSION}.tar.gz" | tar -xz -C "$DIR"
-[ -x "$DIR/openjevx" ] && [ -f "$DIR/model/config.json" ] || { echo "install.sh: download incomplete in $DIR" >&2; exit 1; }
+# Download, then check every file against the release's SHA256SUMS-server before unpacking anything.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+server=openjevx-linux-amd64.tar
+model="openjevx-model-${VERSION}.tar.gz"
+for f in SHA256SUMS-server "$server" "$model"; do curl -fsSL "$BASE/$f" -o "$tmp/$f"; done
+for f in "$server" "$model"; do
+  grep -q "  $f\$" "$tmp/SHA256SUMS-server" || { echo "install.sh: $f is not listed in SHA256SUMS-server" >&2; exit 1; }
+done
+(cd "$tmp" && grep -E "  ($server|$model)\$" SHA256SUMS-server | sha256sum -c --quiet -) \
+  || { echo "install.sh: checksum mismatch; nothing installed" >&2; exit 1; }
+
+# Unpack into a fresh folder and swap it in, so a re-run leaves no stale files. The config and
+# its first-boot password survive a re-run.
+rm -rf "$DIR.new" && mkdir -p "$DIR.new"
+tar -x -C "$DIR.new" -f "$tmp/$server"
+tar -xz -C "$DIR.new" -f "$tmp/$model"
+[ -x "$DIR.new/openjevx" ] && [ -f "$DIR.new/model/config.json" ] || { echo "install.sh: download incomplete in $DIR.new" >&2; exit 1; }
+rm -f "$DIR.new/openjevx.json"
+for f in openjevx.json openjevx.json.done; do if [ -f "$DIR/$f" ]; then cp -p "$DIR/$f" "$DIR.new/$f"; fi; done
+rm -rf "$DIR.old"; if [ -d "$DIR" ]; then mv "$DIR" "$DIR.old"; fi
+mv "$DIR.new" "$DIR" && rm -rf "$DIR.old"
 
 id openjevx >/dev/null 2>&1 || useradd --system --home "$DIR" --shell /usr/sbin/nologin openjevx
 chown -R openjevx:openjevx "$DIR"
@@ -69,8 +90,16 @@ MOTD
 chmod 755 /etc/update-motd.d/99-openjevx
 
 # Firewall: SSH only. The decision API has no password, so the customer opens 21118 to their own network.
+# Allow every port sshd really listens on, so a non-standard SSH port does not lock anyone out.
 if command -v ufw >/dev/null; then
-  ufw allow OpenSSH >/dev/null && ufw --force enable >/dev/null
+  ssh_ports="$( (sshd -T 2>/dev/null || true) | awk '$1=="port"{print $2}')"
+  if [ -z "$ssh_ports" ]; then
+    echo "install.sh: WARNING could not read the sshd port; allowing 22. Check 'ufw status' before logging out." >&2
+    ssh_ports=22
+  fi
+  for p in $ssh_ports; do ufw allow "$p/tcp" >/dev/null; done
+  ufw --force enable >/dev/null
+  echo "install.sh: firewall on; SSH allowed on port(s) $(echo "$ssh_ports" | tr "\n" " "); 21118 closed until you open it." >&2
 fi
 
 systemctl daemon-reload
