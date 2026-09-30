@@ -8,7 +8,7 @@
 # MODEL_DIR (default .local/model) is the model folder to ship; build one with
 # finetuning/export/make_model_folder.py, or take <run>/out/model from a training run.
 set -eu
-ORT=${ORT_VERSION:-1.22.0}
+ORT=${ORT_VERSION:-1.29.0}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$ROOT/.local/dist
 CACHE=$ROOT/.local/ort

@@ -318,9 +318,8 @@ func agree(gpu, cpu *ort.DynamicAdvancedSession, probe []decide.Item) error {
 }
 
 func openSession(cfg config, model []byte, probe []decide.Item) (*ort.DynamicAdvancedSession, string, error) {
-	names := []string{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"}
-	outs := []string{"logits", "act_logits"}
-	cpu, err := sessionWith(model, names, outs, func(*ort.SessionOptions) error { return nil })
+	names, outs := inputNames, outputNames
+	cpu, err := sessionWith(model, names, outs, cpuOptions(cfg))
 	if err != nil {
 		return nil, "", err
 	}
@@ -346,6 +345,16 @@ func openSession(cfg config, model []byte, probe []decide.Item) (*ort.DynamicAdv
 	}
 	log.Printf("no GPU provider ran the model, using CPU: %s", strings.Join(failed, "; "))
 	return cpu, "cpu", nil
+}
+
+var (
+	inputNames  = []string{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"}
+	outputNames = []string{"logits", "act_logits"}
+)
+
+// cpuOptions are the CPU session settings.
+func cpuOptions(cfg config) func(*ort.SessionOptions) error {
+	return func(*ort.SessionOptions) error { return nil }
 }
 
 // gpuProviders are tried in order; the first one this ONNX Runtime build can load wins.
