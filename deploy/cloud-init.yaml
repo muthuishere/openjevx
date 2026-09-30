@@ -1,0 +1,10 @@
+#cloud-config
+# OpenJevX on any Ubuntu/Debian VPS (AWS, Azure, GCP, DigitalOcean, Hetzner, ...): paste this as the
+# instance's user data. Needs linux amd64 and at least 2 GB RAM. Afterwards:
+#   ssh in, cat /root/openjevx-password, curl http://127.0.0.1:21118/health
+# install.sh is the file deploy/install.sh from the OpenJevX repo; OPENJEVX_VERSION picks the model release.
+package_update: true
+packages: [curl, ca-certificates, ufw]
+runcmd:
+  - curl -fsSL https://raw.githubusercontent.com/muthuishere/openjevx/main/deploy/install.sh -o /root/openjevx-install.sh
+  - OPENJEVX_VERSION=0.5.0 bash /root/openjevx-install.sh
