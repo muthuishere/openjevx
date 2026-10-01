@@ -81,8 +81,10 @@ same folder (`tar -xzf openjevx-model-0.5.0.tar.gz`) and run `openjevx.exe`.
 
 ```bash
 git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-docker compose up -d --build
+OPENJEVX_PASSWORD=<12+ letters/digits> docker compose up -d --build
 ```
+
+The image has no default dashboard password: it refuses to start without `OPENJEVX_PASSWORD` or a mounted `/app/openjevx.json`.
 
 ## jevx
 
@@ -107,11 +109,15 @@ Apache-2.0. Credits: `CREDITS`. Decisions behind the project: [`docs/adr/`](docs
 
 Open http://127.0.0.1:21118/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
 
-Password default: `adminadmin`, change it in `openjevx.json` (`"password"`).
+Password default for the downloaded binary: `adminadmin`, change it in `openjevx.json` (`"password"`).
 
 - `GET /stats` — JSON snapshot (same password)
 - `GET /metrics` — Prometheus format (same password)
 - `GET /health` — open, no password
+
+## Deploy in your own cloud
+
+DigitalOcean 1-Click, cloud-init for any VPS, Docker Compose, and an AWS AMI: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Run locally from source
 

@@ -4,7 +4,9 @@ services:
     build: .
     ports:
       - "127.0.0.1:21118:21118"
-    # To change the dashboard password, mount your own config:
+    # The dashboard password is required (no default); or mount your own config instead:
+    environment:
+      OPENJEVX_PASSWORD: ${OPENJEVX_PASSWORD:-}
     # volumes:
     #   - ./openjevx.docker.json:/app/openjevx.json:ro
     restart: unless-stopped
