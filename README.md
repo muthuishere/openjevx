@@ -60,21 +60,21 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-darwin-arm64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz
 tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
 ```
 
 Linux:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-linux-amd64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz
 tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-windows-amd64.zip and
-https://github.com/muthuishere/openjevx/releases/download/v0.5.0/openjevx-model-0.5.0.tar.gz, unpack both into the
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-windows-amd64.zip and
+https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz, unpack both into the
 same folder (`tar -xzf openjevx-model-0.5.0.tar.gz`) and run `openjevx.exe`.
 
 ## Docker
