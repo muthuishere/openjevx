@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
 
-const version = "v0.5.0";
-const modelAsset = `openjevx-model-${version.slice(1)}.tar.gz`;
+const version = "v0.5.1";
+// The server and the model are versioned separately: v0.5.1 ships the unchanged 0.5.0 model.
+const modelVersion = "0.5.0";
+const modelAsset = `openjevx-model-${modelVersion}.tar.gz`;
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;
 const home = process.env.OPENJEVX_HOME || join(homedir(), ".local", "share", "openjevx");
 const binDir = process.env.OPENJEVX_BIN || join(homedir(), ".local", "bin");
