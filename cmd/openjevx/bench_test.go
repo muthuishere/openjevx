@@ -5,7 +5,8 @@ package main
 //	OPENJEVX_BENCH=.local/model OPENJEVX_ORT=.local/libonnxruntime.dylib go test ./cmd/openjevx -run TestBench -v -timeout 30m
 //
 // It prints cold start (read+verify, session creation, first run) and p50/p95/p99 per stage for a short,
-// a typical and a long request, sent alone and as a batch of questions. OPENJEVX_BENCH_N sets the rounds.
+// a typical and a long request, sent alone and as a batch of questions. OPENJEVX_BENCH_N sets the rounds,
+// OPENJEVX_BENCH_ONLY=x1 runs only the cases whose name contains it.
 
 import (
 	"encoding/json"
@@ -93,6 +94,9 @@ func TestBench(t *testing.T) {
 		ms(load), ms(create), ms(first), ms(load+create+first))
 	fmt.Printf("| case | tokens | encode p50 | run p50 | run p95 | run p99 | decode p50 | total p50 | total p95 | total p99 |\n|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, c := range benchCases() {
+		if only := os.Getenv("OPENJEVX_BENCH_ONLY"); only != "" && !strings.Contains(c.name, only) {
+			continue
+		}
 		order := orderedKeys(c.questions)
 		ids, qs, err := decide.ParseQuestions(c.questions, order)
 		if err != nil {

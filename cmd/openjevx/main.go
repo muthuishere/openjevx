@@ -29,6 +29,7 @@ type config struct {
 	Password string `json:"password,omitempty"`
 	Model    string `json:"model,omitempty"`
 	Runtime  string `json:"runtime,omitempty"`
+	Threads  int    `json:"threads,omitempty"`
 }
 
 func main() {
@@ -352,9 +353,16 @@ var (
 	outputNames = []string{"logits", "act_logits"}
 )
 
-// cpuOptions are the CPU session settings.
+// cpuOptions are the CPU session settings. ONNX Runtime sizes its thread pool from the host's cores and
+// ignores a container's CPU limit; GOMAXPROCS follows that limit, so it is the default ("threads" overrides).
 func cpuOptions(cfg config) func(*ort.SessionOptions) error {
-	return func(*ort.SessionOptions) error { return nil }
+	return func(o *ort.SessionOptions) error {
+		n := cfg.Threads
+		if n <= 0 {
+			n = runtime.GOMAXPROCS(0)
+		}
+		return o.SetIntraOpNumThreads(n)
+	}
 }
 
 // gpuProviders are tried in order; the first one this ONNX Runtime build can load wins.

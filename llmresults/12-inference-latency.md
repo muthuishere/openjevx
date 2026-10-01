@@ -77,3 +77,19 @@ GEMM. Only three things move the long case:
 - x86 server CPUs. This Mac is ARM (no VNNI). `MatMulNBits` has AVX2 and AVX-512-VNNI int8 kernels in ORT, so the
   same win is expected, but the numbers above are M5 Pro numbers. The benchmark runs anywhere with `go test`.
 - Intel Macs: ORT 1.29 ships no osx-x86_64 build; `task setup` now says "unsupported platform" there.
+
+## Fix 2: in a container, size the thread pool to the CPU limit
+
+ONNX Runtime sizes its intra-op pool from the host's cores and ignores a container's CPU limit. The server now
+sets intra-op threads to `GOMAXPROCS`, which Go (1.25+) takes from the cgroup limit; `"threads"` in
+openjevx.json overrides it. Linux arm64 container, `--cpus=4`, same model, ms p50 / p95:
+
+| case | tokens | before (18 threads on 4 CPUs) | after (4 threads) |
+|---|---|---|---|
+| short x1 | 36 | 189.6 / 286.1 | **42.2 / 43.3** |
+| typical x1 | 164 | 603.9 / 695.1 | **167.4 / 170.9** |
+| long x1 | 912 | 3495.4 / 3600.4 | **1055.5 / 1074.1** |
+| cold start | | 4.9 s | 1.5 s |
+
+Latency scales with the CPUs the container gets: under 100 ms for a typical request needs about 8 CPUs of this
+class with this model. A smaller model (ADR 0011) is what makes it cheap.
