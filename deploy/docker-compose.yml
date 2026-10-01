@@ -6,7 +6,7 @@
 services:
   openjevx:
     build:
-      context: https://github.com/muthuishere/openjevx.git#19f39f2c1ef86a3a29a8887a1066288977e354b0
+      context: https://github.com/muthuishere/openjevx.git#12fa73ced5e456236b80073c4eb25b9bad934f08
     ports:
       - "127.0.0.1:21118:21118"
     environment:

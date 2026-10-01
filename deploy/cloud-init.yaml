@@ -6,5 +6,5 @@
 package_update: true
 packages: [curl, ca-certificates, ufw]
 runcmd:
-  - curl -fsSL https://raw.githubusercontent.com/muthuishere/openjevx/19f39f2c1ef86a3a29a8887a1066288977e354b0/deploy/install.sh -o /root/openjevx-install.sh
+  - curl -fsSL https://raw.githubusercontent.com/muthuishere/openjevx/12fa73ced5e456236b80073c4eb25b9bad934f08/deploy/install.sh -o /root/openjevx-install.sh
   - echo '12918c7a2d7638a81453df086839038fd5439c67a8ecd43779d670023a6b37cf  /root/openjevx-install.sh' | sha256sum -c - && OPENJEVX_VERSION=0.5.0 bash /root/openjevx-install.sh
