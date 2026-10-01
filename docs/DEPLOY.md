@@ -20,9 +20,10 @@ release's `SHA256SUMS-server` and swaps in a clean folder, so a re-run leaves no
 It allows every port sshd listens on before turning the firewall on.
 Minimum size: linux amd64, 2 vCPU, 4 GB RAM (the 8-bit model is 598 MB).
 
-**Version.** `deploy/VERSION` is the one place the release is set. `install.sh`, both Packer templates and the
-Dockerfile read it. `deploy/cloud-init.yaml` and `deploy/docker-compose.yml` are paste-able, so they are generated:
-after changing `VERSION`, `install.sh` or the Dockerfile, commit, run `deploy/render.sh`, and commit again.
+**Version.** `deploy/VERSION` is the server release and `deploy/MODEL_VERSION` the model; the server release
+carries that model's archive too. `install.sh` and both Packer templates read both; the Dockerfile builds the
+server from source and reads only `MODEL_VERSION`. `deploy/cloud-init.yaml` and `deploy/docker-compose.yml` are paste-able, so they are generated:
+after changing `VERSION`, `MODEL_VERSION`, `install.sh` or the Dockerfile, commit, run `deploy/render.sh`, and commit again.
 `deploy/render.sh --check` fails on a stale file. They pin the commit that last changed what they fetch, and
 install.sh's sha256, never the moving `main`.
 
@@ -43,7 +44,7 @@ set `OPENJEVX_BASE` / `-var openjevx_base=` to a public R2 folder instead once t
 3. Owner submits in the [Vendor Portal](https://cloud.digitalocean.com/vendorportal) with:
    - Name: OpenJevX · Vendor: deemwar · Category: Machine Learning / Developer Tools
    - Summary: "A small decision model you run on your own CPU. Ask yes/no, pick-one and rating questions over an HTTP API; answers come with a confidence."
-   - Software included: OpenJevX 0.5.0 (Apache-2.0), ONNX Runtime 1.22.0 (MIT), Ubuntu 24.04
+   - Software included: OpenJevX 0.5.1 with model 0.5.0 (Apache-2.0), ONNX Runtime 1.29.0 (MIT), Ubuntu 24.04
    - Recommended size: s-2vcpu-4gb
    - Getting started: the text of the login message (`/etc/update-motd.d/99-openjevx`)
    - Support URL and email: deemwar's

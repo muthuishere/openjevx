@@ -2,14 +2,14 @@
 FROM golang:1.26-bookworm AS build
 ARG TARGETARCH
 ARG ORT_VERSION=1.29.0
-# Empty means the version in deploy/VERSION.
+# Empty means the version in deploy/MODEL_VERSION.
 ARG MODEL_VERSION=
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 # The model folder from the release: model/{openjevx.w8.onnx,config.json,tokenizer.json}.
-RUN v="${MODEL_VERSION:-$(cat deploy/VERSION)}" && mkdir -p /out && curl -fsSL https://github.com/muthuishere/openjevx/releases/download/v$v/openjevx-model-$v.tar.gz | tar -xz -C /out \
+RUN v="${MODEL_VERSION:-$(cat deploy/MODEL_VERSION)}" && mkdir -p /out && curl -fsSL https://github.com/muthuishere/openjevx/releases/download/v$v/openjevx-model-$v.tar.gz | tar -xz -C /out \
  && test -f /out/model/config.json
 RUN case "$TARGETARCH" in arm64) ort=onnxruntime-linux-aarch64 ;; *) ort=onnxruntime-linux-x64 ;; esac \
  && curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ort}-${ORT_VERSION}.tgz | tar -xz \

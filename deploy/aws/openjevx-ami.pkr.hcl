@@ -18,7 +18,8 @@ variable "openjevx_version" {
 }
 
 locals {
-  version = var.openjevx_version != "" ? var.openjevx_version : trimspace(file("${path.root}/../VERSION"))
+  version       = var.openjevx_version != "" ? var.openjevx_version : trimspace(file("${path.root}/../VERSION"))
+  model_version = trimspace(file("${path.root}/../MODEL_VERSION"))
 }
 
 variable "openjevx_base" {
@@ -63,6 +64,7 @@ build {
   provisioner "shell" {
     environment_vars = [
       "OPENJEVX_VERSION=${local.version}",
+      "OPENJEVX_MODEL_VERSION=${local.model_version}",
       "OPENJEVX_BASE=${var.openjevx_base}",
       "OPENJEVX_NO_START=1",
     ]

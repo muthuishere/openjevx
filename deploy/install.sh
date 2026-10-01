@@ -1,14 +1,18 @@
 #!/bin/bash
 # Install the OpenJevX server and the current 8-bit model on a Linux box as a systemd service.
 # Used by the DigitalOcean 1-Click image, the AWS AMI, and cloud-init on any VPS.
-#   sudo bash install.sh                  (version from deploy/VERSION, or OPENJEVX_VERSION)
+#   sudo bash install.sh     (server release from deploy/VERSION or OPENJEVX_VERSION,
+#                             model from deploy/MODEL_VERSION or OPENJEVX_MODEL_VERSION)
 # OPENJEVX_BASE is where the two release files are downloaded from (the release folder URL).
 set -euo pipefail
 
-# The release version: $OPENJEVX_VERSION, else deploy/VERSION next to this script.
+# The server release: $OPENJEVX_VERSION, else deploy/VERSION next to this script. The model has its own version
+# ($OPENJEVX_MODEL_VERSION, else deploy/MODEL_VERSION); its archive is attached to the server release too.
 here="$(cd "$(dirname "$0")" && pwd)"
 VERSION="${OPENJEVX_VERSION:-$(cat "$here/VERSION" 2>/dev/null || true)}"
 [ -n "$VERSION" ] || { echo "install.sh: set OPENJEVX_VERSION (no VERSION file next to this script)" >&2; exit 1; }
+MODEL_VERSION="${OPENJEVX_MODEL_VERSION:-$(cat "$here/MODEL_VERSION" 2>/dev/null || true)}"
+[ -n "$MODEL_VERSION" ] || { echo "install.sh: set OPENJEVX_MODEL_VERSION (no MODEL_VERSION file next to this script)" >&2; exit 1; }
 BASE="${OPENJEVX_BASE:-https://github.com/muthuishere/openjevx/releases/download/v${VERSION}}"
 DIR=/opt/openjevx
 PORT=21118
@@ -21,7 +25,7 @@ command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 server=openjevx-linux-amd64.tar
-model="openjevx-model-${VERSION}.tar.gz"
+model="openjevx-model-${MODEL_VERSION}.tar.gz"
 for f in SHA256SUMS-server "$server" "$model"; do curl -fsSL "$BASE/$f" -o "$tmp/$f"; done
 for f in "$server" "$model"; do
   grep -q "  $f\$" "$tmp/SHA256SUMS-server" || { echo "install.sh: $f is not listed in SHA256SUMS-server" >&2; exit 1; }
@@ -110,4 +114,4 @@ if [ "${OPENJEVX_NO_START:-}" != 1 ]; then
   curl -fsS "http://127.0.0.1:$PORT/health" || { echo "install.sh: server not healthy; see journalctl -u openjevx" >&2; exit 1; }
   echo
 fi
-echo "OpenJevX $VERSION installed in $DIR"
+echo "OpenJevX $VERSION (model $MODEL_VERSION) installed in $DIR"
