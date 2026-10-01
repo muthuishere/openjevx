@@ -1,7 +1,7 @@
 # OpenJevX server image: Go binary, ONNX Runtime beside it, and the model folder at /app/model.
 FROM golang:1.26-bookworm AS build
 ARG TARGETARCH
-ARG ORT_VERSION=1.22.0
+ARG ORT_VERSION=1.29.0
 ARG MODEL_VERSION=0.5.0
 WORKDIR /src
 COPY go.mod go.sum* ./
