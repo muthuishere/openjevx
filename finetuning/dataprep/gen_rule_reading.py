@@ -18,6 +18,10 @@ Families (gold always comes from evaluating the rule):
   meetings    meetings on the quarter hour, 30-120 minutes, back-to-back cases, a negated question
   fields      single-field checks: missing (null), status equals, list contains, a number against a
               threshold stated in the question
+  (run 2, after run 1 still missed credit score / under-3 / freezing / quiet hours on the gate)
+  enough      "young/old/high/low enough" wordings inside the thresholds family
+  zero_decimals  decimal readings around 0 on other zero-threshold rules (not freezing)
+  time_windows   opening-hours rules with many windows, ends up to 24:00 (never the gate's windows)
 Any row whose state a gate or test file already asks about (leak_check's state test, any question type)
 is dropped, so the gate and eval files stay exactly as they are.
 
@@ -69,6 +73,20 @@ def nice(v, lo, hi, rng):
     return min(max(v, lo), hi)
 
 
+# Rules that read as a requirement, asked as "young/old/high/low enough" (v0.5.2 run 1 said a 15-year-old
+# was "young enough" for an under-3 rule; the train wordings were all right).
+ENOUGH = {"driving_licence", "voting", "car_rental", "senior_discount", "child_ticket", "movie_rating", "loan_age",
+          "retirement", "credit_score", "pass_mark", "attendance", "password_length", "coverage", "approvals",
+          "steps_goal", "discount_min", "free_shipping", "baggage", "cabin_bag", "latency_slo", "elevator", "parking"}
+
+
+def enough(rid, field, op, noun):
+    up = op in (">=", ">")
+    if field == "age":
+        return f"Is this {noun} {'old' if up else 'young'} enough under the rule?"
+    return f"Is the {field.replace('_', ' ')} {'high' if up else 'low'} enough to meet the rule?"
+
+
 def thresholds(rng):
     rows = []
     for rid, dom, rule, field, unit, t0, op, (lo, hi), phrasings, noun in gb.NUMERIC:
@@ -99,6 +117,8 @@ def thresholds(rng):
                 tt = int(t) if not is_float and t == int(t) else t
                 state = {"rule": rule.format(t=tt), noun: {field: v}}
                 q = rng.choice(use)
+                if rid in ENOUGH and rng.random() < 0.3:
+                    q = enough(rid, field, op, noun)
                 if rng.random() < 0.3:
                     state, q = {noun: {field: v}}, f"{q} (Rule: {rule.format(t=tt)})"
                 rows.append(row(f"thresholds/{rid}", gb.render(state, rng), q, gb.compare(v, op, t)))
@@ -236,6 +256,51 @@ def fields(rng):
     return rows
 
 
+# Zero (and one sub-zero) thresholds with decimal readings. Freezing stays out on purpose: the gate checks
+# that this transfers to it.
+ZERO = [("overdrawn", "An account is overdrawn when its balance is below 0.", "account", "balance_usd", "<", 0,
+         ["Is the account overdrawn?", "Is the balance below zero?"]),
+        ("profit", "A month is profitable when net profit is above 0.", "month", "net_profit_lakh", ">", 0,
+         ["Was the month profitable?", "Is net profit above zero?"]),
+        ("road_ice", "Roads can ice when the road surface is at or below 0 C.", "road", "surface_temp_c", "<=", 0,
+         ["Could the road ice over?", "Is the road surface at or below 0 C?"]),
+        ("below_sea", "A town is below sea level when its elevation is under 0 m.", "town", "elevation_m", "<", 0,
+         ["Is the town below sea level?", "Is the elevation under zero?"]),
+        ("sales_growth", "Sales grew when the change is above 0%.", "store", "sales_change_pct", ">", 0,
+         ["Did sales grow?", "Is the sales change positive?"]),
+        ("freezer_safe", "A freezer is safe at -18 C or colder.", "freezer", "temp_c", "<=", -18,
+         ["Is the freezer cold enough?", "Is the freezer at a safe temperature?"])]
+
+
+def zero_decimals(rng):
+    rows = []
+    for rid, rule, noun, field, op, t, phrasings in ZERO:
+        for _ in range(500):
+            d = rng.choice([0, 0.1, 0.2, 0.3, 0.5, 0.05, 0.01, 0.9, 1, 2] + [round(rng.uniform(0, 3), rng.choice([1, 2]))] * 6)
+            v = round(t + rng.choice([-1, 1]) * d, 2)
+            v = int(v) if v == int(v) else v
+            state = {"rule": rule, noun: {field: v}}
+            rows.append(row(f"zero_decimals/{rid}", gb.render(state, rng), rng.choice(phrasings), gb.compare(v, op, t)))
+    return rows
+
+
+def time_windows(rng):
+    """Opening-hours rules with many windows (train uses one per rule), ends up to 24:00."""
+    rows = []
+    gate_hours = set(gb.GATE_HOURS.values())
+    for rid, dom, rule, o0, c0, phrasings in gb.TIME_RULES:
+        for _ in range(450):
+            o = rng.randint(0, 22); c = rng.randint(o + 1, 24)
+            if (o, c) in gate_hours or (o, c) == (o0, c0):
+                continue
+            h = rng.choice([o - 1, o, c - 1, c, c + 1, rng.randint(0, 23)]) % 24
+            m = rng.choice([0, 0, 0, 30, 59])
+            inside = o * 60 <= h * 60 + m < c * 60
+            state = {"rule": rule.format(o=o, c=c), "time_now": f"{h:02d}:{m:02d}"}
+            rows.append(row(f"time_windows/{rid}", gb.render(state, rng), rng.choice(phrasings[:-1]), inside))
+    return rows
+
+
 def forbidden():
     """State sequences of every gate and test file, so no drill asks about a state they ask about."""
     keys = set()
@@ -252,7 +317,8 @@ def forbidden():
 def main():
     rng = random.Random(SEED)
     fams = {"thresholds": thresholds(rng), "dates": dates(rng), "bare_dates": bare_dates(rng),
-            "meetings": meetings(rng), "fields": fields(rng)}
+            "meetings": meetings(rng), "fields": fields(rng), "zero_decimals": zero_decimals(rng),
+            "time_windows": time_windows(rng)}
     forbid = forbidden()
     seen, out, dropped = set(), [], Counter()
     for name, rows in fams.items():

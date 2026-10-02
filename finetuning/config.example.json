@@ -39,11 +39,11 @@
       },
       {
         "file": "train/basics_train.jsonl",
-        "repeat": 5
+        "repeat": 2
       },
       {
         "file": "train/rule_reading_train.jsonl",
-        "repeat": 2
+        "repeat": 3
       },
       {
         "file": "train/logs_train.jsonl",
