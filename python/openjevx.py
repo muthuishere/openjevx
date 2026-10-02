@@ -22,7 +22,7 @@ from tokenizers import Tokenizer
 
 REPO = "muthuishere/openjevx"
 CLS, SEP, MASK = 50281, 50282, 50284
-MAX_LEN, HEAD_MAX = 1024, 256
+MAX_LEN, HEAD_MAX = 1024, 256  # used only when config.json has no max_len / head_max (as the server does)
 
 
 def _criterion(v):
@@ -51,7 +51,9 @@ class OpenJevX:
         model = model or hf_hub_download(REPO, "openjevx.w8.onnx")
         tokenizer = tokenizer or hf_hub_download(REPO, "tokenizer.json")
         config = config or hf_hub_download(REPO, "config.json")  # this model's own calibration temperatures
-        t = json.load(open(config))["temperature"]
+        cfg = json.load(open(config))
+        t = cfg["temperature"]
+        self.max_len, self.head_max = cfg.get("max_len") or MAX_LEN, cfg.get("head_max") or HEAD_MAX
         self.temperature = {0: t["choice"], 1: t["score"], 2: t["noul"]}
         self.tok = Tokenizer.from_file(tokenizer)
         self.session = ort.InferenceSession(model, providers=providers or ["CPUExecutionProvider"])
@@ -63,19 +65,19 @@ class OpenJevX:
         qtype, keys, options = _parse(q)
         head = self._enc(q["type"] + " question: " + q["instructions"].replace("[MASK]", " "))
         opts = [[MASK] + self._enc(" " + o.replace("[MASK]", " "))[:48] for o in options]
-        budget = HEAD_MAX - sum(map(len, opts))
+        budget = self.head_max - sum(map(len, opts))
         if budget < 16:
-            per = max(4, (HEAD_MAX - 16) // max(1, len(opts)))
+            per = max(4, (self.head_max - 16) // max(1, len(opts)))
             opts = [o[:per] for o in opts]
-            budget = HEAD_MAX - sum(map(len, opts))
+            budget = self.head_max - sum(map(len, opts))
         head = head[:max(8, budget)]
         ids, markers = [CLS] + head + [SEP], []
         for o in opts:
             markers.append(len(ids))
             ids += o
         ids.append(SEP)
-        ids += state_ids[:max(0, MAX_LEN - len(ids) - 1)] + [SEP]
-        return ids[:MAX_LEN], [m for m in markers if m < MAX_LEN], qtype, keys
+        ids += state_ids[:max(0, self.max_len - len(ids) - 1)] + [SEP]
+        return ids[:self.max_len], [m for m in markers if m < self.max_len], qtype, keys
 
     def decide(self, state, questions):
         """state: dict/list (sent as JSON) or str; questions: {id: {type, instructions, criteria}}."""
