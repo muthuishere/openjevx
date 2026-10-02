@@ -86,6 +86,13 @@ The marketplace flow trains in the customer's account and serves from their buck
 Its role is read-only: `s3:GetObject` on `arn:aws:s3:::<bucket>/models/current/*` and `s3:ListBucket` on the bucket,
 conditioned on `s3:prefix` `models/current/` and `models/current/*`. Settings: README, "The model from S3".
 
+The marketplace image is distroless (no `/bin/sh`) and runs as uid 10001. That works on amd64 and arm64 from server
+0.5.3: CI starts the server in `gcr.io/distroless/cc-debian12` on both and answers one decision (`docker-smoke`).
+
+Outside AWS (MinIO, Ceph, R2), add `AWS_ENDPOINT_URL_S3=<endpoint>` and `AWS_S3_USE_PATH_STYLE=true`
+(or `"model_s3_path_style": true` in `openjevx.json`), so requests go to `<endpoint>/<bucket>/<key>` and need no
+bucket DNS.
+
 ### What the owner must register (only the owner can do these)
 
 - [ ] AWS account for selling (a dedicated one is best), with MFA on root

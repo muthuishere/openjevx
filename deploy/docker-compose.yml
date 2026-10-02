@@ -1,4 +1,4 @@
-# OpenJevX 0.5.2 (model 0.5.2) with Docker on any VPS, no clone needed: copy this one file, then
+# OpenJevX 0.5.3 (model 0.5.2) with Docker on any VPS, no clone needed: copy this one file, then
 #   OPENJEVX_PASSWORD=<12+ letters/digits> docker compose up -d --build
 # (the image downloads the 8-bit model while it builds). It listens on 127.0.0.1 only: the decision API has
 # no password. Reach it over an SSH tunnel, or open the port to your own network.

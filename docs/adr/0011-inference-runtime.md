@@ -29,3 +29,7 @@ every call. Tokenizer, decode and HTTP together are about 1.5 ms.
 - The GPU training box keeps `onnxruntime-gpu==1.22.0` (ADR 0002). Only the serving runtime moves.
 - ORT 1.29 has no Intel-Mac build. `task setup` fails loudly on Intel Macs.
 - x86 numbers still need to be measured: run `go test ./cmd/openjevx -run TestBench` on the server.
+- ORT 1.29's Linux build has Microsoft telemetry on by default. Creating the environment reads `/etc/machine-id`, else
+  runs ``popen("echo `blkid; hostname`")`` and dereferences the NULL it gets without `/bin/sh`: SIGSEGV in
+  `CreateOrtEnv` in distroless images (found on arm64, 2026-10-02). The server sets `ORT_DISABLE_TELEMETRY=1` before
+  creating the environment and calls `DisableTelemetry` after (server 0.5.3); CI's `docker-smoke` covers it.

@@ -37,6 +37,7 @@ type config struct {
 	ModelCache    string `json:"model_cache,omitempty"`
 	ModelReload   string `json:"model_reload,omitempty"`
 	ModelFallback string `json:"model_fallback,omitempty"`
+	ModelS3Path   bool   `json:"model_s3_path_style,omitempty"` // or AWS_S3_USE_PATH_STYLE=true
 	Runtime       string `json:"runtime,omitempty"`
 	Threads       int    `json:"threads,omitempty"`
 }
@@ -329,7 +330,23 @@ func startRuntime(cfg config) error {
 	if path != "" {
 		ort.SetSharedLibraryPath(path)
 	}
-	return ort.InitializeEnvironment()
+	// ONNX Runtime 1.29's Linux build has Microsoft telemetry on by default. Creating the environment then
+	// reads /etc/machine-id, else runs popen("echo `blkid; hostname`"), and dereferences a NULL FILE* where
+	// there is no /bin/sh (distroless): SIGSEGV in CreateOrtEnv. A self-hosted server sends nothing anyway,
+	// so it is off unless ORT_DISABLE_TELEMETRY is set explicitly.
+	telemetry := os.Getenv("ORT_DISABLE_TELEMETRY")
+	if telemetry == "" {
+		if err := os.Setenv("ORT_DISABLE_TELEMETRY", "1"); err != nil {
+			return err
+		}
+	}
+	if err := ort.InitializeEnvironment(); err != nil {
+		return err
+	}
+	if telemetry == "" {
+		return ort.DisableTelemetry()
+	}
+	return nil
 }
 
 // probeItems is one fixed request used to check that a GPU provider really runs the model.
@@ -596,6 +613,8 @@ cache, verified, and served from there; a valid cache starts offline. More setti
   "model_reload":   check the ETag this often, e.g. "5m" (default off)          [OPENJEVX_MODEL_RELOAD]
   "model_fallback": served while the bucket is empty (default: model/ next to  [OPENJEVX_MODEL_FALLBACK]
                     the executable)
+  "model_s3_path_style": true for MinIO, Ceph or R2 at AWS_ENDPOINT_URL      [AWS_S3_USE_PATH_STYLE]
+                    without bucket DNS (bucket in the path, not the host)
 
 jevx:
   jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
