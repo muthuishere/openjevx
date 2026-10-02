@@ -18,7 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: go test ./internal/bpe
+      - run: go vet ./...
+      - run: go test ./internal/bpe ./internal/modelsrc ./cmd/openjevx
       - run: CGO_ENABLED=1 go build -o /tmp/openjevx ./cmd/openjevx
       - run: python -m py_compile scripts/*.py finetuning/*.py finetuning/*/*.py
       - run: bash -n finetuning/train/run_job.sh finetuning/gate/jevx13.sh

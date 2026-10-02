@@ -46,6 +46,32 @@ it logs the model path, version, temperatures and sha256 (and refuses a graph wh
 `config.json`); `GET /health` reports `version` and `sha256`. Build a folder with
 `python finetuning/export/make_model_folder.py OUT_DIR model.onnx eval_report.json [tokenizer.json] --version X`.
 
+### The model from S3
+
+`"model"` (or `-model` / `OPENJEVX_MODEL`) can also be an object-store URL: `s3://bucket/prefix/` holding the three
+files, or one `s3://bucket/model.tar.gz` (or `.tar`) with them at its root or under `model/`. The server downloads it
+with the AWS default credential chain (env, profile, EC2 instance role, EKS IRSA / Pod Identity, ECS task role; no
+keys in the config), verifies it, and serves it from a local cache. It only calls `GetObject`/`HeadObject`, so the
+role needs `s3:GetObject` on the objects and `s3:ListBucket` on the prefix (so a missing object is a 404). The bucket's
+region is `AWS_REGION` if set, otherwise read from S3's redirect. gs:// and azblob:// are not supported yet.
+
+| openjevx.json | environment | default | |
+|---|---|---|---|
+| `model_sha256` | `OPENJEVX_MODEL_SHA256` | none | pin: sha256 of the `.tar.gz`, or of the folder's `openjevx.w8.onnx` |
+| `model_cache` | `OPENJEVX_MODEL_CACHE` | user cache dir`/openjevx/models`, else `$TMPDIR/openjevx-models` | where downloads live (e.g. `/tmp/jev-cache`) |
+| `model_reload` | `OPENJEVX_MODEL_RELOAD` | off | check the ETag this often (`5m`; at least `10s`) |
+| `model_fallback` | `OPENJEVX_MODEL_FALLBACK` | the `model/` lookup next to the executable | served while the bucket holds no model yet |
+
+- **Verify:** `config.json`'s `sha256` must match the graph, and the pin (if set) must match. A mismatch fails loudly.
+- **Start:** a cached model whose ETags still match starts without downloading. If the store is unreachable, denies
+  access or holds a bad upload, a valid cache is served with a `WARNING`; with no valid cache the server refuses to start.
+- **Empty bucket** (fresh deploy): the fallback folder is served, and the prefix is checked every `model_reload`
+  (every minute if reload is off) until a model appears.
+- **Reload:** on a new ETag the server downloads into a new cache folder, verifies it, opens a new session, swaps it in
+  between requests, and keeps the previous folder for rollback. A bad upload is logged and the old model keeps serving.
+- `GET /health` reports `version`, `sha256`, `source` (the s3 URL or local path), `fallback`, `loaded_at`, `dir`,
+  `remote_version` (the ETags), `offline`, and `previous` (the model it replaced). Design: [ADR 0012](docs/adr/0012-model-from-object-store.md).
+
 ## One step
 
 ```bash

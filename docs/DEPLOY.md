@@ -70,6 +70,22 @@ Build: `cd deploy/aws && packer init . && sec run AWS_ACCESS_KEY_ID AWS_SECRET_A
 Then in the AWS Marketplace Management Portal: add the AMI, run the self-service scan, create the product.
 The container product (EKS/ECS) uses the repo `Dockerfile`, pushed to the ECR repository the portal creates.
 
+### Serving the customer's own model from their S3
+
+The marketplace flow trains in the customer's account and serves from their bucket; nothing leaves it:
+
+1. The jev client uploads the customer's CSV to `s3://<bucket>/training/<job>/input/`; a SageMaker training job
+   writes `training/<job>/output/model.tar.gz`.
+2. Promote = copy the three files of a verified version into `s3://<bucket>/models/current/` (rollback = promote the
+   previous version again).
+3. The server runs with `OPENJEVX_MODEL=s3://<bucket>/models/current/`, `OPENJEVX_MODEL_RELOAD=5m` and
+   `OPENJEVX_MODEL_CACHE=/tmp/jev-cache` (the container is uid 10001 on distroless). It picks up the promote within
+   one interval, keeps the previous folder, and reports both on `/health`. Until the first promote it serves the base
+   model shipped beside the binary (`/app/model`).
+
+Its role is read-only: `s3:GetObject` on `arn:aws:s3:::<bucket>/models/current/*` and `s3:ListBucket` on the bucket,
+conditioned on `s3:prefix` `models/current/` and `models/current/*`. Settings: README, "The model from S3".
+
 ### What the owner must register (only the owner can do these)
 
 - [ ] AWS account for selling (a dedicated one is best), with MFA on root
