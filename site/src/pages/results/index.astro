@@ -37,24 +37,29 @@ function cellFor(model, id) {
   <p class="lead">Every number here comes straight from a report file in this repo, or from a live
     run against the three servers below — nothing is invented.</p>
 
-  <h2>v0.5.0 release gate</h2>
-  <p>The v0.5.0 model folder (its own calibration temperatures) on the Go server, on CPU. The gates share
-    <strong>no state</strong> with training. "Right and confident" = right AND past jevx's default thresholds
-    (yes ≥ 0.8, no ≤ 0.2, choice/score ≥ 0.6). The v0.4.0 column is from the older gate files.</p>
+  <h2>v0.5.2 release gate</h2>
+  <p>Each model folder (its own calibration temperatures) on the Go server, on CPU, on the same gate files. The gates
+    share <strong>no state</strong> with training. "Right and confident" = right AND past jevx's default thresholds
+    (yes ≥ 0.8, no ≤ 0.2, choice/score ≥ 0.6). Source: <code>llmresults/13-v0.5.2-gate-misses.md</code>.</p>
   <div class="table-scroll">
   <table>
-    <thead><tr><th>Gate set</th><th>v0.4.0 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th><th>v0.5.0 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th></tr></thead>
+    <thead><tr><th>Gate set</th><th>v0.5.0 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th><th>v0.5.2 accuracy / right&nbsp;&amp;&nbsp;confident / confidently wrong</th></tr></thead>
     <tbody>
-      <tr><td>Everyday basics (463)</td><td>66.3% / 46.9% / 17.9%</td><td><strong>96.3% / 96.3% / 3.0%</strong></td></tr>
-      <tr><td>Rule-checking basics (300)</td><td>81.0% / 75.7% / 13.7%</td><td><strong>94.7% / 94.3% / 3.7%</strong></td></tr>
+      <tr><td>Everyday basics (463), limit: ≥ 90% / ≤ 2%</td><td>96.3% / 96.3% / 3.0%</td><td><strong>99.1% / 98.7% / 0.9%</strong></td></tr>
+      <tr><td>Rule-checking basics (300), limit: ≥ 90% / ≤ 2%</td><td>95.0% / 94.3% / 3.7%</td><td><strong>100% / 100% / 0.0%</strong></td></tr>
+      <tr><td>Held-out rule-checking (11,949)</td><td>98.9% / 98.7% / 0.8%</td><td>98.9% / 98.8% / 1.0%</td></tr>
+      <tr><td>Held-out software-work roles (9,159)</td><td>98.1% / 97.5% / 1.5%</td><td>98.5% / 97.8% / 1.0%</td></tr>
+      <tr><td>Logs gate (900)</td><td>91.8% / 91.7% / 7.9%</td><td>92.0% / 91.9% / 7.8%</td></tr>
+      <tr><td>13 fundamentals through jevx (≥ 12)</td><td>12 / 13</td><td><strong>13 / 13</strong></td></tr>
     </tbody>
   </table>
   </div>
   <div class="note">
-    Known miss: confidently wrong is 3.0–3.7% on the basics gates against our 2% target. The owner accepted it
-    for this release; the fix is planned for v0.5.1. The rest of the gate (held-out test sets, logs gate, 13
-    fundamentals) and the benchmarks against base Laya and v0.4.0 come in a follow-up. Upgrading? Run
-    <code>jevx cache clear</code>: jevx caches answers by model name.
+    v0.5.0 missed the 2% confidently-wrong limit because it remembered each rule's training threshold instead of
+    reading the one in the question. v0.5.2 adds rule-reading drills (the same rules with many thresholds, decimals,
+    wider dates, quarter-hour meetings, opening hours). Small named miss: on the held-out rule-checking set,
+    confidently wrong went from 101 to 118 of 11,949 (0.8% → 1.0%). The logs gate is still 7.8% confidently wrong:
+    check log answers. Upgrading? Run <code>jevx cache clear</code>: jevx caches answers by model name.
   </div>
 
   <h2>Quantization: fixing the batch-dependent int8 bug</h2>

@@ -2,7 +2,7 @@ version: "3"
 
 vars:
   ORT_VERSION: 1.29.0
-  MODEL_VERSION: 0.5.0
+  MODEL_VERSION: 0.5.2
   LOCAL: .local
 
 tasks:

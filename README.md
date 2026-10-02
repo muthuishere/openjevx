@@ -30,9 +30,9 @@ The binary holds no model. A model is a folder, shipped in a release as `openjev
 ```
 model/
   openjevx.w8.onnx   the graph (8-bit weight-only)
-  config.json        {"name":"openjevx","version":"0.5.0",
+  config.json        {"name":"openjevx","version":"0.5.2",
                       "temperature":{"choice":..,"score":..,"noul":..},
-                      "max_len":1024,"head_max":256,
+                      "max_len":512,"head_max":256,
                       "special_ids":{"cls":50281,"sep":50282,"pad":50283,"mask":50284},
                       "quantization":"8-bit weight-only","base_model":"convaiinnovations/laya",
                       "sha256":"<of the onnx>"}
@@ -86,22 +86,22 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-darwin-arm64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz
-tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-model-0.5.2.tar.gz
+tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
 Linux:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-linux-amd64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz
-tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.0.tar.gz && ./openjevx
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-model-0.5.2.tar.gz
+tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-windows-amd64.zip and
-https://github.com/muthuishere/openjevx/releases/download/v0.5.1/openjevx-model-0.5.0.tar.gz, unpack both into the
-same folder (`tar -xzf openjevx-model-0.5.0.tar.gz`) and run `openjevx.exe`.
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-windows-amd64.zip and
+https://github.com/muthuishere/openjevx/releases/download/v0.5.2/openjevx-model-0.5.2.tar.gz, unpack both into the
+same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 
 ## Docker
 
@@ -121,7 +121,7 @@ jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
 ```
 
-Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.0`).
+Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.2`).
 
 ## Recipes
 
@@ -151,27 +151,28 @@ Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and t
 
 Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
-## What v0.5.0 was trained on
+## What v0.5.2 was trained on
 
-734,795 decisions (408,505 rows). Labels come from evaluating rules or from real outcomes, never from another model's guesses.
+791,889 decisions (465,583 rows). Labels come from evaluating rules or from real outcomes, never from another model's guesses.
 
 | Area | Decisions | Share |
 |---|---|---|
-| Rule-checking across 38 business domains (retail pricing, recruiting, real estate, CI/CD, insurance claims, pharmacy stock, HR payroll, gaming, ...) | 200,139 | 27.2% |
-| Software-work roles (developers, testers, tech leads, managers, operations, everyone, agent checks) | 183,543 | 25.0% |
-| tasksource decision corpus | 146,567 | 19.9% |
-| Public sets with real labels (CVE fixes from bigvul, defect detection, code search, ms_marco relevance, HDFS and BGL operator log alerts) | 104,990 | 14.3% |
-| Log triage: application (Java/Python/Node/Go/nginx), database (Postgres/MySQL, real SQLSTATE codes), frontend (browser/Sentry) | 60,001 | 8.2% |
-| Everyday basics (driving licence age, store hours, parcel late, discount thresholds, fever, bag weight, ...) | 30,405 | 4.1% |
+| Rule-checking across 38 business domains (retail pricing, recruiting, real estate, CI/CD, insurance claims, pharmacy stock, HR payroll, gaming, ...) | 200,155 | 25.3% |
+| Software-work roles (developers, testers, tech leads, managers, operations, everyone, agent checks) | 183,543 | 23.2% |
+| tasksource decision corpus | 146,567 | 18.5% |
+| Public sets with real labels (CVE fixes from bigvul, defect detection, code search, ms_marco relevance, HDFS and BGL operator log alerts) | 104,990 | 13.3% |
+| Rule-reading drills: the same everyday rules with many thresholds, decimals, dates over 2020-2035, meetings on the quarter hour, opening hours, missing/equal/contains checks | 75,321 | 9.5% |
+| Log triage: application (Java/Python/Node/Go/nginx), database (Postgres/MySQL, real SQLSTATE codes), frontend (browser/Sentry) | 60,001 | 7.6% |
+| Everyday basics (driving licence age, store hours, parcel late, discount thresholds, fever, bag weight, ...) | 12,162 | 1.5% |
 | Public typed-decisions | 9,150 | 1.2% |
 
-Run: one RTX 4090 on Vast.ai, 734,145 decisions after packaging, one full pass in 2.4 h at ~88 items/s, about $1.10 in total. Leakage-checked (22,592 test questions removed); every row checked against the trainer before renting.
+Run: one RTX 4090 on Vast.ai, 791,239 decisions after packaging, one full pass in 2.5 h at ~87 items/s, about $1.25. Leakage-checked; every row checked against the trainer before renting. Why the drills: [llmresults/13](llmresults/13-v0.5.2-gate-misses.md).
 
 ## Fine-tune it further
 
 The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
 
-**Fine-tune kit (v0.5.0, 777 MB):** [openjevx-finetune-v0.5.0.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.0.tar.gz.sha256)). It holds the trainable fine-tuned checkpoint (`openjevx-model/`: `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`). No training data. The 8-bit ONNX is on the GitHub release and Hugging Face; the training scripts are in `finetuning/` in this repo. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
+**Fine-tune kit (v0.5.2, 777 MB):** [openjevx-finetune-v0.5.2.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.2.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.2.tar.gz.sha256)). It holds the trainable fine-tuned checkpoint (`openjevx-model/`: `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`). No training data. The 8-bit ONNX is on the GitHub release and Hugging Face; the training scripts are in `finetuning/` in this repo. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `finetuning/dataprep/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.

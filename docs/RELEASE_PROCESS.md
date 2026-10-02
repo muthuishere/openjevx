@@ -47,7 +47,7 @@ trainer's own `build_item` on CPU, so a data bug fails here, not on a rented GPU
 
 ```bash
 python3 ft.py train --smoke     # ~10-20 min, ~$0.10
-python3 ft.py train             # full run; v0.5.0: 734k decisions, 2.4 h, ~$1.10
+python3 ft.py train             # full run; v0.5.2: 791k decisions, 2.5 h, ~$1.25
 ```
 
 The box (stock PyTorch image on Vast.ai) downloads the shard from R2, installs `train/requirements-box.txt`,

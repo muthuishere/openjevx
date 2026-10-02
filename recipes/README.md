@@ -61,5 +61,5 @@ These are the `jevx` CLI's default thresholds. When the answer is unsure, the fi
 name the exact thing you are looking for, say what counts as yes, and let code do arithmetic and dates.
 
 jevx caches answers for 7 days, keyed by the profile's model name. After upgrading the OpenJevX model, run
-`jevx cache clear`, or give the profile a versioned model name (for example `openjevx-0.5.0`), so you do not get the
+`jevx cache clear`, or give the profile a versioned model name (for example `openjevx-0.5.2`), so you do not get the
 old model's answers back.

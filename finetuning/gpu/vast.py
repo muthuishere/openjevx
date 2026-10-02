@@ -156,6 +156,10 @@ def main():
             r2.get(f"runs/{name}/status.json", run_dir / "out/status.json")
             status = json.loads((run_dir / "out/status.json").read_text())
             break
+        if state(iid) == "exited":  # stopped by the host (seen 2026-10-02): it still "exists" and would be waited on
+            print(f"instance {iid} exited before reporting a status; destroying it", flush=True)
+            out("vastai", "destroy", "instance", str(iid), "-y")
+            break
         if not alive(iid):
             time.sleep(60)  # the status upload may land just after the box goes
             if f"runs/{name}/status.json" not in r2.ls(f"runs/{name}/"):
