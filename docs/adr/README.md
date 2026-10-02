@@ -17,3 +17,4 @@ Read these before the next OpenJevX training run. Do not revive the Qwen path in
 | [0009](0009-one-job-gpu-run-via-r2.md) | Running a GPU training job (R2 inputs and runtime bundle, self-destroying box) |
 | [0010](0010-v0.5-release-and-v0.6-scope.md) | v0.5.0 release shape (CPU-first, container); GPU runner deferred to v0.6 |
 | [0011](0011-inference-runtime.md) | Serving runtime and inference speed (ORT 1.29; smaller model is the next step) |
+| [0012](0012-model-from-object-store.md) | Serving a model from S3 (cache, verify, fallback, ETag reload) |

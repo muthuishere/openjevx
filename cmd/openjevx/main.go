@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ort "github.com/yalue/onnxruntime_go"
@@ -19,6 +22,7 @@ import (
 	"github.com/muthuishere/openjevx/internal/assets"
 	"github.com/muthuishere/openjevx/internal/bpe"
 	"github.com/muthuishere/openjevx/internal/decide"
+	"github.com/muthuishere/openjevx/internal/modelsrc"
 	"github.com/muthuishere/openjevx/internal/stats"
 	"github.com/muthuishere/openjevx/recipes"
 )
@@ -28,13 +32,18 @@ type config struct {
 	Device   string `json:"device"`
 	Password string `json:"password,omitempty"`
 	Model    string `json:"model,omitempty"`
-	Runtime  string `json:"runtime,omitempty"`
-	Threads  int    `json:"threads,omitempty"`
+	// Remote models (model = s3://...): pinned sha256, cache folder, reload interval, fallback folder.
+	ModelSHA256   string `json:"model_sha256,omitempty"`
+	ModelCache    string `json:"model_cache,omitempty"`
+	ModelReload   string `json:"model_reload,omitempty"`
+	ModelFallback string `json:"model_fallback,omitempty"`
+	Runtime       string `json:"runtime,omitempty"`
+	Threads       int    `json:"threads,omitempty"`
 }
 
 func main() {
 	help := flag.Bool("help", false, "show help")
-	modelFlag := flag.String("model", "", "ONNX model file to serve instead of the embedded one")
+	modelFlag := flag.String("model", "", "model folder, .onnx file, or s3://bucket/prefix/ (or .tar.gz) to serve")
 	deviceFlag := flag.String("device", "", "auto, cpu or gpu")
 	flag.Parse()
 	if *help || (len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help")) {
@@ -53,41 +62,68 @@ func main() {
 			cfg.Device = normalDevice(v)
 		}
 	}
-	exe, _ := os.Executable()
-	path, err := resolveModel(cfg.Model, filepath.Dir(exe))
+	for env, dst := range map[string]*string{
+		"OPENJEVX_MODEL_SHA256": &cfg.ModelSHA256, "OPENJEVX_MODEL_CACHE": &cfg.ModelCache,
+		"OPENJEVX_MODEL_RELOAD": &cfg.ModelReload, "OPENJEVX_MODEL_FALLBACK": &cfg.ModelFallback,
+	} {
+		if v := os.Getenv(env); v != "" {
+			*dst = v
+		}
+	}
+	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	m, err := loadModel(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	tokSrc := m.TokFile
-	if tokSrc == "" {
-		tokSrc = "embedded"
-	}
-	log.Printf("model %s version %s sha256 %s temperatures choice=%g score=%g noul=%g max_len %d head_max %d tokenizer %s",
-		m.Path, m.Version, m.SHA256[:12], m.Params.Temperature[0], m.Params.Temperature[1], m.Params.Temperature[2],
-		m.Params.MaxLen, m.Params.HeadMax, tokSrc)
 	if err := startRuntime(cfg); err != nil {
 		log.Fatal(err)
 	}
 	defer ort.DestroyEnvironment()
-	probe, err := probeItems(m.Tokenizer, m.Params)
+	exe, _ := os.Executable()
+	ctx := context.Background()
+	first, src, err := startModel(ctx, &cfg, filepath.Dir(exe))
 	if err != nil {
 		log.Fatal(err)
 	}
-	session, used, err := openSession(cfg, m.Graph, probe)
-	m.Graph = nil // the session holds its own copy
-	if err != nil {
-		log.Fatal(err)
+	log.Printf("device %s", cfg.Device)
+	var live atomic.Pointer[served]
+	var previous atomic.Pointer[modelInfo]
+	live.Store(first)
+	defer func() { live.Load().session.Destroy() }()
+	var inferMu sync.Mutex
+	if src != nil && (every > 0 || first.info.Fallback) {
+		go func() {
+			for {
+				wait := every
+				if wait == 0 {
+					wait = fallbackPoll
+				}
+				time.Sleep(wait)
+				err := src.Reload(ctx, func(m *modelsrc.Model) error {
+					c := cfg // the device is already chosen; don't write the shared config
+					next, err := openServed(&c, m.Dir)
+					if err != nil {
+						return err
+					}
+					next.info.Source, next.info.RemoteVersion = cfg.Model, m.Version
+					inferMu.Lock()
+					old := live.Swap(next)
+					inferMu.Unlock()
+					old.session.Destroy()
+					previous.Store(&old.info)
+					log.Printf("model reloaded: %s version %s (was %s version %s)", m.Dir, next.info.Version, old.info.Dir, old.info.Version)
+					return nil
+				})
+				if err != nil && !errors.Is(err, modelsrc.ErrEmpty) {
+					log.Printf("model reload: %v (still serving %s)", err, live.Load().info.Dir)
+				}
+				if every == 0 && !live.Load().info.Fallback {
+					return // reload is off: the fallback poll ends once the real model is in
+				}
+			}
+		}()
 	}
-	cfg.Device = used
-	log.Printf("device %s", used)
-	defer session.Destroy()
 	stats.SetDevice(cfg.Device)
 	guard := protected(cfg.Password)
-	var inferMu sync.Mutex
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		guard(w, r, func() {
@@ -113,7 +149,20 @@ func main() {
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"status": "ok", "device": cfg.Device, "model": m.Name, "version": m.Version, "sha256": m.SHA256})
+		cur := live.Load()
+		health := map[string]any{"status": "ok", "device": cfg.Device, "model": cur.m.Name, "version": cur.info.Version,
+			"sha256": cur.info.SHA256, "source": cur.info.Source, "fallback": cur.info.Fallback, "loaded_at": cur.info.LoadedAt,
+			"dir": cur.info.Dir}
+		if cur.info.RemoteVersion != "" {
+			health["remote_version"] = cur.info.RemoteVersion
+		}
+		if cur.info.Offline {
+			health["offline"] = true
+		}
+		if p := previous.Load(); p != nil {
+			health["previous"] = p
+		}
+		writeJSON(w, health)
 	})
 	http.HandleFunc("/v1/systemone", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -159,9 +208,14 @@ func main() {
 			answer(err.Error(), http.StatusBadRequest)
 			return
 		}
-		items := decide.Encode(m.Tokenizer, m.Params, stateText(req.State), qs)
+		cur := live.Load()
+		items := decide.Encode(cur.m.Tokenizer, cur.m.Params, stateText(req.State), qs)
 		inferMu.Lock()
-		logits, width, act, err := run(session, m.Params.PAD, items)
+		if now := live.Load(); now != cur { // swapped by a reload while encoding
+			cur = now
+			items = decide.Encode(cur.m.Tokenizer, cur.m.Params, stateText(req.State), qs)
+		}
+		logits, width, act, err := run(cur.session, cur.m.Params.PAD, items)
 		inferMu.Unlock()
 		if err != nil {
 			answer(err.Error(), http.StatusInternalServerError)
@@ -174,7 +228,7 @@ func main() {
 		tokens := tokenCount(items)
 		writeJSON(w, map[string]any{
 			"model":   "openjevx",
-			"answers": decide.Decode(m.Params, ids, qs, items, logits, width, act),
+			"answers": decide.Decode(cur.m.Params, ids, qs, items, logits, width, act),
 			"usage":   map[string]int{"input_tokens": tokens, "output_tokens": 0},
 		})
 		// Recorded after the answer is written so stats never delay the client.
@@ -532,6 +586,16 @@ start unless one of them loads.
 model is a model folder (openjevx.w8.onnx + config.json + tokenizer.json) or a plain .onnx file.
 Unset: model/ or models/openjevx/ next to the executable, then openjevx.w8.onnx next to it.
 Flags and environment override the file: -model / OPENJEVX_MODEL, -device / OPENJEVX_DEVICE.
+
+model can also be s3://bucket/prefix/ (holding the three files) or s3://bucket/model.tar.gz. Credentials
+come from the AWS default chain (env, profile, instance role, IRSA). The folder is downloaded into a
+cache, verified, and served from there; a valid cache starts offline. More settings (env in brackets):
+
+  "model_sha256":   pin the .tar.gz (or the folder's openjevx.w8.onnx) sha256  [OPENJEVX_MODEL_SHA256]
+  "model_cache":    cache folder (default: user cache dir/openjevx/models)      [OPENJEVX_MODEL_CACHE]
+  "model_reload":   check the ETag this often, e.g. "5m" (default off)          [OPENJEVX_MODEL_RELOAD]
+  "model_fallback": served while the bucket is empty (default: model/ next to  [OPENJEVX_MODEL_FALLBACK]
+                    the executable)
 
 jevx:
   jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
