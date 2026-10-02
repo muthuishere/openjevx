@@ -61,6 +61,12 @@ region is `AWS_REGION` if set, otherwise read from S3's redirect. gs:// and azbl
 | `model_cache` | `OPENJEVX_MODEL_CACHE` | user cache dir`/openjevx/models`, else `$TMPDIR/openjevx-models` | where downloads live (e.g. `/tmp/jev-cache`) |
 | `model_reload` | `OPENJEVX_MODEL_RELOAD` | off | check the ETag this often (`5m`; at least `10s`) |
 | `model_fallback` | `OPENJEVX_MODEL_FALLBACK` | the `model/` lookup next to the executable | served while the bucket holds no model yet |
+| `model_s3_path_style` | `AWS_S3_USE_PATH_STYLE=true` | false | bucket in the path, not the host name: MinIO, Ceph, R2 |
+
+**S3-compatible stores** (MinIO, Ceph, Cloudflare R2): set the endpoint with `AWS_ENDPOINT_URL_S3` (or `AWS_ENDPOINT_URL`)
+and turn on path-style (`AWS_S3_USE_PATH_STYLE=true` or `"model_s3_path_style": true`) unless the store has
+wildcard bucket DNS. Example: `AWS_ENDPOINT_URL_S3=http://minio:9000 AWS_S3_USE_PATH_STYLE=true
+OPENJEVX_MODEL=s3://models/current/ ./openjevx` (for R2, `AWS_REGION=auto`).
 
 - **Verify:** `config.json`'s `sha256` must match the graph, and the pin (if set) must match. A mismatch fails loudly.
 - **Start:** a cached model whose ETags still match starts without downloading. If the store is unreachable, denies
@@ -146,6 +152,10 @@ Password default for the downloaded binary: `adminadmin`, change it in `openjevx
 DigitalOcean 1-Click, cloud-init for any VPS, Docker Compose, and an AWS AMI: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Run locally from source
+
+The server turns ONNX Runtime's telemetry off (`ORT_DISABLE_TELEMETRY=1` unless you set it): nothing is sent to
+Microsoft, and ORT 1.29 no longer runs `blkid`/`hostname` through `/bin/sh` at startup, which crashed it in distroless
+images.
 
 Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 

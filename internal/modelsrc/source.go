@@ -47,7 +47,9 @@ type Store interface {
 type Options struct {
 	SHA256   string // optional pin: sha256 of the .tar.gz, or of openjevx.w8.onnx for a folder
 	CacheDir string // "" = <user cache dir>/openjevx/models
-	Endpoint string // "" = AWS; tests point it at a fake S3 (path-style requests)
+	// PathStyle sends s3 requests as https://endpoint/bucket/key instead of https://bucket.endpoint/key,
+	// for MinIO, Ceph or R2 behind AWS_ENDPOINT_URL without bucket DNS. AWS_S3_USE_PATH_STYLE=true also sets it.
+	PathStyle bool
 }
 
 type opener func(ctx context.Context, bucket string, opt Options) (Store, error)

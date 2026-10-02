@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
 
-const version = "v0.5.2";
-// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION); v0.5.2 ships both.
+const version = "v0.5.3";
+// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.3 ships the unchanged 0.5.2 model.
 const modelVersion = "0.5.2";
 const modelAsset = `openjevx-model-${modelVersion}.tar.gz`;
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,7 +16,8 @@ import (
 )
 
 // s3Store reads one bucket with the AWS default credential chain (env, profile, instance role, IRSA,
-// ECS task role). It only calls GetObject and HeadObject (both covered by s3:GetObject). The region is
+// ECS task role), at AWS_ENDPOINT_URL_S3 / AWS_ENDPOINT_URL when set, path-style when asked (Options).
+// It only calls GetObject and HeadObject (both covered by s3:GetObject). The region is
 // AWS_REGION / the profile's when set; otherwise it starts at us-east-1 and follows the bucket region S3
 // names in its x-amz-bucket-region response header, which needs no extra permission.
 type s3Store struct {
@@ -33,6 +36,13 @@ func openS3(ctx context.Context, bucket string, opt Options) (Store, error) {
 	if cfg.Region == "" {
 		cfg.Region = "us-east-1"
 	}
+	switch v := strings.ToLower(strings.TrimSpace(os.Getenv("AWS_S3_USE_PATH_STYLE"))); v {
+	case "", "false", "0":
+	case "true", "1":
+		opt.PathStyle = true
+	default:
+		return nil, fmt.Errorf("AWS_S3_USE_PATH_STYLE=%q: want true or false", v)
+	}
 	s := &s3Store{bucket: bucket, cfg: cfg, opt: opt}
 	s.client = s.newClient(cfg.Region)
 	return s, nil
@@ -42,10 +52,7 @@ func (s *s3Store) newClient(region string) *s3.Client {
 	return s3.NewFromConfig(s.cfg, func(o *s3.Options) {
 		o.Region = region
 		o.DisableLogOutputChecksumValidationSkipped = true
-		if s.opt.Endpoint != "" {
-			o.BaseEndpoint = aws.String(s.opt.Endpoint)
-			o.UsePathStyle = true
-		}
+		o.UsePathStyle = s.opt.PathStyle
 	})
 }
 

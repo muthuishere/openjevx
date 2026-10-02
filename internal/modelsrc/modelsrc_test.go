@@ -19,7 +19,8 @@ import (
 	"testing"
 )
 
-// fakeS3 serves GET and HEAD /<bucket>/<key> from a map, the way S3 does for path-style requests.
+// fakeS3 serves GET and HEAD /<bucket>/<key> from a map, the way S3 does for path-style requests,
+// and refuses virtual-hosted ones (bucket in the Host), like MinIO without bucket DNS.
 type fakeS3 struct {
 	mu      sync.Mutex
 	objects map[string][]byte // "bucket/key"
@@ -33,6 +34,10 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	key := strings.TrimPrefix(r.URL.Path, "/")
+	if strings.HasPrefix(r.Host, "jev-models.") { // a virtual-hosted request: <bucket>.<endpoint>
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	f.calls = append(f.calls, r.Method+" "+key)
 	if f.deny {
 		w.WriteHeader(http.StatusForbidden)
@@ -68,7 +73,9 @@ func newFake(t *testing.T) (*fakeS3, Options) {
 	f := &fakeS3{objects: map[string][]byte{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
-	return f, Options{Endpoint: srv.URL, CacheDir: t.TempDir()}
+	t.Setenv("AWS_ENDPOINT_URL_S3", srv.URL)
+	t.Setenv("AWS_S3_USE_PATH_STYLE", "true")
+	return f, Options{CacheDir: t.TempDir()}
 }
 
 func modelFiles(graph, version string) map[string][]byte {
@@ -284,10 +291,49 @@ func TestFollowsBucketRegion(t *testing.T) {
 		f.ServeHTTP(w, r)
 	}))
 	t.Cleanup(srv.Close)
-	opt.Endpoint = srv.URL
+	t.Setenv("AWS_ENDPOINT_URL_S3", srv.URL)
 	ctx := context.Background()
 	s, _ := New(ctx, "s3://b/models/current/", opt)
 	if m, _, err := s.Sync(ctx); err != nil || m.ModelVersion != "1" {
 		t.Fatalf("got %+v %v", m, err)
+	}
+}
+
+// MinIO, Ceph and R2 without bucket DNS need path-style requests: AWS_S3_USE_PATH_STYLE or model_s3_path_style.
+func TestPathStyle(t *testing.T) {
+	f, opt := newFake(t)
+	putFolder(f, "jev-models/models/current/", modelFiles("graph", "1"))
+	ctx := context.Background()
+	// A valid bucket name and a dotted endpoint host: without path-style the SDK sends
+	// jev-models.s3.localhost:<port>. (Bucket "b" is too short for a host name, so the SDK always uses path-style for it.)
+	t.Setenv("AWS_ENDPOINT_URL_S3", strings.Replace(os.Getenv("AWS_ENDPOINT_URL_S3"), "127.0.0.1", "s3.localhost", 1))
+	f.mu.Lock()
+	f.calls = nil
+	f.mu.Unlock()
+
+	t.Setenv("AWS_S3_USE_PATH_STYLE", "")
+	s, _ := New(ctx, "s3://jev-models/models/current/", opt)
+	if _, _, err := s.Sync(ctx); err == nil {
+		t.Fatal("virtual-hosted requests must not reach the path-style store")
+	}
+
+	for _, set := range []func(){
+		func() { t.Setenv("AWS_S3_USE_PATH_STYLE", "true") },
+		func() { t.Setenv("AWS_S3_USE_PATH_STYLE", ""); opt.PathStyle = true },
+	} {
+		set()
+		opt.CacheDir = t.TempDir()
+		s, err := New(ctx, "s3://jev-models/models/current/", opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m, _, err := s.Sync(ctx); err != nil || m.ModelVersion != "1" {
+			t.Fatalf("path-style: %+v %v", m, err)
+		}
+	}
+
+	t.Setenv("AWS_S3_USE_PATH_STYLE", "yes please")
+	if _, err := New(ctx, "s3://jev-models/models/current/", opt); err == nil || !strings.Contains(err.Error(), "AWS_S3_USE_PATH_STYLE") {
+		t.Fatalf("bad value must fail loudly: %v", err)
 	}
 }

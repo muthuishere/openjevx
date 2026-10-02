@@ -23,3 +23,37 @@ jobs:
       - run: CGO_ENABLED=1 go build -o /tmp/openjevx ./cmd/openjevx
       - run: python -m py_compile scripts/*.py finetuning/*.py finetuning/*/*.py
       - run: bash -n finetuning/train/run_job.sh finetuning/gate/jevx13.sh
+
+  # The server in a distroless container (no /bin/sh, no /etc/machine-id, uid 10001), as AWS Marketplace runs it,
+  # on both CPU architectures: ONNX Runtime 1.29 crashed here on arm64 with telemetry on (cmd/openjevx startRuntime).
+  docker-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, ort: onnxruntime-linux-x64 }
+          - { runner: ubuntu-24.04-arm, ort: onnxruntime-linux-aarch64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build like the Dockerfile (Debian 12 glibc)
+        run: |
+          ort_version=$(sed -n 's/^ARG ORT_VERSION=//p' Dockerfile)
+          model_version=$(cat deploy/MODEL_VERSION)
+          mkdir -p smoke && echo '{"listen":"0.0.0.0:21118","device":"cpu"}' > smoke/openjevx.json
+          curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v$ort_version/${{ matrix.ort }}-$ort_version.tgz | tar -xz
+          cp -L ${{ matrix.ort }}-$ort_version/lib/libonnxruntime.so smoke/
+          curl -fsSL https://github.com/muthuishere/openjevx/releases/download/v$model_version/openjevx-model-$model_version.tar.gz | tar -xz -C smoke
+          docker run --rm -v "$PWD:/src" -w /src -e CGO_ENABLED=1 golang:1.26-bookworm go build -buildvcs=false -o smoke/openjevx ./cmd/openjevx
+      - name: Serve from distroless as uid 10001 and answer one decision
+        run: |
+          docker run -d --name ojx --user 10001 -p 127.0.0.1:21118:21118 -v "$PWD/smoke:/app:ro" -w /tmp \
+            -e OPENJEVX_ORT=/app/libonnxruntime.so gcr.io/distroless/cc-debian12 \
+            /app/openjevx -device cpu -model /app/model
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
+          docker logs ojx
+          curl -fsS http://127.0.0.1:21118/health
+          curl -fsS -X POST http://127.0.0.1:21118/v1/systemone \
+            -d '{"state":"The parcel arrived crushed and the customer is furious.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}' \
+            | tee answer.json
+          grep -q '"noul"' answer.json

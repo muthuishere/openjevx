@@ -94,7 +94,7 @@ func startModel(ctx context.Context, cfg *config, exeDir string) (*served, *mode
 		s, err := openServed(cfg, path)
 		return s, nil, err
 	}
-	src, err := modelsrc.New(ctx, cfg.Model, modelsrc.Options{SHA256: cfg.ModelSHA256, CacheDir: cfg.ModelCache})
+	src, err := modelsrc.New(ctx, cfg.Model, modelsrc.Options{SHA256: cfg.ModelSHA256, CacheDir: cfg.ModelCache, PathStyle: cfg.ModelS3Path})
 	if err != nil {
 		return nil, nil, err
 	}
