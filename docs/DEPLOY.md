@@ -44,7 +44,7 @@ set `OPENJEVX_BASE` / `-var openjevx_base=` to a public R2 folder instead once t
 3. Owner submits in the [Vendor Portal](https://cloud.digitalocean.com/vendorportal) with:
    - Name: OpenJevX · Vendor: deemwar · Category: Machine Learning / Developer Tools
    - Summary: "A small decision model you run on your own CPU. Ask yes/no, pick-one and rating questions over an HTTP API; answers come with a confidence."
-   - Software included: OpenJevX 0.5.1 with model 0.5.0 (Apache-2.0), ONNX Runtime 1.29.0 (MIT), Ubuntu 24.04
+   - Software included: OpenJevX 0.5.2 with model 0.5.2 (Apache-2.0), ONNX Runtime 1.29.0 (MIT), Ubuntu 24.04
    - Recommended size: s-2vcpu-4gb
    - Getting started: the text of the login message (`/etc/update-motd.d/99-openjevx`)
    - Support URL and email: deemwar's
