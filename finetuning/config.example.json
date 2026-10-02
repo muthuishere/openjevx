@@ -1,5 +1,5 @@
 {
-  "version": "v0.5.0",
+  "version": "v0.5.2",
   "provider": "vast",
   "providers": {
     "vast": {
@@ -22,6 +22,7 @@
     "generators": [
       "gen_basics.py",
       "gen_conditions.py",
+      "gen_rule_reading.py",
       "gen_it_worker.py",
       "gen_logs.py",
       "convert_public.py",
@@ -39,6 +40,10 @@
       {
         "file": "train/basics_train.jsonl",
         "repeat": 5
+      },
+      {
+        "file": "train/rule_reading_train.jsonl",
+        "repeat": 2
       },
       {
         "file": "train/logs_train.jsonl",
@@ -88,6 +93,7 @@
       "train/it_worker_train.jsonl",
       "train/conditions_train.jsonl",
       "train/basics_train.jsonl",
+      "train/rule_reading_train.jsonl",
       "train/logs_train.jsonl"
     ],
     "leak_eval": [
