@@ -75,3 +75,7 @@ test('every page has a title and a description', () => {
   }
 });
 
+
+test('no page shows a default password', () => {
+  for (const p of pages) assert.doesNotMatch(html(p), /adminadmin/, `${p || 'home'}: the old default password`);
+});

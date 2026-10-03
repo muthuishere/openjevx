@@ -264,19 +264,21 @@ Point the server at your folder in `openjevx.json`:
 `device` is `auto`, `cpu` or `gpu`. At startup the server logs the model path, version, temperatures and
 sha256; `GET /health` reports `version` and `sha256`, so you can check which model is live.
 
-With Docker, from the source folder:
+With Docker, from the source folder (the image has no default credentials and refuses to start without them):
 
 ```sh
-docker compose up -d --build
+OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build
 ```
 
-Mount your model folder into the container and set the same `"model"` path in the mounted
-`openjevx.json`. A one-click cloud image is in preparation; this book will link it when it is published.
+Mount your model folder into the container and set the same `"model"` path in your own `openjevx.json`, mounted at
+`/data/openjevx.json`. Clients send `Authorization: Bearer <key>`. For a cloud server, `docs/DEPLOY.md` has a
+DigitalOcean 1-Click image, cloud-init for any VPS and an AWS AMI.
 
 Use it from jevx with a **versioned** model name, because jevx caches answers by model name:
 
 ```sh
-jevx profile add mymodel http://127.0.0.1:21118/v1/systemone --model mymodel-v1
+jevx profile add mymodel http://127.0.0.1:21118/v1/systemone --model mymodel-v1 \
+  --header 'Authorization: Bearer $OPENJEVX_API_KEY'   # only for a server that has a key (Docker, any non-loopback listen)
 jevx profile use mymodel
 jevx cache clear
 jevx ask --noul discount="Does the order get the discount? Orders over Rs 500 get 10% off." --in '{"order_total_rs": 501}'

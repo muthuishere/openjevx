@@ -23,7 +23,8 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
 
   <h2>Docker</h2>
   <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-docker compose up -d --build</CodeCard>
+OPENJEVX_PASSWORD=&lt;12+ characters&gt; OPENJEVX_API_KEY=&lt;16+ characters&gt; docker compose up -d --build</CodeCard>
+  <p>The image has no default credentials and refuses to start without both. It runs as a non-root user.</p>
 
   <h2>Wire it into jevx</h2>
   <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
@@ -32,16 +33,25 @@ jevx profile use openjevx
 jevx is "Is this urgent?" &lt; email.txt
 jevx pick "Which team?" web=frontend api=backend billing=money --in "charged twice"
 jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_units": 0&#125;'</CodeCard>
+  <p>A server that listens beyond <code>127.0.0.1</code> needs an API key: add{' '}
+    <code>--header 'Authorization: Bearer $OPENJEVX_API_KEY'</code> to <code>jevx profile add</code>.</p>
 
   <h2>Config</h2>
   <p><code>openjevx.json</code> next to the binary:</p>
   <CodeCard label="openjevx.json">&#123;
   "listen": "127.0.0.1:21118",
-  "device": "auto",
-  "password": "adminadmin"
+  "device": "auto"
 &#125;</CodeCard>
-  <p><code>device</code> is <code>auto</code> (GPU if CUDA loads, else CPU), <code>cpu</code>, or{' '}
-    <code>gpu</code> (no fallback).</p>
+  <p><code>device</code> is <code>auto</code> (the first GPU provider that loads: CUDA, CoreML on macOS, DirectML on
+    Windows; else CPU), <code>cpu</code>, or <code>gpu</code> (no fallback).</p>
+  <h2>Credentials</h2>
+  <ul>
+    <li><code>"password"</code> (or <code>OPENJEVX_PASSWORD</code>) guards the dashboard. There is no default: unset,
+      the server generates one on first start into <code>openjevx.password</code> beside <code>openjevx.json</code>.</li>
+    <li><code>"api_key"</code> (or <code>OPENJEVX_API_KEY</code>) guards <code>POST /v1/systemone</code>, sent as{' '}
+      <code>Authorization: Bearer &lt;key&gt;</code>. Off on <code>127.0.0.1</code>; on when the server listens on
+      any other address, generated into <code>openjevx.api-key</code> if unset.</li>
+  </ul>
 
   <h2>Dashboard and stats</h2>
   <p>Open <code>http://127.0.0.1:21118/</code> while it runs — request counts, input tokens,
