@@ -28,6 +28,9 @@ IMAGE = os.environ.get("VAST_IMAGE", "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runt
 SSH_PUB = Path.home() / ".ssh/id_ed25519_muthuishere.pub"
 MAX_W8_MB = os.environ.get("MAX_W8_MB", "750")
 START_MIN = int(os.environ.get("VAST_START_MINUTES", "15"))
+# A box can report "running" while its launcher never runs our onstart (seen 2026-10-03: the host's /.launch looped on
+# "ssh: command not found"). run_job.sh uploads its log every 2 minutes, so no log this long after "running" = dead box.
+LOG_MIN = int(os.environ.get("VAST_FIRST_LOG_MINUTES", "12"))
 RESULTS = {"W8": "openjevx.w8.onnx", "MODEL": "model.tar", "CKPT": "checkpoint.tar.gz", "REPORT": "eval_report.json",
            "LOG": "job.log", "STATUS": "status.json"}
 
@@ -129,7 +132,8 @@ def main():
                f"{shlex.quote('{ ' + job + '; } > /root/job.log 2>&1')} &")  # the whole job, not just its last command
     # Some hosts never finish pulling the image. Give each box START_MIN minutes to reach "running",
     # otherwise destroy it and try the next machine (up to 3).
-    bad, iid = set(), None
+    # VAST_SKIP_MACHINES=id,id: hosts already seen failing in an earlier run.
+    bad, iid = {int(m) for m in os.environ.get("VAST_SKIP_MACHINES", "").split(",") if m.strip()}, None
     for attempt in range(3):
         offer, machine = pick_offer(a.max_price_per_hour, bad)
         created = json.loads(out("vastai", "create", "instance", str(offer), "--image", IMAGE,
@@ -141,8 +145,15 @@ def main():
         while time.time() < start_by and state(iid) not in ("running", None):
             time.sleep(30)
         if state(iid) == "running":
-            break
-        print(f"instance {iid} not running after {START_MIN} min; destroying it and trying another machine", flush=True)
+            log_by = time.time() + LOG_MIN * 60
+            while time.time() < log_by and f"runs/{name}/job.log" not in r2.ls(f"runs/{name}/"):
+                time.sleep(30)
+            if f"runs/{name}/job.log" in r2.ls(f"runs/{name}/"):
+                break
+            print(f"instance {iid} running but no job log after {LOG_MIN} min; destroying it and trying another machine",
+                  flush=True)
+        else:
+            print(f"instance {iid} not running after {START_MIN} min; destroying it and trying another machine", flush=True)
         out("vastai", "destroy", "instance", str(iid), "-y")
         bad.add(machine)
         iid = None
