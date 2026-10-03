@@ -15,6 +15,14 @@ REPO_ID = "muthuishere/openjevx"
 
 def main():
     model_dir = Path(sys.argv[1]).resolve()
+    # The release is named after the model in this folder, never a hard-coded version.
+    config = model_dir / "config.json"
+    if not config.is_file():
+        raise SystemExit(f"{config} is missing: point publish_hf.py at a model folder (config.json carries its version)")
+    version = json.loads(config.read_text()).get("version")
+    if not version:
+        raise SystemExit(f"{config} has no \"version\"")
+    tag = f"v{version}"
     report = json.loads((model_dir / "benchmark.json").read_text())
     if report["accuracy"] < 0.70:
         raise RuntimeError("refusing to publish a checkpoint below the 0.70 accuracy gate")
@@ -81,13 +89,13 @@ LightOn. Laya and ModernBERT are Apache-2.0 licensed.
     )
     api.update_repo_settings(REPO_ID, private=False)
     release_notes = (
-        f"OpenJevX v0.1.0: RLCD fine-tuned Laya decision model.\n\n"
+        f"OpenJevX {tag}: RLCD fine-tuned Laya decision model.\n\n"
         f"Typed-decisions accuracy: {report['accuracy']:.3f}. "
         f"CUDA p50: {report['latency_ms']['p50']:.1f} ms per five-question case.\n\n"
         "The ONNX graph requires the tokenizer and rl_agent_config.json from the Hugging Face model."
     )
     release_exists = subprocess.run(
-        ["gh", "release", "view", "v0.1.0", "--repo", "muthuishere/openjevx"],
+        ["gh", "release", "view", tag, "--repo", "muthuishere/openjevx"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     ).returncode == 0
@@ -102,17 +110,17 @@ LightOn. Laya and ModernBERT are Apache-2.0 licensed.
     ]
     if release_exists:
         subprocess.run(
-            ["gh", "release", "upload", "v0.1.0", *assets, "--clobber", "--repo", "muthuishere/openjevx"],
+            ["gh", "release", "upload", tag, *assets, "--clobber", "--repo", "muthuishere/openjevx"],
             check=True,
         )
     else:
         subprocess.run(
-            ["gh", "release", "create", "v0.1.0", *assets, "--repo", "muthuishere/openjevx",
-             "--title", "OpenJevX v0.1.0", "--notes", release_notes],
+            ["gh", "release", "create", tag, *assets, "--repo", "muthuishere/openjevx",
+             "--title", f"OpenJevX {tag}", "--notes", release_notes],
             check=True,
         )
     print(f"https://huggingface.co/{REPO_ID}")
-    print("https://github.com/muthuishere/openjevx/releases/tag/v0.1.0")
+    print(f"https://github.com/muthuishere/openjevx/releases/tag/{tag}")
 
 
 if __name__ == "__main__":

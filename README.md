@@ -209,7 +209,7 @@ images.
 
 Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 
-Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
+Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` builds both Docker images locally (no image tars are released: users build the image with `docker compose`, ADR 0010), and `task release VERSION=v0.5.7` uploads the release assets by name (the four server archives, the model archive and `SHA256SUMS-server`) to that GitHub release.
 
 ## What v0.5.2 was trained on
 

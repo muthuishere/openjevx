@@ -52,13 +52,10 @@ tasks:
       - ./scripts/package.sh
 
   docker:
-    desc: Build amd64 and arm64 images and save them as tars in .local/dist
+    desc: Build the arm64 and amd64 images locally (no image tars are released; users build with docker compose, ADR 0010)
     cmds:
-      - mkdir -p {{.LOCAL}}/dist
       - docker build --platform linux/arm64 -t ghcr.io/muthuishere/openjevx:latest .
-      - docker save ghcr.io/muthuishere/openjevx:latest -o {{.LOCAL}}/dist/openjevx-docker-arm64.tar
       - docker build --platform linux/amd64 -t ghcr.io/muthuishere/openjevx:latest-amd64 .
-      - docker save ghcr.io/muthuishere/openjevx:latest-amd64 -o {{.LOCAL}}/dist/openjevx-docker-amd64.tar
 
   book:
     desc: "Build the training book as markdown + PDF into dist/book/ (PUBLIC=1 for deemwar surfaces, source https://jev.deemwar.com/source)"
@@ -70,4 +67,9 @@ tasks:
     requires: {vars: [VERSION]}
     cmds:
       - gh release view {{.VERSION}} >/dev/null 2>&1 || gh release create {{.VERSION}} --title "OpenJevX {{.VERSION}}" --notes "OpenJevX server {{.VERSION}}"
-      - gh release upload {{.VERSION}} --clobber {{.LOCAL}}/dist/openjevx-*.tar {{.LOCAL}}/dist/openjevx-*.zip {{.LOCAL}}/dist/openjevx-model-*.tar.gz {{.LOCAL}}/dist/SHA256SUMS-server
+      # The release assets by name, never a glob over .local/dist: an old openjevx-docker-*.tar there must not ship.
+      - >-
+        gh release upload {{.VERSION}} --clobber
+        {{.LOCAL}}/dist/openjevx-darwin-arm64.tar {{.LOCAL}}/dist/openjevx-linux-amd64.tar
+        {{.LOCAL}}/dist/openjevx-linux-arm64.tar {{.LOCAL}}/dist/openjevx-windows-amd64.zip
+        {{.LOCAL}}/dist/openjevx-model-*.tar.gz {{.LOCAL}}/dist/SHA256SUMS-server
