@@ -53,7 +53,10 @@ jobs:
           for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
           docker logs ojx
           curl -fsS http://127.0.0.1:21118/health
-          curl -fsS -X POST http://127.0.0.1:21118/v1/systemone \
+          curl -fsS -D headers.txt -X POST http://127.0.0.1:21118/v1/systemone \
             -d '{"state":"The parcel arrived crushed and the customer is furious.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}' \
             | tee answer.json
           grep -q '"noul"' answer.json
+          grep -q '"server_ms"' answer.json
+          grep -i '^server-timing: encode;dur=.*run;dur=.*total;dur=' headers.txt
+          docker logs ojx 2>&1 | grep 'threads: intra-op'

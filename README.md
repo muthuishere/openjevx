@@ -23,6 +23,14 @@ Change it in `openjevx.json`:
 
 `device` is `auto`, `cpu`, or `gpu`. `auto` uses the GPU when CUDA loads, otherwise CPU. `gpu` does not fall back.
 
+`threads` (or `OPENJEVX_THREADS`, which wins) is the CPU threads one request uses. Unset, it is `GOMAXPROCS`, which
+follows a container's CPU limit (ONNX Runtime alone would size its pool from the host's cores). The server logs the
+resolved count at startup: `threads: intra-op 2 (from GOMAXPROCS), GOMAXPROCS 2, NumCPU 8`.
+
+Every decision response carries a [`Server-Timing`](https://www.w3.org/TR/server-timing/) header in ms, for example
+`encode;dur=0.3, wait;dur=0.0, run;dur=41.2, total;dur=42.0` (`wait` is time queued for the model session, `total`
+runs from reading the request to the decoded answer), and the same total as `usage.server_ms` in the JSON body.
+
 ## The model is a folder
 
 The binary holds no model. A model is a folder, shipped in a release as `openjevx-model-<version>.tar.gz`:
