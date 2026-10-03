@@ -4,22 +4,18 @@ import { homedir, platform, arch } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
+import { assetFor } from "./platform.js";
 
-const version = "v0.5.6";
-// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.6 ships the unchanged 0.5.2 model.
+const version = "v0.5.7";
+// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.7 ships the unchanged 0.5.2 model.
 const modelVersion = "0.5.2";
 const modelAsset = `openjevx-model-${modelVersion}.tar.gz`;
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;
 const home = process.env.OPENJEVX_HOME || join(homedir(), ".local", "share", "openjevx");
 const binDir = process.env.OPENJEVX_BIN || join(homedir(), ".local", "bin");
 const windows = platform() === "win32";
-const asset = windows
-  ? "openjevx-windows-amd64.zip"
-  : platform() === "darwin"
-    ? "openjevx-darwin-arm64.tar"
-    : arch() === "arm64"
-      ? "openjevx-linux-amd64.tar"
-      : "openjevx-linux-amd64.tar";
+let asset;
+try { asset = assetFor(platform(), arch()); } catch (e) { console.error(e.message); process.exit(1); }
 const exe = join(home, windows ? "openjevx.exe" : "openjevx");
 
 function download(url, dest) {
@@ -54,14 +50,18 @@ async function fetchAndUnpack(name) {
   if (extracted.status !== 0) process.exit(extracted.status || 1);
   rmSync(archive, { force: true });
 }
+// The server archive carries a default openjevx.json; keep the user's own across upgrades.
+const configPath = join(home, "openjevx.json");
 if (!existsSync(exe) || installed !== version) {
   mkdirSync(home, { recursive: true });
+  const kept = existsSync(configPath) ? readFileSync(configPath) : null;
   await fetchAndUnpack(asset);
+  if (kept) writeFileSync(configPath, kept);
   if (!windows) chmodSync(exe, 0o755);
   rmSync(join(home, "model"), { recursive: true, force: true });
   await fetchAndUnpack(modelAsset);
-  if (!existsSync(join(home, "openjevx.json"))) {
-    writeFileSync(join(home, "openjevx.json"), JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
+  if (!existsSync(configPath)) {
+    writeFileSync(configPath, JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
   }
   writeFileSync(stamp, version + "\n");
 }
@@ -78,4 +78,5 @@ console.log("OpenJevX is ready.");
 console.log("Default port: 21118");
 console.log("Server:  http://127.0.0.1:21118/v1/systemone");
 console.log("Command: openjevx");
+console.log(`Dashboard password: created on first start in ${join(home, "openjevx.password")} (or set "password" in ${configPath})`);
 if (!windows) console.log(`If needed: export PATH="${binDir}:$PATH"`);

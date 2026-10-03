@@ -8,6 +8,11 @@ permissions:
 
 jobs:
   linux:
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, ort: onnxruntime-linux-x64, zig: x86_64-linux-gnu.2.28 }
+          - { arch: arm64, ort: onnxruntime-linux-aarch64, zig: aarch64-linux-gnu.2.28 }
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,22 +21,25 @@ jobs:
           go-version-file: go.mod
       - name: ONNX Runtime CPU
         run: |
-          curl -fsSL -o ort.tgz https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
+          curl -fsSL -o ort.tgz https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/${{ matrix.ort }}-1.29.0.tgz
           tar -xzf ort.tgz
-          cp onnxruntime-linux-x64-1.29.0/lib/libonnxruntime.so .
-      # zig is the C compiler so the binary needs only glibc 2.28 (Debian 10, RHEL 8), as scripts/package.sh does.
+          cp -L ${{ matrix.ort }}-1.29.0/lib/libonnxruntime.so .
+      # zig is the C compiler so the binary needs only glibc 2.28 (Debian 10, RHEL 8), as scripts/package.sh does;
+      # it also cross-compiles arm64 on the amd64 runner.
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.16.0
       - run: go build -trimpath -ldflags "-s -w" -o openjevx ./cmd/openjevx
         env:
           CGO_ENABLED: "1"
-          CC: zig cc -target x86_64-linux-gnu.2.28
-      - run: tar --format ustar -cf openjevx-linux-amd64.tar README openjevx openjevx.json libonnxruntime.so LICENSE NOTICE CREDITS licenses
+          GOARCH: ${{ matrix.arch }}
+          CC: zig cc -target ${{ matrix.zig }}
+      - run: file openjevx libonnxruntime.so
+      - run: tar --format ustar -cf openjevx-linux-${{ matrix.arch }}.tar README openjevx openjevx.json libonnxruntime.so LICENSE NOTICE CREDITS licenses
       - uses: actions/upload-artifact@v4
         with:
-          name: linux
-          path: openjevx-linux-amd64.tar
+          name: linux-${{ matrix.arch }}
+          path: openjevx-linux-${{ matrix.arch }}.tar
   windows:
     runs-on: windows-latest
     steps:
