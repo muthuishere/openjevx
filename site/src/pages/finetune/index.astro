@@ -147,20 +147,20 @@ go version && task --version && uv --version && python3 --version</CodeCard>
   <h3>How many rows</h3>
   <p>Start with 200–1,000 rows. Each rule becomes many rows: both sides of the threshold, different
     values, different wordings. The import step warns you when a question has fewer than 20 rows or
-    one answer takes more than 80% of them. The example CSV is deliberately small (39 rows) to show the
+    one answer takes more than 80% of them. The example CSV is deliberately small (68 rows) to show the
     shape; it gets those warnings too.</p>
 
   <h2>3. Import and check</h2>
   <CodeCard label="shell">python3 finetuning/dataprep/import_csv.py yours.csv --name mydata --add-to-config</CodeCard>
   <p>You should see the count of good and bad rows, then one line per question with its answers:</p>
-  <CodeCard label="output">yours.csv: 39 good rows, 0 bad
+  <CodeCard label="output">yours.csv: 68 good rows, 0 bad
 
 question                                                     rows  labels
-Does the order get the discount? Orders over Rs 500 get 10%     6  false=3, true=3
-Which team owns this?                                           7  platform=3, payments=2, web=2
-warning: 'Which team owns this?': only 7 rows; aim for 20+ with near-miss pairs around the rule
+Does the order get the discount? Orders over Rs 500 get 10%    12  false=6, true=6
+Which team owns this?                                          13  platform=5, payments=4, web=4
+warning: 'Which team owns this?': only 13 rows; aim for 20+ with near-miss pairs around the rule
 adapter: every row accepted
-wrote    24 train rows -> ~/openjevx/data/train/mydata_train.jsonl
+wrote    53 train rows -> ~/openjevx/data/train/mydata_train.jsonl
 wrote    15 gate  rows -> ~/openjevx/data/gate/mydata_gate.jsonl
 updated ~/.config/openjevx/config.json (backup: config.json.bak-…)</CodeCard>
   <p>A bad row is reported with its line number and a fix (<code>line 7: answer 'maybe' is not yes/no</code>).
