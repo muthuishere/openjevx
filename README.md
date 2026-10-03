@@ -23,9 +23,13 @@ Change it in `openjevx.json`:
 
 `device` is `auto`, `cpu`, or `gpu`. `auto` uses the GPU when CUDA loads, otherwise CPU. `gpu` does not fall back.
 
-`threads` (or `OPENJEVX_THREADS`, which wins) is the CPU threads one request uses. Unset, it is `GOMAXPROCS`, which
-follows a container's CPU limit (ONNX Runtime alone would size its pool from the host's cores). The server logs the
-resolved count at startup: `threads: intra-op 2 (from GOMAXPROCS), GOMAXPROCS 2, NumCPU 8`.
+`threads` (or `OPENJEVX_THREADS`, which wins) is the CPU threads one request uses. Unset, the server takes the first
+of: the cgroup CPU quota (`/sys/fs/cgroup/cpu.max`, or v1 `cpu.cfs_quota_us / cpu.cfs_period_us`), rounded up; on
+ECS / Fargate (`ECS_CONTAINER_METADATA_URI_V4` set) the task's `Limits.CPU` from the task metadata endpoint, else the
+container's (1 s timeout); else `GOMAXPROCS`. It is never more than the machine's CPUs. Fargate limits CPU with shares
+that neither the quota nor Go can see, so a 1 vCPU task reports 2 CPUs; running 2 threads there was 4x slower.
+The server logs the choice at startup: `threads: intra-op 1 (from ecs), GOMAXPROCS 2, NumCPU 2` (the source is
+`config`, `env`, `cgroup`, `ecs` or `GOMAXPROCS`).
 
 Every decision response carries a [`Server-Timing`](https://www.w3.org/TR/server-timing/) header in ms, for example
 `encode;dur=0.3, wait;dur=0.0, run;dur=41.2, total;dur=42.0` (`wait` is time queued for the model session, `total`
