@@ -18,13 +18,17 @@ DIR=/opt/openjevx
 PORT=21118
 
 [ "$(id -u)" = 0 ] || { echo "install.sh: run as root" >&2; exit 1; }
-[ "$(uname -m)" = x86_64 ] || { echo "install.sh: only linux amd64 is released today, not $(uname -m)" >&2; exit 1; }
+case "$(uname -m)" in
+  x86_64) arch=amd64 ;;
+  aarch64|arm64) arch=arm64 ;;
+  *) echo "install.sh: OpenJevX is released for linux amd64 and arm64, not $(uname -m)" >&2; exit 1 ;;
+esac
 command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl ca-certificates; }
 
 # Download, then check every file against the release's SHA256SUMS-server before unpacking anything.
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-server=openjevx-linux-amd64.tar
+server=openjevx-linux-$arch.tar
 model="openjevx-model-${MODEL_VERSION}.tar.gz"
 for f in SHA256SUMS-server "$server" "$model"; do curl -fsSL "$BASE/$f" -o "$tmp/$f"; done
 for f in "$server" "$model"; do
@@ -40,22 +44,24 @@ tar -x -C "$DIR.new" -f "$tmp/$server"
 tar -xz -C "$DIR.new" -f "$tmp/$model"
 [ -x "$DIR.new/openjevx" ] && [ -f "$DIR.new/model/config.json" ] || { echo "install.sh: download incomplete in $DIR.new" >&2; exit 1; }
 rm -f "$DIR.new/openjevx.json"
-for f in openjevx.json openjevx.json.done; do if [ -f "$DIR/$f" ]; then cp -p "$DIR/$f" "$DIR.new/$f"; fi; done
+for f in openjevx.json openjevx.json.done openjevx.api-key openjevx.password; do if [ -f "$DIR/$f" ]; then cp -p "$DIR/$f" "$DIR.new/$f"; fi; done
 rm -rf "$DIR.old"; if [ -d "$DIR" ]; then mv "$DIR" "$DIR.old"; fi
 mv "$DIR.new" "$DIR" && rm -rf "$DIR.old"
 
 id openjevx >/dev/null 2>&1 || useradd --system --home "$DIR" --shell /usr/sbin/nologin openjevx
 chown -R openjevx:openjevx "$DIR"
 
-# The config (and its dashboard password) is written on first boot, so every server gets its own password.
+# The config (its dashboard password and API key) is written on first boot, so every server gets its own.
 cat > /usr/local/sbin/openjevx-firstboot <<FIRSTBOOT
 #!/bin/bash
 set -euo pipefail
 [ -f $DIR/openjevx.json.done ] && exit 0
 pw=\$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)
-printf '{\n  "listen": "0.0.0.0:$PORT",\n  "device": "cpu",\n  "model": "$DIR/model",\n  "password": "%s"\n}\n' "\$pw" > $DIR/openjevx.json
+key=\$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
+printf '{\n  "listen": "0.0.0.0:$PORT",\n  "device": "cpu",\n  "model": "$DIR/model",\n  "password": "%s",\n  "api_key": "%s"\n}\n' "\$pw" "\$key" > $DIR/openjevx.json
 chown openjevx:openjevx $DIR/openjevx.json && chmod 600 $DIR/openjevx.json
 printf 'OpenJevX dashboard password: %s\n' "\$pw" > /root/openjevx-password && chmod 600 /root/openjevx-password
+printf '%s\n' "\$key" > /root/openjevx-api-key && chmod 600 /root/openjevx-api-key
 touch $DIR/openjevx.json.done
 FIRSTBOOT
 chmod 755 /usr/local/sbin/openjevx-firstboot
@@ -85,15 +91,17 @@ cat <<TXT
 OpenJevX is running as the service 'openjevx' (systemctl status openjevx).
   Health:    curl http://127.0.0.1:21118/health
   Decide:    POST http://127.0.0.1:21118/v1/systemone
+             with  -H "Authorization: Bearer \$(cat /root/openjevx-api-key)"
   Dashboard: http://<this-ip>:21118/  (password: cat /root/openjevx-password)
-The decision API has no password. Port 21118 is closed by the firewall; open it only to your own
-network, e.g.  ufw allow from 10.0.0.0/8 to any port 21118
+Servers installed before 0.5.7 got their API key on the first start of 0.5.7: /opt/openjevx/openjevx.api-key.
+Port 21118 is closed by the firewall; open it only to your own network, e.g.
+  ufw allow from 10.0.0.0/8 to any port 21118
 Or use an SSH tunnel:  ssh -L 21118:127.0.0.1:21118 root@<this-ip>
 TXT
 MOTD
 chmod 755 /etc/update-motd.d/99-openjevx
 
-# Firewall: SSH only. The decision API has no password, so the customer opens 21118 to their own network.
+# Firewall: SSH only. The customer opens 21118 to their own network (the API key is a second lock, not the only one).
 # Allow every port sshd really listens on, so a non-standard SSH port does not lock anyone out.
 if command -v ufw >/dev/null; then
   ssh_ports="$( (sshd -T 2>/dev/null || true) | awk '$1=="port"{print $2}')"

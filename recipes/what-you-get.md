@@ -5,37 +5,37 @@ This page says only what the shipped OpenJevX server does today, and every numbe
 ## One server, one model, on your machine
 
 - **One executable** (Go) with an HTTP API, a live dashboard on `/`, Prometheus metrics on `/metrics`, a health
-  check on `/health`, and these recipes on `/recipes`. The Docker image and the release binaries carry the model
-  inside; `task build` puts it next to the binary.
-- **One model file: `openjevx.w8.onnx`, 8-bit, 598,046,561 bytes (598 MB)**, from the v0.4.0 release.
-- **It runs on your side.** Inference happens in your process, on your CPU (or your GPU with a CUDA ONNX Runtime
-  and `"device": "gpu"`). We never run your inference and never see your requests.
+  check on `/health`, and these recipes on `/recipes`. The executable holds no model: the model is the folder
+  `model/` next to it (from `openjevx-model-<version>.tar.gz`); the Docker image copies it to `/app/model`, and
+  `task build` puts it in `.local/model/`.
+- **One model folder, version 0.5.2: `openjevx.w8.onnx`, 8-bit, 598 MB**, plus `config.json` (its calibration) and
+  `tokenizer.json`.
+- **It runs on your side.** Inference happens in your process, on your CPU, or on a GPU provider that loads and
+  matches the CPU on a probe (CUDA, CoreML on macOS, DirectML on Windows). We never run your inference and never
+  see your requests.
 
 ## Measured latency on CPU
 
-Machine: Apple M5 Pro (Apple Silicon, 18 cores), macOS, CPU only (`"device": "cpu"`), ONNX Runtime 1.22.0,
-the server built with `task build`. Other work was running on the machine at the time (load average about 7),
-so treat these as a busy laptop, not a benchmark rig. 50 sequential requests after 5 warm-up requests, timed
-with `curl -w '%{time_total}'` (so the numbers include HTTP):
+Machine: Apple M5 Pro (Apple Silicon, 18 cores), macOS, CPU only, ONNX Runtime 1.29.0, measured in process with
+`cmd/openjevx/bench_test.go` (20 rounds after 2 warm-up rounds) on the v0.5.0 model folder, which has the same
+architecture and the same 598 MB graph as 0.5.2 (llmresults/12):
 
-| request | p50 | p95 | max |
+| request | tokens | p50 | p95 |
 |---|---|---|---|
-| one yes/no question, one-sentence state | 178 ms | 192 ms | 211 ms |
-| three questions (yes/no + pick-one + rating) in one request | 268 ms | 284 ms | 361 ms |
+| one question, short state | 36 | 22 ms | 23 ms |
+| one question, typical state | 164 | 85 ms | 86 ms |
+| eight questions about one typical state | 1,319 | 666 ms | 690 ms |
+| one question, long state | 912 | 540 ms | 577 ms |
 
-The loaded server used about 1.6 GB of resident memory. Requests are answered one model run at a time; all the
-questions in one request go through the model together, so asking three questions in one call is cheaper than
-three calls.
-
-```bash
-# the command used, per request body
-for i in $(seq 50); do curl -s -o /dev/null -w '%{time_total}\n' localhost:21118/v1/systemone -d @body.json; done | sort -n
-```
+Over HTTP the typical request is 85 ms p50. On x86, hosts with only AVX2 are about 2x slower than AVX-512 VNNI ones
+(llmresults/14). Requests are answered one model run at a time; all the questions in one request go through the
+model together, so asking several questions in one call is cheaper than several calls.
 
 ## Three question types
 
 All three go to `POST /v1/systemone` as `{"state": ..., "questions": {NAME: {type, instructions, criteria}}}`.
-Every answer below is real output from the server described above.
+Every answer below is real output from model 0.5.2 on server 0.5.7 (2026-10-03). Send
+`-H "Authorization: Bearer <key>"` too when the server has an API key (README, "Credentials").
 
 ### Yes/no: `noul`
 
@@ -44,7 +44,7 @@ curl -s localhost:21118/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 20
 ```
 
 ```json
-{"claim":{"action":{"act_probability":1},"answer_confidence":0.8777,"confidence":0.8777,"noul":0.1223,"probabilities":{"false":0.8777,"true":0.1223},"type":"noul"}}
+{"claim":{"action":{"act_probability":1},"answer_confidence":0.8829,"confidence":0.8829,"noul":0.1171,"probabilities":{"false":0.8829,"true":0.1171},"type":"noul"}}
 ```
 
 `noul` is the probability of yes (here: no). `confidence` is how sure it is of whichever side it leans to.
@@ -56,7 +56,7 @@ curl -s localhost:21118/v1/systemone -d '{"state": "I want my money back for ord
 ```
 
 ```json
-{"tool":{"action":{"act_probability":1},"answer_confidence":0.9484,"choice":"refund_payment","confidence":0.9484,"probabilities":{"create_invoice":0.0276,"refund_payment":0.9484,"update_email":0.024},"type":"choice"}}
+{"tool":{"action":{"act_probability":1},"answer_confidence":0.971,"choice":"refund_payment","confidence":0.971,"probabilities":{"create_invoice":0.0149,"refund_payment":0.971,"update_email":0.014},"type":"choice"}}
 ```
 
 ### Rating: `score`
@@ -66,21 +66,22 @@ curl -s localhost:21118/v1/systemone -d '{"state": "Checkout is down, customers 
 ```
 
 ```json
-{"sev":{"action":{"act_probability":1},"answer_confidence":0.7616,"confidence":0.7616,"probabilities":{"0":0.1161,"1":0.1223,"2":0.7616},"score":1.6455,"type":"score"}}
+{"sev":{"action":{"act_probability":1},"answer_confidence":0.9337,"confidence":0.9337,"probabilities":{"0":0.0293,"1":0.037,"2":0.9337},"score":1.9044,"type":"score"}}
 ```
 
 `score` is the expected level (0 = the first criterion); `probabilities` are per level. The same question inside a
-three-question request gives the same answer ([Several judgements in one call](17-several-judgements.md)).
+three-question request gives nearly the same answer: the runtime quantizes activations per call, so a probability
+can move by a few thousandths with what else is in the request ([Several judgements in one call](17-several-judgements.md)).
 
 Each block above is the `answers` object; the full response also carries `"model": "openjevx"` and `"usage": {"input_tokens": N, "output_tokens": 0}`.
 
 ## How good is it
 
-It is a small, general model: on the 18 recipes here it gets most everyday calls right, and it misses some that
-hosted Jev gets (a due date, a prompt injection, a password in a URL). Each recipe page says how it did.
-The committed gate numbers are in `llmresults/10-v041-baseline.md`: on the everyday-basics gate (469 questions
-worded differently from training) v0.4 scores 66.3% accurate, 46.9% usable (right and past jevx's default
-thresholds) and 17.9% confidently wrong. Test it on your own questions before you rely on it.
+It is a small, general model. The model 0.5.2 gate (`llmresults/13-v0.5.2-gate-misses.md`, questions kept out of
+training): everyday basics (463) 98.7% right and confident, 0.9% confidently wrong; rule-checking basics (300) 100% /
+0.0%; log alerts (900) 91.9% / 7.8%; jevx's 13 fundamentals 13/13. The 18 recipe pages were written against the
+v0.4 model; each says how that model did, and some answers will differ on 0.5.2. Test it on your own questions
+before you rely on it.
 
 ## Getting a model fitted to your data
 

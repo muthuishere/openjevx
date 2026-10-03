@@ -5,7 +5,7 @@ decisions in milliseconds, on your own machine.
 
 - **Site:** [muthuishere.github.io/openjevx](https://muthuishere.github.io/openjevx/)
 - **Source:** [github.com/muthuishere/openjevx](https://github.com/muthuishere/openjevx)
-- **Releases:** [latest](https://github.com/muthuishere/openjevx/releases/latest) (macOS, Linux, Windows, Docker image tars)
+- **Releases:** [latest](https://github.com/muthuishere/openjevx/releases/latest) (macOS Apple Silicon, Linux amd64 and arm64, Windows; build the Docker image with `docker compose`)
 - **Model:** [huggingface.co/muthuishere/openjevx](https://huggingface.co/muthuishere/openjevx)
 - **Recipes:** [recipes/](recipes/README.md) (runnable examples) · [what you get](recipes/what-you-get.md) (measured size and latency)
 - **Python:** [`python/openjevx.py`](python/openjevx.py), one file, same answers as the server (the container is still the recommended way to run it)
@@ -21,7 +21,28 @@ Change it in `openjevx.json`:
 { "listen": "127.0.0.1:21118", "device": "auto", "model": "model" }
 ```
 
-`device` is `auto`, `cpu`, or `gpu`. `auto` uses the GPU when CUDA loads, otherwise CPU. `gpu` does not fall back.
+`device` is `auto`, `cpu`, or `gpu`. `auto` uses the first GPU provider that loads and matches the CPU on a probe
+(CUDA, CoreML on macOS, DirectML on Windows), otherwise CPU. `gpu` does not fall back.
+
+## Credentials
+
+| openjevx.json | environment | guards | default |
+|---|---|---|---|
+| `api_key` | `OPENJEVX_API_KEY` | `POST /v1/systemone`, sent as `Authorization: Bearer <key>` (16+ characters) | **on** when `listen` is not loopback: unset, the server generates one into `openjevx.api-key` beside `openjevx.json`; **off** on `127.0.0.1`, `::1` and `localhost` unless set |
+| `password` | `OPENJEVX_PASSWORD` | the dashboard `/`, `/stats`, `/metrics`, `/recipes` (HTTP Basic, any user name) | always on: unset, the server generates one into `openjevx.password` |
+| `allow_no_api_key` | `OPENJEVX_ALLOW_NO_API_KEY=1` | turns the key off even when public, e.g. behind a proxy that checks it | off |
+| `allow_no_password` | `OPENJEVX_ALLOW_NO_PASSWORD=1` | turns the dashboard password off | off |
+
+The environment wins over `openjevx.json`. Generated files sit beside `openjevx.json` (or beside the executable when
+there is none), are created once with mode 0600, and are reused. The start that creates one prints it once, with its
+file; later starts log only the file. Release archives carry no `openjevx.json`, so unpacking a new release over an old
+one never replaces yours (the npx installer keeps it too and only adds keys it lacks).
+`GET /health` stays open. The old published password `adminadmin` (in `openjevx.json` up to v0.5.6) is ignored and
+replaced by a generated one. The 401 body is `{"error":"missing or wrong API key"}`, the same as the jev-cloud gate's.
+
+```bash
+curl -H "Authorization: Bearer $(cat openjevx.api-key)" http://<host>:21118/v1/systemone -d @body.json
+```
 
 `threads` (or `OPENJEVX_THREADS`, which wins) is the CPU threads one request uses. Unset, the server takes the first
 of: the cgroup CPU quota (`/sys/fs/cgroup/cpu.max`, or v1 `cpu.cfs_quota_us / cpu.cfs_period_us`), rounded up; on
@@ -111,7 +132,7 @@ curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/open
 tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
-Linux:
+Linux (`linux-arm64` for ARM, e.g. Graviton or Ampere):
 
 ```bash
 curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-linux-amd64.tar
@@ -127,10 +148,12 @@ same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 
 ```bash
 git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-OPENJEVX_PASSWORD=<12+ letters/digits> docker compose up -d --build
+OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build
 ```
 
-The image has no default dashboard password: it refuses to start without `OPENJEVX_PASSWORD` or a mounted `/app/openjevx.json`.
+The image has no default credentials: it refuses to start without `OPENJEVX_PASSWORD` and `OPENJEVX_API_KEY` (or
+your own `openjevx.json` mounted at `/data/openjevx.json`). It runs as uid 10001, not root; `/data` is its writable
+working folder. Make a key with `openssl rand -hex 24`.
 
 ## jevx
 
@@ -139,6 +162,12 @@ Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
 ```bash
 jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
 jevx profile use openjevx
+```
+
+With an API key (any server not on loopback), let jevx read it from the environment:
+
+```bash
+jevx profile add openjevx http://<host>:21118/v1/systemone --model openjevx --header 'Authorization: Bearer $OPENJEVX_API_KEY'
 ```
 
 Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.2`).
@@ -155,7 +184,9 @@ Apache-2.0. Credits: `CREDITS`. Decisions behind the project: [`docs/adr/`](docs
 
 Open http://127.0.0.1:21118/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
 
-Password default for the downloaded binary: `adminadmin`, change it in `openjevx.json` (`"password"`).
+There is no default password. Set `"password"` in `openjevx.json` (or `OPENJEVX_PASSWORD`); unset, the server
+generates one on its first start, prints it once, and keeps it in `openjevx.password` (the npx install keeps it in
+`~/.local/share/openjevx/`). Any user name works.
 
 - `GET /stats` — JSON snapshot (same password)
 - `GET /metrics` — Prometheus format (same password)
@@ -173,7 +204,7 @@ images.
 
 Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 
-Release from this machine, no CI: `task package` builds the macOS, Linux and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
+Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
 ## What v0.5.2 was trained on
 
@@ -194,14 +225,17 @@ Run: one RTX 4090 on Vast.ai, 791,239 decisions after packaging, one full pass i
 
 ## Fine-tune it further
 
-The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weight-only; activations stay float, so answers don't depend on what else is in the request).
+The shipped model is the folder above; its graph is `openjevx.w8.onnx` (8-bit weights). ONNX Runtime 1.29 runs it as
+`MatMulNBits` and quantizes the activations to int8 on every call (ADR 0011), so an answer can move slightly with what
+else is in the request: on 2026-10-03 a pick-one answer went from 0.9173 to 0.9214 when a long yes/no question was
+added to the same request; the yes/no answers did not change.
 
 **Fine-tune kit (v0.5.2, 777 MB):** [openjevx-finetune-v0.5.2.tar.gz](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.2.tar.gz) ([sha256](https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.2.tar.gz.sha256)). It holds the trainable fine-tuned checkpoint (`openjevx-model/`: `model.safetensors`, `encoder/`, `tokenizer/`, `rl_agent_config.json`). No training data. The 8-bit ONNX is on the GitHub release and Hugging Face; the training scripts are in `finetuning/` in this repo. The same model files are on [Hugging Face](https://huggingface.co/muthuishere/openjevx).
 
 1. **Data**: rows of `{state, questions:{id:{type: noul|choice|score, instructions, criteria}}, gold}`. `finetuning/dataprep/gen_it_worker.py` generates rule-labelled software-work decisions; add your own rows in the same shape.
 2. **Shard**: `finetuning/dataprep/package_shards.py --out DIR --extra-train your.jsonl --exclude-keys leaked.json` adapts gold into targets, samples, and drops any question that also appears in your test sets.
 3. **Train**: `cd finetuning && task all` runs data → leakage check → smoke run → full run → gate as one job. The GPU box
-   pulls its data and runtime from a Cloudflare R2 bucket, uploads the 8-bit ONNX (≤ 750 MB) and the checkpoint, and
+   pulls its data from a Cloudflare R2 bucket (its Python packages from PyPI, the base model from Hugging Face), uploads the 8-bit ONNX (≤ 750 MB) and the checkpoint, and
    destroys itself ([ADR 0009](docs/adr/0009-one-job-gpu-run-via-r2.md)). Settings live in
    `~/.config/openjevx/config.json`, data in `~/openjevx/data`. On your own CUDA box, run the steps in
    [`finetuning/ft.py`](finetuning/ft.py) and [`finetuning/train/run_job.sh`](finetuning/train/run_job.sh) directly.

@@ -1,5 +1,4 @@
 {
   "listen": "127.0.0.1:21118",
-  "device": "auto",
-  "password": "adminadmin"
+  "device": "auto"
 }

@@ -17,6 +17,8 @@ Follow this order. Do not invent a new trainer.
 4. Hardware. One verified RTX 4090, CUDA 12.4 image `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel`, label `openjevx-...-DESTROY-AFTER`. Use the `vast-one-shot` skill. Do not assemble the box over SSH.
 5. Runtime guard. `onnxruntime-gpu==1.22.0` only. Uninstall `onnxruntime` and `onnxruntime-gpu` first, then `pip install --force-reinstall --no-deps onnxruntime-gpu==1.22.0`. Version 1.30 needs CUDA 13 and silently falls back to CPU on this image. Abort unless the session provider is `CUDAExecutionProvider`.
 6. Recipe, already in the script. 4 epochs, micro-batch 8, grad accumulation 8 (effective batch 64 on one GPU), encoder lr `2.5e-5`, head lr `1e-4`, AdamW, cosine, fp16 autocast, GradScaler, clip 1.0, `max_len` 1024, `head_max_len` 256. T4/4090 training uses fp16, not bf16.
+   Superseded for v0.5.x: the live recipe is the `train` block of `finetuning/config.example.json` (1 epoch,
+   micro-batch 16, grad accumulation 4, `max_len` 512, bf16 autocast on the 4090).
 7. Benchmark on the GPU box before destroy. Pull artifacts, then destroy. A watcher that dies with the agent session leaves the GPU billing.
 
 ## Consequences

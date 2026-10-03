@@ -27,6 +27,7 @@ jobs:
             grep -q "$ort" "$f" || { echo "$f does not use ONNX Runtime $ort: update licenses/onnxruntime/" >&2; exit 1; }
           done
       - run: go test ./internal/bpe ./internal/modelsrc ./cmd/openjevx
+      - run: node --test bin/platform.test.js bin/config.test.js
       - run: CGO_ENABLED=1 go build -o /tmp/openjevx ./cmd/openjevx
       - run: python -m py_compile scripts/*.py finetuning/*.py finetuning/*/*.py
       - run: bash -n finetuning/train/run_job.sh finetuning/gate/jevx13.sh
@@ -54,13 +55,19 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src -e CGO_ENABLED=1 golang:1.26-bookworm go build -buildvcs=false -o smoke/openjevx ./cmd/openjevx
       - name: Serve from distroless as uid 10001 and answer one decision
         run: |
+          # Listening on 0.0.0.0 needs an API key; /app is read-only, so both credentials come from the environment.
           docker run -d --name ojx --cpus 1 --user 10001 -p 127.0.0.1:21118:21118 -v "$PWD/smoke:/app:ro" -w /tmp \
-            -e OPENJEVX_ORT=/app/libonnxruntime.so gcr.io/distroless/cc-debian12 \
-            /app/openjevx -device cpu -model /app/model
+            -e OPENJEVX_ORT=/app/libonnxruntime.so -e OPENJEVX_API_KEY=ci-smoke-key-0123456789 -e OPENJEVX_PASSWORD=ci-smoke-password \
+            gcr.io/distroless/cc-debian12 /app/openjevx -device cpu -model /app/model
           for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
           docker logs ojx
           curl -fsS http://127.0.0.1:21118/health
-          curl -fsS -D headers.txt -X POST http://127.0.0.1:21118/v1/systemone \
+          body='{"state":"x","questions":{"a":{"type":"noul","instructions":"Is it?"}}}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer wrong' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:21118/stats)" = 401
+          curl -fsS -u x:ci-smoke-password http://127.0.0.1:21118/stats >/dev/null
+          curl -fsS -D headers.txt -H 'Authorization: Bearer ci-smoke-key-0123456789' -X POST http://127.0.0.1:21118/v1/systemone \
             -d '{"state":"The parcel arrived crushed and the customer is furious.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}' \
             | tee answer.json
           grep -q '"noul"' answer.json
@@ -68,3 +75,28 @@ jobs:
           grep -i '^server-timing: encode;dur=.*run;dur=.*total;dur=' headers.txt
           docker logs ojx 2>&1 | grep 'threads: intra-op 1 (from cgroup)'
           docker logs ojx 2>&1 | grep -E 'cpu: .+; has '
+          docker logs ojx 2>&1 | grep 'api key: required on /v1/systemone'
+
+  # The repo's own image (Dockerfile + entrypoint), as the DigitalOcean button and docker compose build it: runs as
+  # uid 10001, refuses to start without its credentials, and checks the API key.
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ojx-image .
+      - name: Refuses to start without the API key
+        run: |
+          ! timeout 120 docker run --rm -e OPENJEVX_PASSWORD=ci-image-password ojx-image 2> err.txt
+          grep 'set OPENJEVX_API_KEY' err.txt
+      - name: Runs as uid 10001 and checks the key
+        run: |
+          docker run -d --name img -p 127.0.0.1:21118:21118 -e OPENJEVX_PASSWORD=ci-image-password \
+            -e OPENJEVX_API_KEY=ci-image-key-0123456789 ojx-image
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
+          docker logs img
+          test "$(docker exec img id -u)" = 10001
+          test "$(docker exec img stat -c %u /proc/1)" = 10001   # the server itself (PID 1 after the entrypoint's exec)
+          body='{"state":"The parcel arrived crushed.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
+          curl -fsS -H 'Authorization: Bearer ci-image-key-0123456789' -X POST http://127.0.0.1:21118/v1/systemone -d "$body" | grep -q '"noul"'
+          curl -fsS -u x:ci-image-password http://127.0.0.1:21118/stats >/dev/null

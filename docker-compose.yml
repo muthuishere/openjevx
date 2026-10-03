@@ -4,9 +4,11 @@ services:
     build: .
     ports:
       - "127.0.0.1:21118:21118"
-    # The dashboard password is required (no default); or mount your own config instead:
+    # Both credentials are required (no defaults); or mount your own config at /data/openjevx.json instead.
+    # Clients send "Authorization: Bearer $OPENJEVX_API_KEY" to /v1/systemone.
     environment:
       OPENJEVX_PASSWORD: ${OPENJEVX_PASSWORD:-}
+      OPENJEVX_API_KEY: ${OPENJEVX_API_KEY:-}
     # volumes:
-    #   - ./openjevx.docker.json:/app/openjevx.json:ro
+    #   - ./openjevx.docker.json:/data/openjevx.json:ro
     restart: unless-stopped

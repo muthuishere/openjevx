@@ -44,7 +44,7 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
 
   <h2>Docker</h2>
   <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-docker compose up -d --build</CodeCard>
+OPENJEVX_PASSWORD=&lt;12+ characters&gt; OPENJEVX_API_KEY=&lt;16+ characters&gt; docker compose up -d --build</CodeCard>
 
   <h2>Talk to it from jevx</h2>
   <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
@@ -60,7 +60,8 @@ jevx is "Is this urgent?" &lt; email.txt</CodeCard>
     <div class="card">
       <h3>Dashboard</h3>
       <p>Open <code>http://127.0.0.1:21118/</code> while it runs: request counts, latency p50/p95/p99,
-        errors, recent requests. Default password <code>adminadmin</code>.</p>
+        errors, recent requests. No default password: set <code>"password"</code>, or read the one the server
+        generates into <code>openjevx.password</code>.</p>
     </div>
     <div class="card">
       <h3>License</h3>

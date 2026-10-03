@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -32,7 +33,11 @@ type config struct {
 	Listen   string `json:"listen"`
 	Device   string `json:"device"`
 	Password string `json:"password,omitempty"`
-	Model    string `json:"model,omitempty"`
+	// API key for POST /v1/systemone and the switches that turn a credential off (auth.go).
+	APIKey          string `json:"api_key,omitempty"`
+	AllowNoAPIKey   bool   `json:"allow_no_api_key,omitempty"`
+	AllowNoPassword bool   `json:"allow_no_password,omitempty"`
+	Model           string `json:"model,omitempty"`
 	// Remote models (model = s3://...): pinned sha256, cache folder, reload interval, fallback folder.
 	ModelSHA256   string `json:"model_sha256,omitempty"`
 	ModelCache    string `json:"model_cache,omitempty"`
@@ -42,6 +47,7 @@ type config struct {
 	Runtime       string `json:"runtime,omitempty"`
 	Threads       int    `json:"threads,omitempty"`
 	threadsFrom   string // where Threads came from: config, env, cgroup, ecs or GOMAXPROCS (threads.go)
+	configDir     string // the folder of the openjevx.json that was read ("" = none); generated secrets go there
 }
 
 func main() {
@@ -88,6 +94,21 @@ func main() {
 	if line := cpuLine("/proc/cpuinfo"); line != "" {
 		log.Print(line)
 	}
+	key, password, err := resolveAuth(&cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if key.value == "" {
+		log.Printf("api key: off (%s); /v1/systemone is open", key.from)
+	} else {
+		log.Printf("api key: required on /v1/systemone as \"Authorization: Bearer <key>\" (from %s)", key.from)
+	}
+	if password.value == "" {
+		log.Printf("dashboard password: off (%s)", password.from)
+	} else {
+		log.Printf("dashboard password: from %s", password.from)
+	}
+	printNew(os.Stderr, key, password)
 	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -182,9 +203,9 @@ func main() {
 		}
 		writeJSON(w, health)
 	})
-	http.HandleFunc("/v1/systemone", decisionHandler(&cfg, &live, &inferMu, func(cur *served, items []decide.Item) ([]float32, int, []float32, error) {
+	http.HandleFunc("/v1/systemone", requireKey(cfg.APIKey, decisionHandler(&cfg, &live, &inferMu, func(cur *served, items []decide.Item) ([]float32, int, []float32, error) {
 		return run(cur.session, cur.m.Params.PAD, items)
-	}))
+	})))
 	log.Printf("OpenJevX %s at http://%s (dashboard on /, metrics on /metrics)", cfg.Device, cfg.Listen)
 	log.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
@@ -431,6 +452,7 @@ func loadConfig() config {
 			continue
 		}
 		if json.Unmarshal(b, &cfg) == nil {
+			cfg.configDir, _ = filepath.Abs(filepath.Dir(path))
 			break
 		}
 	}
@@ -497,7 +519,7 @@ func protected(password string) func(http.ResponseWriter, *http.Request, func())
 				return
 			}
 		}
-		if pass != password {
+		if subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
 			w.Header().Set("WWW-Authenticate", `Basic realm="openjevx"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -533,7 +555,18 @@ Windows:  README.cmd
 
 Config file openjevx.json, next to the executable:
 
-  { "listen": "127.0.0.1:8000", "device": "cpu", "model": "model" }
+  { "listen": "127.0.0.1:21118", "device": "cpu", "model": "model" }
+
+Credentials (env in brackets):
+
+  "api_key":   the key for POST /v1/systemone, sent as                    [OPENJEVX_API_KEY]
+               "Authorization: Bearer <key>" (16+ characters). On whenever listen is not
+               loopback: unset, one is generated into openjevx.api-key beside openjevx.json.
+               Off on 127.0.0.1 / ::1 / localhost unless set.
+  "password":  the dashboard, /stats, /metrics and /recipes (HTTP Basic,   [OPENJEVX_PASSWORD]
+               any user name). Unset, one is generated into openjevx.password.
+  "allow_no_api_key", "allow_no_password": true turns one off, e.g. behind a proxy that checks it
+               [OPENJEVX_ALLOW_NO_API_KEY=1, OPENJEVX_ALLOW_NO_PASSWORD=1]
 
 model is a model folder (or, for old models, a .onnx file). Unset: model/ or models/openjevx/
 next to the executable, then openjevx.w8.onnx next to it.
@@ -561,6 +594,7 @@ cache, verified, and served from there; a valid cache starts offline. More setti
                     without bucket DNS (bucket in the path, not the host)
 
 jevx:
-  jevx profile add openjevx http://127.0.0.1:8000/v1/systemone --model openjevx
+  jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+  (with an API key: add --header 'Authorization: Bearer $OPENJEVX_API_KEY')
   jevx profile use openjevx
 `
