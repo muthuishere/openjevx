@@ -1,6 +1,7 @@
 # "Deploy to DigitalOcean" button (App Platform): builds the repo's Dockerfile, which downloads the 8-bit model.
-# The app is public and the decision API has no password; the dashboard password is a required secret
-# (the container refuses to start without it). Keep the URL private.
+# The app URL is public, so both credentials are required secrets (the container refuses to start without them):
+#   OPENJEVX_API_KEY   16+ characters (e.g. openssl rand -hex 24); clients send "Authorization: Bearer <key>"
+#   OPENJEVX_PASSWORD  12+ characters; the dashboard, /stats and /metrics
 spec:
   name: openjevx
   services:
@@ -13,6 +14,10 @@ spec:
       instance_size_slug: apps-s-1vcpu-2gb
       instance_count: 1
       envs:
+        - key: OPENJEVX_API_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ""
         - key: OPENJEVX_PASSWORD
           scope: RUN_TIME
           type: SECRET
