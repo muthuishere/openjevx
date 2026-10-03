@@ -127,21 +127,24 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-darwin-arm64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-model-0.5.2.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz
 tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
-Linux (`linux-arm64` for ARM, e.g. Graviton or Ampere):
+Linux (x86-64; glibc 2.28+):
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-linux-amd64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-model-0.5.2.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz
 tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-windows-amd64.zip and
-https://github.com/muthuishere/openjevx/releases/download/v0.5.6/openjevx-model-0.5.2.tar.gz, unpack both into the
+Linux ARM (arm64, e.g. Graviton or Ampere): the same with
+[`openjevx-linux-arm64.tar`](https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-linux-arm64.tar) instead.
+
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-windows-amd64.zip and
+https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz, unpack both into the
 same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 
 ## Docker
