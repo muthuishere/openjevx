@@ -62,7 +62,7 @@ request shape through the OpenJevX server.
 - CUDA p50 latency per five-question case: **{report['latency_ms']['p50']:.1f} ms**
 
 The benchmark uses the untouched 400-case, 2,000-decision test split from
-`LocalLLaMA/typed-decisions`. Training uses only its 1,200-case train split.
+`LocalLLaMA/typed-decisions`; the leakage check keeps its questions out of training.
 
 ## Attribution
 

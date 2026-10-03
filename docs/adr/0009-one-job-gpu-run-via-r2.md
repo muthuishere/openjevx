@@ -58,8 +58,11 @@ GPU providers stay pluggable (`gpu/<name>.py`, prints `RUN_DIR=`); Kaggle is not
 ## Consequences
 
 - A run survives the laptop sleeping or the agent session ending; results wait in R2.
-- Only the stock PyTorch image comes from outside; data, packages and the model come from our bucket.
-- The first run after changing `requirements-box.txt`, the image or the base model is slower
-  (it rebuilds the bundle); every later run starts from R2.
+- ~~Only the stock PyTorch image comes from outside; data, packages and the model come from our bucket.~~
+- ~~The first run after changing `requirements-box.txt`, the image or the base model is slower
+  (it rebuilds the bundle); every later run starts from R2.~~
+  Corrected 2026-10-03: these two lines described the prebuilt R2 runtime that decision 2 dropped. Only the data
+  comes from our bucket; packages come from PyPI and the base model from Hugging Face on every run
+  (`finetuning/train/run_job.sh`).
 - `openjevx-train` holds shards, runs, checkpoints, bundles and gate reports and must stay private;
   only released models go to the public `openjevx` bucket.
