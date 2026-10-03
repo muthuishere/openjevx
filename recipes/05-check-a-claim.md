@@ -15,8 +15,10 @@ Payment terms: due within 45 days of the issue date.
 
 ## Call the local server
 
+The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
+
 ```bash
-curl -s localhost:21118/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 2026-09-01\nConsulting services, September .......... 1,250.00 EUR\nTotal due: 1,250.00 EUR\nPayment terms: due within 45 days of the issue date.", "questions": {"claim": {"type": "noul", "instructions": "Does the invoice say the total is 1,500 EUR?"}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 2026-09-01\nConsulting services, September .......... 1,250.00 EUR\nTotal due: 1,250.00 EUR\nPayment terms: due within 45 days of the issue date.", "questions": {"claim": {"type": "noul", "instructions": "Does the invoice say the total is 1,500 EUR?"}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):
