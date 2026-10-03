@@ -4,8 +4,10 @@ Yes/no over build output before reporting "done".
 
 ## Call the local server
 
+The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
+
 ```bash
-curl -s localhost:21118/v1/systemone -d '{"state": "ok  core 2.1s\nok  web 0.8s\nFAIL payments 0.3s\nFAIL", "questions": {"ok": {"type": "noul", "instructions": "Did the build and tests succeed?"}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "ok  core 2.1s\nok  web 0.8s\nFAIL payments 0.3s\nFAIL", "questions": {"ok": {"type": "noul", "instructions": "Did the build and tests succeed?"}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

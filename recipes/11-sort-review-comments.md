@@ -17,8 +17,10 @@ This builds the SQL with string concatenation from user input: SQL injection
 
 ## Call the local server
 
+The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
+
 ```bash
-curl -s localhost:21118/v1/systemone -d '{"state": "nit: rename x to count", "questions": {"kind": {"type": "choice", "instructions": "What kind of review comment is this?", "criteria": {"must": "a real bug or risk that must be fixed", "should": "a reasonable change request", "nit": "style or naming only", "none": "praise or approval"}}}}'
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "nit: rename x to count", "questions": {"kind": {"type": "choice", "instructions": "What kind of review comment is this?", "criteria": {"must": "a real bug or risk that must be fixed", "should": "a reasonable change request", "nit": "style or naming only", "none": "praise or approval"}}}}'
 ```
 
 Real answer for the first input (model 0.5.2, server 0.5.7, CPU):
