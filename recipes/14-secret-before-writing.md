@@ -4,10 +4,8 @@ Yes/no on a line before it is written to disk or a commit.
 
 ## Call the local server
 
-The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
-
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "DATABASE_URL=postgres://app:Pr0d-p4ss@db.internal:5432/app", "questions": {"secret": {"type": "noul", "instructions": "Does this line contain a password?"}}}' | jq -c .answers
+curl -s localhost:21118/v1/systemone -d '{"state": "DATABASE_URL=postgres://app:Pr0d-p4ss@db.internal:5432/app", "questions": {"secret": {"type": "noul", "instructions": "Does this line contain a password?"}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

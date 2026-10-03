@@ -9,8 +9,8 @@ an int8 kernel?), the slowest ops from ORT's profiler, and short/long latency fo
   extended / basic   lower graph optimization levels
   no-qdq-fusion      session.disable_quant_qdq=1 (DequantizeLinear + fp32 MatMul every call)
   acc-level-N        session.qdq_matmulnbits_accuracy_level=N (how a fused MatMulNBits computes)
-  dynamic-int8       the same weights as a QOperator graph (quantize_dynamic: int8 activations)
-  fp32               the same weights dequantized once (4x the size; an upper bound, not a ship candidate)
+  fp32               the same weights dequantized once (4x the RAM): the exact reference for diff_vs_fp32
+  dynamic-s8/s8rr/u8 the same weights as a QOperator graph (finetuning/export/quantize_dynamic.py)
 Inputs are built like the server's: one item, two markers, qtype 0 (noul); token ids are seeded random.
 max_logit_diff is against the default run on the same inputs (0 = identical numerics).
 """
@@ -109,32 +109,8 @@ def top_ops(profile_file, n=8):
     return [(op, round(us / 1000, 1), round(100 * us / all_us)) for op, us in tot.most_common(n)]
 
 
-def dequantized(src, dst):
-    """The graph with every constant DequantizeLinear folded into an fp32 initializer."""
-    m = onnx.load(src)
-    inits = {i.name: i for i in m.graph.initializer}
-    keep, folded = [], {}
-    for node in m.graph.node:
-        if node.op_type == "DequantizeLinear" and all(x in inits for x in node.input if x):
-            q = numpy_helper.to_array(inits[node.input[0]]).astype(np.float32)
-            scale = numpy_helper.to_array(inits[node.input[1]]).astype(np.float32)
-            zp = numpy_helper.to_array(inits[node.input[2]]).astype(np.float32) if len(node.input) > 2 and node.input[2] else 0
-            axis = next((a.i for a in node.attribute if a.name == "axis"), 1)
-            shape = [1] * q.ndim
-            if np.ndim(scale):
-                shape[axis] = -1
-            w = (q - np.reshape(zp, shape)) * np.reshape(scale, shape)
-            folded[node.output[0]] = numpy_helper.from_array(w.astype(np.float32), node.output[0])
-        else:
-            keep.append(node)
-    used = {x for n in keep for x in n.input}
-    del m.graph.node[:]
-    m.graph.node.extend(keep)
-    old = [i for i in m.graph.initializer if i.name in used]
-    del m.graph.initializer[:]
-    m.graph.initializer.extend(old + list(folded.values()))
-    onnx.save(m, dst, save_as_external_data=True, location=os.path.basename(dst) + ".data")
-    return dst
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "finetuning", "export"))
+from quantize_dynamic import dequantized, dynamic  # noqa: E402
 
 
 def main():
@@ -150,7 +126,7 @@ def main():
     report = {"ort": ort.__version__, "cpu": cpu_flags(), "threads": a.threads, "runs": {}}
     print(json.dumps(report["cpu"]), "ort", ort.__version__, "threads", a.threads, flush=True)
 
-    reference = {}
+    reference, outputs = {}, {}
 
     def record(name, path, **kw):
         opt = os.path.join(work, name + ".opt.onnx")
@@ -167,6 +143,7 @@ def main():
         r["session_rss_mb"] = round(rss_mb() - before)
         # How far this variant's logits are from the server's default on the same inputs.
         outs = [s.run(None, inputs(n)) for n in (40, 512)]
+        outputs[name] = outs
         if not reference:
             reference["outs"] = outs
             report["default_max_abs_logit"] = round(float(max(np.max(np.abs(o)) for got in outs for o in got)), 2)
@@ -185,15 +162,21 @@ def main():
     for lvl in ("0", "1", "4"):
         record("acc-level-" + lvl, graph, configs={"session.qdq_matmulnbits_accuracy_level": lvl})
     if not a.skip_variants:
-        from onnxruntime.quantization import QuantType, quantize_dynamic
         fp32 = dequantized(graph, os.path.join(work, "fp32.onnx"))
-        dyn = os.path.join(work, "dynamic-int8.onnx")
-        quantize_dynamic(fp32, dyn, weight_type=QuantType.QInt8, per_channel=True, op_types_to_quantize=["MatMul"],
-                         use_external_data_format=True)
-        record("dynamic-int8", dyn)
         record("fp32", fp32)
-        report["sizes_mb"] = {n: round(sum(os.path.getsize(os.path.join(work, f)) for f in os.listdir(work) if f.startswith(n) and not f.endswith(".opt.onnx")) / 1e6)
-                              for n in ("dynamic-int8", "fp32")}
+        for w in ("s8", "s8rr", "u8"):
+            from onnxruntime.quantization import QuantType, quantize_dynamic
+            dst = os.path.join(work, f"dynamic-{w}.onnx")
+            if w == "s8":  # what the first probe measured: saturates on AVX2 without VNNI
+                quantize_dynamic(fp32, dst, per_channel=True, op_types_to_quantize=["MatMul"], weight_type=QuantType.QInt8)
+            else:
+                dynamic(fp32, dst, w)
+            record(f"dynamic-{w}", dst)
+    # The exact weights are the reference that does not depend on the CPU: how far is each run from them?
+    if "fp32" in outputs:
+        for name, outs in outputs.items():
+            report["runs"][name]["diff_vs_fp32"] = round(float(max(np.max(np.abs(o - ref)) for got, want in zip(outs, outputs["fp32"]) for o, ref in zip(got, want))), 4)
+            print(f"{name:14} diff_vs_fp32 {report['runs'][name]['diff_vs_fp32']}", flush=True)
     if a.out:
         json.dump(report, open(a.out, "w"), indent=1)
 

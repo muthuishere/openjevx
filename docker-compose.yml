@@ -1,6 +1,6 @@
 services:
   openjevx:
-    image: ghcr.io/deemwar-products/openjevx:latest
+    image: ghcr.io/muthuishere/openjevx:latest
     build: .
     ports:
       - "127.0.0.1:21118:21118"

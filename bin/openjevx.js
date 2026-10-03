@@ -7,8 +7,8 @@ import { get } from "node:https";
 import { assetFor } from "./platform.js";
 import { mergeConfig } from "./config.js";
 
-const version = "v0.5.9";
-// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.9 ships the unchanged 0.5.2 model.
+const version = "v0.5.7";
+// The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.7 ships the unchanged 0.5.2 model.
 const modelVersion = "0.5.2";
 const modelAsset = `openjevx-model-${modelVersion}.tar.gz`;
 const base = `https://github.com/muthuishere/openjevx/releases/download/${version}`;

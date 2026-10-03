@@ -129,37 +129,27 @@ Download the file, then run it.
 macOS:
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-darwin-arm64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-model-0.5.2.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-darwin-arm64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz
 tar -xf openjevx-darwin-arm64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
 Linux (x86-64; glibc 2.28+):
 
 ```bash
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-linux-amd64.tar
-curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-model-0.5.2.tar.gz
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-linux-amd64.tar
+curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz
 tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./openjevx
 ```
 
 Linux ARM (arm64, e.g. Graviton or Ampere): the same with
-[`openjevx-linux-arm64.tar`](https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-linux-arm64.tar) instead.
+[`openjevx-linux-arm64.tar`](https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-linux-arm64.tar) instead.
 
-Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-windows-amd64.zip and
-https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-model-0.5.2.tar.gz, unpack both into the
+Windows: download https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-windows-amd64.zip and
+https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz, unpack both into the
 same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 
 ## Docker
-
-The prebuilt image, for linux/amd64 and linux/arm64 (each release tag, and `latest`):
-
-```bash
-docker run -d -p 127.0.0.1:21118:21118 \
-  -e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> \
-  ghcr.io/deemwar-products/openjevx:v0.5.9
-```
-
-Or build it from source:
 
 ```bash
 git clone https://github.com/muthuishere/openjevx.git && cd openjevx
@@ -219,7 +209,7 @@ images.
 
 Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
 
-Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` builds both Docker images locally (no image tars are released: users build the image with `docker compose`, ADR 0010), and `task release VERSION=v<version>` uploads the release assets by name (the four server archives, the model archive and `SHA256SUMS-server`) to that GitHub release.
+Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` saves both Docker images as tars, and `task release VERSION=v0.4.0` uploads everything in `.local/dist` to that GitHub release.
 
 ## What v0.5.2 was trained on
 

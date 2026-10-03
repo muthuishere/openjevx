@@ -38,32 +38,3 @@ state,question,type,options,answer,split,source
 "{""customers_affected"": 1, ""payments_failing"": true, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,critical,,support
 "{""customers_affected"": 0, ""payments_failing"": false, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,1,gate,support
 A typo on the About page. Nobody has complained.,How urgent is this ticket?,score,low|medium|high|critical,0,,support
-"{""day"": ""Monday"", ""week"": 42}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,train,hr-policy
-"{""day"": ""Friday"", ""week"": 42}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,no,train,hr-policy
-"{""day"": ""Thursday"", ""week"": 43}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,yes,train,hr-policy
-"{""day"": ""Sunday"", ""week"": 43}",Is this a working day? We work Monday to Thursday.,noul,true=it is a working day|false=it is a day off,no,train,hr-policy
-"{""hours_logged_today"": 0.5}",Is this over the 3 working hours we allow per day?,noul,,no,train,hr-policy
-"{""hours_logged_today"": 2.0}",Is this over the 3 working hours we allow per day?,noul,,no,train,hr-policy
-"{""hours_logged_today"": 2.95}",Is this over the 3 working hours we allow per day?,noul,,no,train,hr-policy
-"{""hours_logged_today"": 3.05}",Is this over the 3 working hours we allow per day?,noul,,yes,train,hr-policy
-"{""hours_logged_today"": 3.5}",Is this over the 3 working hours we allow per day?,noul,,yes,train,hr-policy
-"{""hours_logged_today"": 5}",Is this over the 3 working hours we allow per day?,noul,,yes,train,hr-policy
-"{""promised_by"": ""2026-11-10"", ""delivered_on"": ""2026-11-09""}",Is the parcel late?,noul,,no,train,shipping
-"{""promised_by"": ""2026-11-10"", ""delivered_on"": ""2026-11-10""}",Is the parcel late?,noul,,no,train,shipping
-"{""promised_by"": ""2026-11-10"", ""delivered_on"": ""2026-11-12""}",Is the parcel late?,noul,,yes,train,shipping
-"{""promised_by"": ""2026-12-01"", ""delivered_on"": ""2026-12-15""}",Is the parcel late?,noul,,yes,train,shipping
-"{""promised_by"": ""2026-11-10"", ""delivered_on"": null, ""today"": ""2026-11-11""}",Is the parcel late?,noul,,yes,train,shipping
-"{""promised_by"": ""2026-11-10"", ""delivered_on"": null, ""today"": ""2026-11-08""}",Is the parcel late?,noul,,no,train,shipping
-"{""order_total_rs"": 100}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,train,shop
-"{""order_total_rs"": 450}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,train,shop
-"{""order_total_rs"": 498}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,no,train,shop
-"{""order_total_rs"": 502}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,train,shop
-"{""order_total_rs"": 999}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,train,shop
-"{""order_total_rs"": 5000}",Does the order get the discount? Orders over Rs 500 get 10% off.,noul,,yes,train,shop
-"{""repo"": ""payments-core"", ""title"": ""Payout fails for EUR accounts""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments,train,eng-routing
-"{""repo"": ""billing"", ""title"": ""Credit note numbering skips a number""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,payments,train,eng-routing
-"{""repo"": ""infra-terraform"", ""title"": ""Add a staging VPC""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,platform,train,eng-routing
-"{""repo"": ""api-gateway"", ""title"": ""Partner requests missing CORS header""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,platform,train,eng-routing
-"{""repo"": ""web-frontend"", ""title"": ""Dark mode contrast on the cart page""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,web,train,eng-routing
-"{""repo"": ""admin-console"", ""title"": ""User search is slow""}",Which team owns this?,choice,payments=billing and payments-core repos|platform=infra-terraform and api-gateway repos|web=web-frontend and admin-console repos,web,train,eng-routing
-"{""customers_affected"": 12, ""payments_failing"": true, ""workaround"": false}",How urgent is this ticket?,score,low|medium|high|critical,critical,train,support

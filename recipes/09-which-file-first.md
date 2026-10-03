@@ -17,10 +17,8 @@ docs/README.md
 
 ## Call the local server
 
-The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
-
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "internal/payments/gateway.go", "questions": {"hit": {"type": "noul", "instructions": "Is this file likely where a payment gateway timeout is handled?"}}}'
+curl -s localhost:21118/v1/systemone -d '{"state": "internal/payments/gateway.go", "questions": {"hit": {"type": "noul", "instructions": "Is this file likely where a payment gateway timeout is handled?"}}}'
 ```
 
 Real answer for the first input (model 0.5.2, server 0.5.7, CPU):
