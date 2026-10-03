@@ -94,6 +94,8 @@ def main():
     for s, f in files.items():
         print(f"uploading {f.name} to r2://{r2.PRIVATE}/{shard_key}/", flush=True)
         r2.put(f, f"{shard_key}/{s}")
+    if (shard_dir / "licence-excluded.json").exists():  # what the licence filter left out, kept with the run
+        r2.put(shard_dir / "licence-excluded.json", f"runs/{name}/licence-excluded.json")
     env = {"SHARD": a.shard, "MAX_W8_MB": MAX_W8_MB,
            "MODEL_VERSION": shard_dir.name.removeprefix("v").removesuffix("-smoke"), "DEADLINE_HOURS": str(a.timeout_hours),
            "KILL_URL": KILL_URL, "KILL_TOKEN": kill_token,
@@ -131,7 +133,7 @@ def main():
     for attempt in range(3):
         offer, machine = pick_offer(a.max_price_per_hour, bad)
         created = json.loads(out("vastai", "create", "instance", str(offer), "--image", IMAGE,
-                                 "--disk", "80", "--ssh", "--direct", "--label", f"openjevx-{a.shard}-DESTROY-AFTER",
+                                 "--disk", "80", "--ssh", "--direct", "--label", f"openjevx-{env['MODEL_VERSION']}-DESTROY-AFTER",
                                  "--onstart-cmd", onstart, "--raw"))
         iid = created["new_contract"]
         print(f"instance {iid} starting (attempt {attempt + 1})", flush=True)

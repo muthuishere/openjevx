@@ -13,4 +13,11 @@ notices are in licenses/ and are not removed by this grant.
 - ModernBERT by Answer.AI and LightOn
   https://huggingface.co/answerdotai/ModernBERT-large
 
+Modified work (Apache-2.0 section 4(b)): the OpenJevX model weights (openjevx.w8.onnx and the
+fine-tune checkpoint) are not the original Laya or ModernBERT weights. They are fine-tuned from
+convaiinnovations/laya (whose encoder is answerdotai/ModernBERT-large): encoder and decision head are
+trained further on OpenJevX decision data, then calibrated and quantized to 8-bit by the OpenJevX project. Since model 0.5.8 the training
+data is filtered to sources whose licence allows commercial use; the model archive lists what was left
+out in licence-excluded.json.
+
 Credits for the people and projects we stand on: CREDITS

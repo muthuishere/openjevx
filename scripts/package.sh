@@ -50,6 +50,8 @@ rm -rf "$OUT/model" && mkdir -p "$OUT/model"
 for f in openjevx.w8.onnx config.json tokenizer.json; do ln "$MODEL_DIR/$f" "$OUT/model/$f" 2>/dev/null || cp "$MODEL_DIR/$f" "$OUT/model/$f"; done
 # The weights are Apache-2.0 work derived from Laya and ModernBERT: their notices travel with them.
 cp LICENSE NOTICE CREDITS "$OUT/model/" && cp -R licenses "$OUT/model/"
+# What the licence filter left out of training (finetuning/dataprep/licence.py), when the run recorded it.
+[ -f "$MODEL_DIR/licence-excluded.json" ] && cp "$MODEL_DIR/licence-excluded.json" "$OUT/model/"
 rm -f "$OUT"/openjevx-model-*.tar.gz
 (cd "$OUT" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -czf "openjevx-model-$VERSION.tar.gz" model && rm -rf model)
 echo "built openjevx-model-$VERSION.tar.gz"

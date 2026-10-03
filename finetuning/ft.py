@@ -66,7 +66,8 @@ def validate():
         args += ["--train", paths.DATA / f]
     for f in v["leak_eval"]:
         if (paths.DATA / f).exists():
-            args += ["--gate" if f.startswith("gate/") else "--eval", paths.DATA / f]
+            gate_file = f.startswith("gate/") or f in CFG["gate"].get("bgl_files", [])
+            args += ["--gate" if gate_file else "--eval", paths.DATA / f]
         else:
             print(f"note: test file {f} not present, skipped in the leakage check")
     try:
@@ -82,6 +83,9 @@ def package(smoke):
             "--budget-gb", d["budget_gb"], "--exclude-keys", WORK / "leak/leaked_keys.json"]
     if smoke:
         args.append("--smoke")
+    if "licence" in CFG:  # train only on commercially usable data (dataprep/licence.py)
+        sh(PY, FT / "dataprep/licence.py")
+        args += ["--licence", json.dumps(CFG["licence"]), "--licence-map", WORK / "licence/tasksource_license_use.json"]
     for x in d["extra_train"]:
         args += ["--extra-train", paths.DATA / x["file"]] * x.get("repeat", 1)
     for f in d["extra_eval"]:
@@ -117,6 +121,10 @@ def train(smoke):
     model = run_dir / "out" / "model"
     if not (model / "config.json").exists():
         sys.exit(f"{name} provider left no model folder at {model}")
+    manifest = shard_dir(smoke) / "licence-excluded.json"
+    if manifest.exists():  # what was left out for licence reasons goes with the run and the released model
+        shutil.copy2(manifest, run_dir / "out" / manifest.name)
+        shutil.copy2(manifest, model / manifest.name)
     return model
 
 
@@ -171,6 +179,11 @@ def gate(model):
             report["files"][f] = m
             print(f"{f:40s} n={m['n']:6d} accuracy {m['accuracy']:6.1%} right&confident {m['confident_right']:6.1%} "
                   f"confidently WRONG {m['confident_wrong']:5.1%}", flush=True)
+            if f in g.get("bgl_files", []):
+                if m["confident_right"] < g["min_bgl_confident_right"]:
+                    failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {g['min_bgl_confident_right']:.0%}")
+                if m["confident_wrong"] > g["max_bgl_confident_wrong"]:
+                    failures.append(f"{f}: confidently wrong {m['confident_wrong']:.1%} > {g['max_bgl_confident_wrong']:.0%}")
             if f in g["basics_files"]:
                 if m["confident_right"] < g["min_basics_confident_right"]:
                     failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {g['min_basics_confident_right']:.0%}")

@@ -72,7 +72,7 @@ def write_gzip_jsonl(path, rows):
 
 
 def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), extra_eval=(),
-          exclude_keys=frozenset(), drop_sources=frozenset()):
+          exclude_keys=frozenset(), drop_sources=frozenset(), licence=None):
     import sys
     sys.path.insert(0, str(TRAIN_DIR))
     import adapter
@@ -127,6 +127,13 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
             if shaped is not None:
                 eval_rows.append(shaped)
 
+    # Licence filter (dataprep/licence.py), after sampling so the tasksource sample itself is unchanged.
+    # The box's eval rows are filtered too: nothing non-commercial goes into making the model.
+    if licence is not None:
+        train_rows = [r for r in train_rows if licence.keep(r, "train")]
+        eval_rows = [r for r in eval_rows if licence.keep(r, "eval")]
+        (out_dir / "licence-excluded.json").write_text(json.dumps(licence.manifest(), indent=1))
+
     if smoke:  # a small mixed sample so the smoke run finishes in minutes, with every source in it
         import random
         rng = random.Random(7)
@@ -165,6 +172,9 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
         "budget_gb": budget_gb,
         "payload_gz_bytes": train_bytes + eval_bytes,
         "plan": plan,
+        "train_decisions": sum(len(r["questions"]) for r in train_rows),
+        "licence_excluded": {k: {"rows": v["rows"], "decisions": v["decisions"]}
+                             for k, v in licence.manifest().items() if k != "policy"} if licence is not None else None,
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))
@@ -180,10 +190,17 @@ def main():
     parser.add_argument("--extra-eval", action="append", default=[], help="JSONL added to eval")
     parser.add_argument("--exclude-keys", help="JSON list of question keys to remove (leaked test questions)")
     parser.add_argument("--drop-sources", help="text file, one source per line, removed from training")
+    parser.add_argument("--licence", help="JSON of config licence: {tasksource_allow, exclude_sources}")
+    parser.add_argument("--licence-map", help="tasksource subset -> license_use JSON (dataprep/licence.py)")
     args = parser.parse_args()
+    lic = None
+    if args.licence:
+        import licence
+        lic = licence.Filter(json.loads(args.licence), json.load(open(args.licence_map)))
     build(args.out, smoke=args.smoke, budget_gb=args.budget_gb, extra_train=args.extra_train, extra_eval=args.extra_eval,
           exclude_keys=frozenset(json.load(open(args.exclude_keys))) if args.exclude_keys else frozenset(),
-          drop_sources=frozenset(l.strip() for l in open(args.drop_sources) if l.strip()) if args.drop_sources else frozenset())
+          drop_sources=frozenset(l.strip() for l in open(args.drop_sources) if l.strip()) if args.drop_sources else frozenset(),
+          licence=lic)
 
 
 if __name__ == "__main__":

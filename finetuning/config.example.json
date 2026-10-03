@@ -1,5 +1,5 @@
 {
-  "version": "v0.5.2",
+  "version": "v0.5.8",
   "provider": "vast",
   "providers": {
     "vast": {
@@ -71,7 +71,7 @@
       },
       {
         "file": "incoming/public/bgl_logs_train.jsonl",
-        "repeat": 1
+        "repeat": 3
       }
     ],
     "extra_eval": [
@@ -108,7 +108,8 @@
       "eval/questions_1000.csv",
       "eval/logs_eval.jsonl",
       "gate/logs_gate.jsonl",
-      "gate/public_danluu_postmortems.jsonl"
+      "gate/public_danluu_postmortems.jsonl",
+      "incoming/public/bgl_logs_eval.jsonl"
     ]
   },
   "train": {
@@ -131,7 +132,8 @@
       "gate/conditions_basics_gate.jsonl",
       "eval/conditions_eval.jsonl",
       "eval/it_worker_eval.jsonl",
-      "gate/logs_gate.jsonl"
+      "gate/logs_gate.jsonl",
+      "incoming/public/bgl_logs_eval.jsonl"
     ],
     "basics_files": [
       "gate/basics_gate.jsonl",
@@ -139,6 +141,20 @@
     ],
     "min_basics_confident_right": 0.9,
     "max_basics_confident_wrong": 0.02,
-    "min_jevx13_correct": 12
+    "min_jevx13_correct": 12,
+    "bgl_files": [
+      "incoming/public/bgl_logs_eval.jsonl"
+    ],
+    "min_bgl_confident_right": 0.7,
+    "max_bgl_confident_wrong": 0.21
+  },
+  "licence": {
+    "note": "Train only on data whose licence allows commercial use (finetuning/dataprep/licence.py). tasksource rows are kept per row by the dataset's license_use; sources below are dropped whole.",
+    "tasksource_allow": [
+      "commercial"
+    ],
+    "exclude_sources": {
+      "our-cases-public/ms_marco": "MS MARCO: non-commercial research purposes only (https://microsoft.github.io/msmarco/)"
+    }
   }
 }
