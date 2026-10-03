@@ -122,3 +122,58 @@ func (h cpuHost) ecsLimit() (int, bool) {
 	}
 	return 0, false
 }
+
+// cpuFlags are the SIMD features that decide CPU inference speed (llmresults/14): on x86 AVX2 vs
+// AVX-512 VNNI hosts differ about 2x, and Fargate hands out both.
+var cpuFlags = map[string][]string{
+	"x86":   {"avx2", "avx512f", "avx512_vnni", "avx_vnni", "amx_int8"},
+	"arm64": {"asimd", "asimddp", "i8mm", "sve", "sve2", "bf16", "sme"},
+}
+
+// cpuLine describes the CPU from /proc/cpuinfo: its model (x86 "model name"; arm64 has none, so the
+// implementer and part codes, e.g. 0x41/0xd40 is a Neoverse V1, Graviton3), the flags above it has and
+// the ones it lacks. "" when the file is missing (macOS, Windows).
+func cpuLine(path string) string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	fields := map[string]string{}
+	for _, line := range strings.Split(string(b), "\n") {
+		k, v, ok := strings.Cut(line, ":")
+		k = strings.TrimSpace(k)
+		if _, seen := fields[k]; ok && !seen {
+			fields[k] = strings.TrimSpace(v)
+		}
+	}
+	arch, flags := "x86", fields["flags"]
+	model := fields["model name"]
+	if flags == "" {
+		arch, flags = "arm64", fields["Features"]
+		if model == "" && fields["CPU implementer"] != "" {
+			model = "implementer " + fields["CPU implementer"] + " part " + fields["CPU part"]
+		}
+	}
+	if model == "" {
+		model = "unknown model"
+	}
+	have := map[string]bool{}
+	for _, f := range strings.Fields(flags) {
+		have[f] = true
+	}
+	var yes, no []string
+	for _, f := range cpuFlags[arch] {
+		if have[f] {
+			yes = append(yes, f)
+		} else {
+			no = append(no, f)
+		}
+	}
+	line := "cpu: " + model + "; has " + strings.Join(yes, " ")
+	if len(yes) == 0 {
+		line = "cpu: " + model + "; has none of " + strings.Join(cpuFlags[arch], " ")
+	} else if len(no) > 0 {
+		line += "; lacks " + strings.Join(no, " ")
+	}
+	return line
+}

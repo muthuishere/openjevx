@@ -100,3 +100,26 @@ func TestThreadsCapNote(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestCPULine(t *testing.T) {
+	dir := t.TempDir()
+	cases := map[string]struct{ cpuinfo, want string }{
+		"amd avx2": {"processor\t: 0\nmodel name\t: AMD EPYC 7763 64-Core Processor\nflags\t\t: fpu sse avx avx2 fma\n\nprocessor\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nflags\t\t: fpu sse avx avx2 fma\n",
+			"cpu: AMD EPYC 7763 64-Core Processor; has avx2; lacks avx512f avx512_vnni avx_vnni amx_int8"},
+		"intel vnni": {"model name\t: INTEL(R) XEON(R) PLATINUM 8573C\nflags\t\t: avx avx2 avx512f avx512bw avx512_vnni amx_int8\n",
+			"cpu: INTEL(R) XEON(R) PLATINUM 8573C; has avx2 avx512f avx512_vnni amx_int8; lacks avx_vnni"},
+		"graviton": {"processor\t: 0\nBogoMIPS\t: 2100.00\nFeatures\t: fp asimd asimddp i8mm sve bf16\nCPU implementer\t: 0x41\nCPU part\t: 0xd40\n",
+			"cpu: implementer 0x41 part 0xd40; has asimd asimddp i8mm sve bf16; lacks sve2 sme"},
+		"old x86": {"model name\t: Pentium\nflags\t\t: fpu sse\n", "cpu: Pentium; has none of avx2 avx512f avx512_vnni avx_vnni amx_int8"},
+	}
+	for name, c := range cases {
+		p := filepath.Join(dir, name)
+		writeFile(t, p, c.cpuinfo)
+		if got := cpuLine(p); got != c.want {
+			t.Errorf("%s:\n got %q\nwant %q", name, got, c.want)
+		}
+	}
+	if got := cpuLine(filepath.Join(dir, "missing")); got != "" {
+		t.Errorf("missing file: %q", got)
+	}
+}
