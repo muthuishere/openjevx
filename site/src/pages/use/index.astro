@@ -23,7 +23,11 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
     <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.8/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> with <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.8/openjevx-model-0.5.2.tar.gz">openjevx-model-0.5.2.tar.gz</a> unpacked into the same folder.</p>
 
   <h2>Docker</h2>
-  <CodeCard label="Docker">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
+  <CodeCard label="Docker">docker run -d -p 127.0.0.1:21118:21118 \
+  -e OPENJEVX_PASSWORD=&lt;12+ characters&gt; -e OPENJEVX_API_KEY=&lt;16+ characters&gt; \
+  ghcr.io/deemwar-products/openjevx:v0.5.9</CodeCard>
+  <p>The prebuilt image is for linux/amd64 and linux/arm64. To build it yourself:</p>
+  <CodeCard label="Docker (from source)">git clone https://github.com/muthuishere/openjevx.git && cd openjevx
 OPENJEVX_PASSWORD=&lt;12+ characters&gt; OPENJEVX_API_KEY=&lt;16+ characters&gt; docker compose up -d --build</CodeCard>
   <p>The image has no default credentials and refuses to start without both. It runs as a non-root user.</p>
 

@@ -4,8 +4,10 @@ Pick-one: answer the message, or change code?
 
 ## Call the local server
 
+The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
+
 ```bash
-curl -s localhost:21118/v1/systemone -d '{"state": "why does the retry helper sleep before the first attempt?", "questions": {"intent": {"type": "choice", "instructions": "What is the user asking for?", "criteria": {"answer": "a question to answer, no code change", "change": "an instruction to change code"}}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "why does the retry helper sleep before the first attempt?", "questions": {"intent": {"type": "choice", "instructions": "What is the user asking for?", "criteria": {"answer": "a question to answer, no code change", "change": "an instruction to change code"}}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):
