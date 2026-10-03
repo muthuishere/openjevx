@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,6 +41,7 @@ type config struct {
 	ModelS3Path   bool   `json:"model_s3_path_style,omitempty"` // or AWS_S3_USE_PATH_STYLE=true
 	Runtime       string `json:"runtime,omitempty"`
 	Threads       int    `json:"threads,omitempty"`
+	threadsFrom   string // "config" or "env" when Threads is set; see intraOpThreads
 }
 
 func main() {
@@ -63,14 +65,25 @@ func main() {
 			cfg.Device = normalDevice(v)
 		}
 	}
+	var threads string
 	for env, dst := range map[string]*string{
 		"OPENJEVX_MODEL_SHA256": &cfg.ModelSHA256, "OPENJEVX_MODEL_CACHE": &cfg.ModelCache,
 		"OPENJEVX_MODEL_RELOAD": &cfg.ModelReload, "OPENJEVX_MODEL_FALLBACK": &cfg.ModelFallback,
+		"OPENJEVX_THREADS": &threads,
 	} {
 		if v := os.Getenv(env); v != "" {
 			*dst = v
 		}
 	}
+	if threads != "" {
+		n, err := strconv.Atoi(threads)
+		if err != nil || n < 1 {
+			log.Fatalf("OPENJEVX_THREADS=%q: want a whole number of threads, 1 or more", threads)
+		}
+		cfg.Threads, cfg.threadsFrom = n, "env"
+	}
+	n, from := intraOpThreads(cfg)
+	log.Printf("threads: intra-op %d (from %s), GOMAXPROCS %d, NumCPU %d", n, from, runtime.GOMAXPROCS(0), runtime.NumCPU())
 	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -165,80 +178,9 @@ func main() {
 		}
 		writeJSON(w, health)
 	})
-	http.HandleFunc("/v1/systemone", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POST", http.StatusMethodNotAllowed)
-			return
-		}
-		started := time.Now()
-		var req struct {
-			State     json.RawMessage            `json:"state"`
-			Questions map[string]json.RawMessage `json:"questions"`
-		}
-		answer := func(errText string, status int) {
-			if errText != "" {
-				http.Error(w, errText, status)
-			}
-			var types []string
-			for id := range req.Questions {
-				if raw, ok := req.Questions[id]; ok {
-					var q struct {
-						Type string `json:"type"`
-					}
-					if json.Unmarshal(raw, &q) == nil {
-						types = append(types, q.Type)
-					}
-				}
-			}
-			stats.Record(stats.Request{
-				Time: time.Now(), Duration: float64(time.Since(started).Microseconds()) / 1000,
-				Questions: len(req.Questions), Device: cfg.Device, Error: errText,
-			}, types)
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			answer(err.Error(), http.StatusBadRequest)
-			return
-		}
-		if len(req.Questions) == 0 {
-			answer("questions missing", http.StatusBadRequest)
-			return
-		}
-		order := orderedKeys(req.Questions)
-		ids, qs, err := decide.ParseQuestions(req.Questions, order)
-		if err != nil {
-			answer(err.Error(), http.StatusBadRequest)
-			return
-		}
-		cur := live.Load()
-		items := decide.Encode(cur.m.Tokenizer, cur.m.Params, stateText(req.State), qs)
-		inferMu.Lock()
-		if now := live.Load(); now != cur { // swapped by a reload while encoding
-			cur = now
-			items = decide.Encode(cur.m.Tokenizer, cur.m.Params, stateText(req.State), qs)
-		}
-		logits, width, act, err := run(cur.session, cur.m.Params.PAD, items)
-		inferMu.Unlock()
-		if err != nil {
-			answer(err.Error(), http.StatusInternalServerError)
-			return
-		}
-		var types []string
-		for _, q := range qs {
-			types = append(types, q.Type)
-		}
-		tokens := tokenCount(items)
-		writeJSON(w, map[string]any{
-			"model":   "openjevx",
-			"answers": decide.Decode(cur.m.Params, ids, qs, items, logits, width, act),
-			"usage":   map[string]int{"input_tokens": tokens, "output_tokens": 0},
-		})
-		// Recorded after the answer is written so stats never delay the client.
-		stats.Record(stats.Request{
-			Time:      time.Now(),
-			Duration:  float64(time.Since(started).Microseconds()) / 1000,
-			Questions: len(ids), Tokens: tokens, Device: cfg.Device,
-		}, types)
-	})
+	http.HandleFunc("/v1/systemone", decisionHandler(&cfg, &live, &inferMu, func(cur *served, items []decide.Item) ([]float32, int, []float32, error) {
+		return run(cur.session, cur.m.Params.PAD, items)
+	}))
 	log.Printf("OpenJevX %s at http://%s (dashboard on /, metrics on /metrics)", cfg.Device, cfg.Listen)
 	log.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
@@ -428,12 +370,22 @@ var (
 // ignores a container's CPU limit; GOMAXPROCS follows that limit, so it is the default ("threads" overrides).
 func cpuOptions(cfg config) func(*ort.SessionOptions) error {
 	return func(o *ort.SessionOptions) error {
-		n := cfg.Threads
-		if n <= 0 {
-			n = runtime.GOMAXPROCS(0)
-		}
+		n, _ := intraOpThreads(cfg)
 		return o.SetIntraOpNumThreads(n)
 	}
+}
+
+// intraOpThreads is the CPU session's thread count and where it came from: "threads" in openjevx.json
+// ("config"), OPENJEVX_THREADS ("env"), else GOMAXPROCS (the container's CPU limit).
+func intraOpThreads(cfg config) (int, string) {
+	if cfg.Threads > 0 {
+		from := cfg.threadsFrom
+		if from == "" {
+			from = "config"
+		}
+		return cfg.Threads, from
+	}
+	return runtime.GOMAXPROCS(0), "GOMAXPROCS"
 }
 
 // gpuProviders are tried in order; the first one this ONNX Runtime build can load wins.
@@ -602,7 +554,8 @@ start unless one of them loads.
 
 model is a model folder (openjevx.w8.onnx + config.json + tokenizer.json) or a plain .onnx file.
 Unset: model/ or models/openjevx/ next to the executable, then openjevx.w8.onnx next to it.
-Flags and environment override the file: -model / OPENJEVX_MODEL, -device / OPENJEVX_DEVICE.
+Flags and environment override the file: -model / OPENJEVX_MODEL, -device / OPENJEVX_DEVICE,
+threads / OPENJEVX_THREADS (CPU threads per request; default GOMAXPROCS, which follows a container's CPU limit).
 
 model can also be s3://bucket/prefix/ (holding the three files) or s3://bucket/model.tar.gz. Credentials
 come from the AWS default chain (env, profile, instance role, IRSA). The folder is downloaded into a

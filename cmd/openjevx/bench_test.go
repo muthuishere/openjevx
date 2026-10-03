@@ -125,5 +125,3 @@ func TestBench(t *testing.T) {
 			pct(enc, .5), pct(inf, .5), pct(inf, .95), pct(inf, .99), pct(dec, .5), pct(total, .5), pct(total, .95), pct(total, .99))
 	}
 }
-
-func ms(d time.Duration) float64 { return float64(d.Microseconds()) / 1000 }
