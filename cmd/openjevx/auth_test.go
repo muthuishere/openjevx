@@ -20,10 +20,27 @@ func TestLoopback(t *testing.T) {
 	}
 }
 
+// clearAuthEnv empties every credential setting and moves into a fresh folder, so the working-folder fallback
+// never writes into the package.
 func clearAuthEnv(t *testing.T) {
-	for _, k := range []string{"OPENJEVX_API_KEY", "OPENJEVX_PASSWORD", "OPENJEVX_ALLOW_NO_API_KEY", "OPENJEVX_ALLOW_NO_PASSWORD"} {
+	for _, k := range []string{"OPENJEVX_API_KEY", "OPENJEVX_PASSWORD", "OPENJEVX_ALLOW_NO_API_KEY", "OPENJEVX_ALLOW_NO_PASSWORD", "OPENJEVX_DATA"} {
 		t.Setenv(k, "")
 	}
+	t.Chdir(t.TempDir())
+}
+
+// readOnlyDir is a folder this process cannot create files in.
+func readOnlyDir(t *testing.T) string {
+	d := t.TempDir()
+	if err := os.Chmod(d, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(d, 0o700) })
+	if f, err := os.Create(filepath.Join(d, "probe")); err == nil {
+		f.Close()
+		t.Skip("running as a user that can write a 0500 folder (root?)")
+	}
+	return d
 }
 
 // Beyond loopback with no key: one is generated beside openjevx.json, mode 0600, and the same one comes back next start.
@@ -43,9 +60,9 @@ func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 		t.Fatalf("from %q generated %v/%v: want the file, created by this start", key.from, key.generated, pw.generated)
 	}
 	var out strings.Builder
-	printNew(&out, key, pw)
+	printNew(&out, true, key, pw)
 	if !strings.Contains(out.String(), cfg.APIKey) || !strings.Contains(out.String(), cfg.Password) || !strings.Contains(out.String(), path) {
-		t.Fatalf("first start should show both new values and the file: %q", out.String())
+		t.Fatalf("first start on a terminal should show both new values and the file: %q", out.String())
 	}
 	st, err := os.Stat(path)
 	if err != nil || st.Mode().Perm() != 0o600 {
@@ -57,7 +74,7 @@ func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 		t.Fatalf("second start: key %q password %q err %v; want the kept ones", again.APIKey, again.Password, err)
 	}
 	out.Reset()
-	printNew(&out, key2, pw2)
+	printNew(&out, true, key2, pw2)
 	if out.Len() != 0 {
 		t.Fatalf("second start printed a credential: %q", out.String())
 	}
@@ -113,9 +130,77 @@ func TestAuthSettings(t *testing.T) {
 // Public with no key and nowhere to keep one: refuse to start rather than serve an open API.
 func TestAPIKeyUnwritable(t *testing.T) {
 	clearAuthEnv(t)
-	cfg := config{Listen: "0.0.0.0:21118", configDir: filepath.Join(t.TempDir(), "missing")}
-	if _, _, err := resolveAuth(&cfg); err == nil || !strings.Contains(err.Error(), "OPENJEVX_API_KEY") {
-		t.Fatalf("err %v", err)
+	t.Chdir(readOnlyDir(t))
+	cfg := config{Listen: "0.0.0.0:21118", configDir: readOnlyDir(t)}
+	_, _, err := resolveAuth(&cfg)
+	if err == nil || !strings.Contains(err.Error(), "OPENJEVX_API_KEY") || !strings.Contains(err.Error(), "OPENJEVX_DATA") {
+		t.Fatalf("err %v: want a refusal naming both ways out", err)
+	}
+}
+
+// N1: logs never get a generated secret; a terminal gets it once.
+func TestNewSecretsNeverReachALog(t *testing.T) {
+	key := secret{value: "KEYVALUE1234567890ABCDEFGH", from: "/data/openjevx.api-key", generated: true}
+	pw := secret{value: "PASSWORDVALUE1234567890ABC", from: "/data/openjevx.password", generated: true}
+	var log strings.Builder
+	printNew(&log, false, key, pw)
+	got := log.String()
+	if strings.Contains(got, key.value) || strings.Contains(got, pw.value) {
+		t.Fatalf("a non-terminal got a secret: %q", got)
+	}
+	for _, want := range []string{key.from, pw.from, "sha256 ..." + fingerprint(key.value), "sha256 ..." + fingerprint(pw.value)} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("log line lacks %q: %q", want, got)
+		}
+	}
+	if len(fingerprint(key.value)) != 4 || fingerprint(key.value) == fingerprint(pw.value) {
+		t.Fatalf("fingerprints %q %q", fingerprint(key.value), fingerprint(pw.value))
+	}
+	var term strings.Builder
+	printNew(&term, true, key, pw)
+	if !strings.Contains(term.String(), key.value) || !strings.Contains(term.String(), pw.value) {
+		t.Fatalf("a terminal should see both once: %q", term.String())
+	}
+	if f, err := os.CreateTemp(t.TempDir(), "log"); err == nil {
+		if isTerminal(f) {
+			t.Fatal("a regular file counted as a terminal")
+		}
+		f.Close()
+	}
+}
+
+// N2: a config folder mounted read-only (the image's /app) falls back to $OPENJEVX_DATA, and the next start
+// finds the file there.
+func TestReadOnlyConfigFolderFallsBackToData(t *testing.T) {
+	clearAuthEnv(t)
+	data := t.TempDir()
+	t.Setenv("OPENJEVX_DATA", data)
+	ro := readOnlyDir(t)
+	cfg := config{Listen: "0.0.0.0:21118", configDir: ro}
+	key, pw, err := resolveAuth(&cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.from != filepath.Join(data, "openjevx.api-key") || pw.from != filepath.Join(data, "openjevx.password") {
+		t.Fatalf("key in %q, password in %q: want both in %s", key.from, pw.from, data)
+	}
+	again := config{Listen: "0.0.0.0:21118", configDir: ro}
+	if _, _, err := resolveAuth(&again); err != nil || again.APIKey != cfg.APIKey || again.Password != cfg.Password {
+		t.Fatalf("second start: %v; want the kept ones", err)
+	}
+}
+
+// An existing file beside the config wins over the data folder, so upgrades keep their credentials.
+func TestExistingSecretBesideConfigWins(t *testing.T) {
+	clearAuthEnv(t)
+	conf, data := t.TempDir(), t.TempDir()
+	t.Setenv("OPENJEVX_DATA", data)
+	if err := os.WriteFile(filepath.Join(conf, "openjevx.password"), []byte("kept-beside-the-config\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config{Listen: "127.0.0.1:21118", configDir: conf}
+	if _, pw, err := resolveAuth(&cfg); err != nil || cfg.Password != "kept-beside-the-config" || pw.generated {
+		t.Fatalf("password %q generated %v err %v", cfg.Password, pw.generated, err)
 	}
 }
 

@@ -20,7 +20,9 @@ default credentials anywhere.
   firewall (ufw) still opens only SSH; the customer opens port 21118 to their own network or uses an SSH tunnel.
 - **Docker image** (repo `Dockerfile`, Debian 12 slim, runs as uid 10001): refuses to start without
   `OPENJEVX_PASSWORD` (12+ characters) and `OPENJEVX_API_KEY` (16+), or your own `openjevx.json` mounted at
-  `/data/openjevx.json`. App Platform asks for both as secrets.
+  `/data/openjevx.json` or read-only at `/app/openjevx.json`. Credentials it has to generate go to `/data`
+  (`OPENJEVX_DATA`), and the logs show only their file and a fingerprint, never the value. App Platform asks for both
+  as secrets.
 
 `install.sh` checks both downloads against the release's `SHA256SUMS-server` and swaps in a clean folder, so a re-run
 leaves no stale files and keeps the config and credentials. It allows every port sshd listens on before turning the

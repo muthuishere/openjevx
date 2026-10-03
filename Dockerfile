@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # it; /data is its working folder: the generated openjevx.json, any generated credential files, and the model cache.
 RUN groupadd --system --gid 10001 openjevx && useradd --system --uid 10001 --gid 10001 --home-dir /data --shell /usr/sbin/nologin openjevx \
  && mkdir -p /data && chown openjevx:openjevx /data && chmod 700 /data
-ENV HOME=/data
+# OPENJEVX_DATA: where generated credential files go when the config's folder is read-only (a config mounted at /app).
+ENV HOME=/data OPENJEVX_DATA=/data
 WORKDIR /app
 COPY --from=build /out/ /app/
 # Apache-2.0: our LICENSE and NOTICE, and the third-party licenses (ONNX Runtime, Laya, ModernBERT, Go modules).

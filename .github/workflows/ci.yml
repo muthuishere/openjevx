@@ -100,3 +100,13 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
           curl -fsS -H 'Authorization: Bearer ci-image-key-0123456789' -X POST http://127.0.0.1:21118/v1/systemone -d "$body" | grep -q '"noul"'
           curl -fsS -u x:ci-image-password http://127.0.0.1:21118/stats >/dev/null
+      - name: A read-only config under /app starts, and generated credentials never reach the log
+        run: |
+          echo '{"listen":"0.0.0.0:21118","device":"cpu","model":"/app/model"}' > ro.json
+          docker run -d --name ro -p 127.0.0.1:21119:21118 -v "$PWD/ro.json:/app/openjevx.json:ro" ojx-image
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:21119/health && break; sleep 2; done || true
+          docker logs ro 2>&1 | grep 'generated into /data/openjevx.api-key (sha256 \.\.\.'
+          key=$(docker exec ro cat /data/openjevx.api-key); pw=$(docker exec ro cat /data/openjevx.password)
+          ! docker logs ro 2>&1 | grep -F -e "$key" -e "$pw"
+          body='{"state":"x","questions":{"a":{"type":"noul","instructions":"Is it?"}}}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $key" -X POST http://127.0.0.1:21119/v1/systemone -d "$body")" = 200

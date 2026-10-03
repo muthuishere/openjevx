@@ -33,9 +33,11 @@ Change it in `openjevx.json`:
 | `allow_no_api_key` | `OPENJEVX_ALLOW_NO_API_KEY=1` | turns the key off even when public, e.g. behind a proxy that checks it | off |
 | `allow_no_password` | `OPENJEVX_ALLOW_NO_PASSWORD=1` | turns the dashboard password off | off |
 
-The environment wins over `openjevx.json`. Generated files sit beside `openjevx.json` (or beside the executable when
-there is none), are created once with mode 0600, and are reused. The start that creates one prints it once, with its
-file; later starts log only the file. Release archives carry no `openjevx.json`, so unpacking a new release over an old
+The environment wins over `openjevx.json`. Generated files are created once with mode 0600 and reused: beside
+`openjevx.json` (or beside the executable when there is none), else in `$OPENJEVX_DATA`, else the working folder,
+whichever is writable, so a config mounted read-only still starts. A start that creates one shows the value once,
+and only on a terminal; when stderr is a log (Docker, systemd, ECS, CloudWatch) it logs the file and a fingerprint
+(`sha256 ...37dd`), never the secret, so read it from the file. Release archives carry no `openjevx.json`, so unpacking a new release over an old
 one never replaces yours (the npx installer keeps it too and only adds keys it lacks).
 `GET /health` stays open. The old published password `adminadmin` (in `openjevx.json` up to v0.5.6) is ignored and
 replaced by a generated one. The 401 body is `{"error":"missing or wrong API key"}`, the same as the jev-cloud gate's.
@@ -188,8 +190,8 @@ Apache-2.0. Credits: `CREDITS`. Decisions behind the project: [`docs/adr/`](docs
 Open http://127.0.0.1:21118/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
 
 There is no default password. Set `"password"` in `openjevx.json` (or `OPENJEVX_PASSWORD`); unset, the server
-generates one on its first start, prints it once, and keeps it in `openjevx.password` (the npx install keeps it in
-`~/.local/share/openjevx/`). Any user name works.
+generates one on its first start, shows it once on a terminal, and keeps it in `openjevx.password` (the npx install
+keeps it in `~/.local/share/openjevx/`). Any user name works.
 
 - `GET /stats` — JSON snapshot (same password)
 - `GET /metrics` — Prometheus format (same password)
