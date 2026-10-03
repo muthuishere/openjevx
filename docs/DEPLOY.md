@@ -72,7 +72,10 @@ key. Even so, this path suits trials; production should use the 1-Click droplet 
 
 - **cloud-init:** paste `deploy/cloud-init.yaml` as the instance's user data (EC2 "User data",
   Azure "Custom data", GCP `user-data` metadata, Hetzner/DO "User data").
-- **Docker:** copy `deploy/docker-compose.yml` to the box and run
+- **Docker, prebuilt:** `ghcr.io/deemwar-products/openjevx:<release tag>` (and `:latest`), linux/amd64 and
+  linux/arm64, pushed by `release.yml` from this repo's Dockerfile; the release notes give its digest. Run it with
+  `-e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> -p 127.0.0.1:21118:21118`.
+- **Docker, from source:** copy `deploy/docker-compose.yml` to the box and run
   `OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build`.
 
 ## AWS Marketplace (AMI first, container later)

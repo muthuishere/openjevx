@@ -54,8 +54,8 @@ tasks:
   docker:
     desc: Build the arm64 and amd64 images locally (no image tars are released; users build with docker compose, ADR 0010)
     cmds:
-      - docker build --platform linux/arm64 -t ghcr.io/muthuishere/openjevx:latest .
-      - docker build --platform linux/amd64 -t ghcr.io/muthuishere/openjevx:latest-amd64 .
+      - docker build --platform linux/arm64 -t ghcr.io/deemwar-products/openjevx:latest .
+      - docker build --platform linux/amd64 -t ghcr.io/deemwar-products/openjevx:latest-amd64 .
 
   book:
     desc: "Build the training book as markdown + PDF into dist/book/ (PUBLIC=1 for deemwar surfaces, source https://jev.deemwar.com/source)"
