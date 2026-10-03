@@ -173,7 +173,7 @@ updated ~/.config/openjevx/config.json (backup: config.json.bak-…)</CodeCard>
   <h2>4. Test the current model on your gate first</h2>
   <p>Before paying for a GPU, see how the shipped model already does on your rules. Download the
     v0.5.2 model folder, then point the gate at it:</p>
-  <CodeCard label="shell">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz
+  <CodeCard label="shell">curl -L -O https://github.com/muthuishere/openjevx/releases/download/v0.5.8/openjevx-model-0.5.2.tar.gz
 tar -xzf openjevx-model-0.5.2.tar.gz        # -> model/ (openjevx.w8.onnx, config.json, tokenizer.json)
 cd finetuning
 task gate -- ../model</CodeCard>
@@ -254,7 +254,7 @@ jevx ask --noul discount="Does the order get the discount? Orders over Rs 500 ge
       <thead><tr><th>What</th><th>File</th><th>Use it for</th></tr></thead>
       <tbody>
         <tr><td>Model folder (467 MB)</td>
-          <td><a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.7/openjevx-model-0.5.2.tar.gz">openjevx-model-0.5.2.tar.gz</a></td>
+          <td><a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.8/openjevx-model-0.5.2.tar.gz">openjevx-model-0.5.2.tar.gz</a></td>
           <td>run it: <code>openjevx.w8.onnx</code> + <code>config.json</code> (its calibration temperatures) + <code>tokenizer.json</code>; gate it (step 4)</td></tr>
         <tr><td>Trainable checkpoint (777 MB)</td>
           <td><a href="https://pub-8da821f06ff747cda688f8267ed2aa96.r2.dev/openjevx-finetune-v0.5.2.tar.gz">openjevx-finetune-v0.5.2.tar.gz</a>
