@@ -20,6 +20,9 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /out/ /app/
+# Apache-2.0: our LICENSE and NOTICE, and the third-party licenses (ONNX Runtime, Laya, ModernBERT, Go modules).
+COPY --from=build /src/LICENSE /src/NOTICE /src/CREDITS /app/
+COPY --from=build /src/licenses /app/licenses
 # /app/model is found next to /app/openjevx; mount another model folder there to swap models.
 # The recipes are also served on /recipes from inside the binary; these are the same pages as files.
 COPY --from=build /src/recipes/*.md /usr/share/openjevx/recipes/

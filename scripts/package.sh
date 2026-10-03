@@ -34,20 +34,22 @@ pack() { # $1 name, $2 GOOS, $3 CC target (empty = native), $4 exe, $5 lib, $6 l
   dir="$OUT/$1"; rm -rf "$dir"; mkdir -p "$dir"
   if [ -n "$3" ]; then cc="zig cc -target $3"; else cc=cc; fi
   GOOS=$2 GOARCH=${1##*-} CGO_ENABLED=1 CC="$cc" go build -trimpath -ldflags "-s -w" -o "$dir/$4" ./cmd/openjevx
-  cp "$CACHE/$5" "$6" openjevx.json "$dir/"
+  cp "$CACHE/$5" "$6" openjevx.json LICENSE NOTICE CREDITS "$dir/" && cp -R licenses "$dir/"
   echo "built $1"
 }
 pack darwin-arm64 darwin "" openjevx libonnxruntime.dylib README
 pack linux-amd64 linux x86_64-linux-gnu.2.28 openjevx libonnxruntime.so README
 pack windows-amd64 windows x86_64-windows-gnu openjevx.exe onnxruntime.dll README.cmd
 
-(cd "$OUT/darwin-arm64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-darwin-arm64.tar README openjevx openjevx.json libonnxruntime.dylib)
-(cd "$OUT/linux-amd64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-linux-amd64.tar README openjevx openjevx.json libonnxruntime.so)
-(cd "$OUT/windows-amd64" && rm -f ../openjevx-windows-amd64.zip && zip -q ../openjevx-windows-amd64.zip README.cmd openjevx.exe openjevx.json onnxruntime.dll)
+(cd "$OUT/darwin-arm64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-darwin-arm64.tar README openjevx openjevx.json libonnxruntime.dylib LICENSE NOTICE CREDITS licenses)
+(cd "$OUT/linux-amd64" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -cf ../openjevx-linux-amd64.tar README openjevx openjevx.json libonnxruntime.so LICENSE NOTICE CREDITS licenses)
+(cd "$OUT/windows-amd64" && rm -f ../openjevx-windows-amd64.zip && zip -qr ../openjevx-windows-amd64.zip README.cmd openjevx.exe openjevx.json onnxruntime.dll LICENSE NOTICE CREDITS licenses)
 
 # The model folder, always unpacked as model/.
 rm -rf "$OUT/model" && mkdir -p "$OUT/model"
 for f in openjevx.w8.onnx config.json tokenizer.json; do ln "$MODEL_DIR/$f" "$OUT/model/$f" 2>/dev/null || cp "$MODEL_DIR/$f" "$OUT/model/$f"; done
+# The weights are Apache-2.0 work derived from Laya and ModernBERT: their notices travel with them.
+cp LICENSE NOTICE CREDITS "$OUT/model/" && cp -R licenses "$OUT/model/"
 rm -f "$OUT"/openjevx-model-*.tar.gz
 (cd "$OUT" && COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --format ustar -czf "openjevx-model-$VERSION.tar.gz" model && rm -rf model)
 echo "built openjevx-model-$VERSION.tar.gz"

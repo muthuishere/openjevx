@@ -29,7 +29,9 @@ ECS / Fargate (`ECS_CONTAINER_METADATA_URI_V4` set) the task's `Limits.CPU` from
 container's (1 s timeout); else `GOMAXPROCS`. It is never more than the machine's CPUs. Fargate limits CPU with shares
 that neither the quota nor Go can see, so a 1 vCPU task reports 2 CPUs; running 2 threads there was 4x slower.
 The server logs the choice at startup: `threads: intra-op 1 (from ecs), GOMAXPROCS 2, NumCPU 2` (the source is
-`config`, `env`, `cgroup`, `ecs` or `GOMAXPROCS`).
+`config`, `env`, `cgroup`, `ecs` or `GOMAXPROCS`). On Linux a second line names the CPU and the SIMD flags that set its speed, e.g.
+`cpu: AMD EPYC 7763 64-Core Processor; has avx2; lacks avx512f avx512_vnni avx_vnni amx_int8`. On x86, AVX2-only hosts
+are about 2x slower than AVX-512 VNNI ones (llmresults/14), and Fargate hands out both.
 
 Every decision response carries a [`Server-Timing`](https://www.w3.org/TR/server-timing/) header in ms, for example
 `encode;dur=0.3, wait;dur=0.0, run;dur=41.2, total;dur=42.0` (`wait` is time queued for the model session, `total`

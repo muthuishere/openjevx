@@ -19,6 +19,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: go vet ./...
+      - name: Licenses travel with the release (Apache-2.0)
+        run: |
+          scripts/go_licenses.sh --check
+          ort=$(cat licenses/onnxruntime/VERSION)
+          for f in Dockerfile .github/workflows/release.yml scripts/package.sh; do
+            grep -q "$ort" "$f" || { echo "$f does not use ONNX Runtime $ort: update licenses/onnxruntime/" >&2; exit 1; }
+          done
       - run: go test ./internal/bpe ./internal/modelsrc ./cmd/openjevx
       - run: CGO_ENABLED=1 go build -o /tmp/openjevx ./cmd/openjevx
       - run: python -m py_compile scripts/*.py finetuning/*.py finetuning/*/*.py
@@ -60,3 +67,4 @@ jobs:
           grep -q '"server_ms"' answer.json
           grep -i '^server-timing: encode;dur=.*run;dur=.*total;dur=' headers.txt
           docker logs ojx 2>&1 | grep 'threads: intra-op 1 (from cgroup)'
+          docker logs ojx 2>&1 | grep -E 'cpu: .+; has '

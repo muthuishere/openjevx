@@ -85,6 +85,9 @@ func main() {
 	t := hostCPU().resolve(cfg)
 	cfg.Threads, cfg.threadsFrom = t.n, t.from
 	log.Printf("threads: intra-op %d (from %s%s), GOMAXPROCS %d, NumCPU %d", t.n, t.from, t.note, runtime.GOMAXPROCS(0), runtime.NumCPU())
+	if line := cpuLine("/proc/cpuinfo"); line != "" {
+		log.Print(line)
+	}
 	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)
