@@ -41,7 +41,11 @@ def out(*args):
 
 def pick_offer(max_price, skip=()):
     gpu = os.environ.get("GPU_NAME") or "RTX_4090"
-    query = f"gpu_name={gpu} num_gpus=1 verified=true reliability>0.99 disk_space>=80 inet_down>=200 dph<={max_price}"
+    # Bandwidth is billed per GB on top of dph and varies ~10x by host (2026-10-04: $0.11 vs $0.011 for the same
+    # ~2.8 GB of wheels + base model): skip hosts above VAST_MAX_GB_COST $/GB either way.
+    gb = os.environ.get("VAST_MAX_GB_COST", "0.01")
+    query = (f"gpu_name={gpu} num_gpus=1 verified=true reliability>0.99 disk_space>=80 inet_down>=200 dph<={max_price} "
+             f"inet_down_cost<={gb} inet_up_cost<={gb}")
     offers = json.loads(out("vastai", "search", "offers", query, "-o", "dph", "--raw"))
     offers = [o for o in offers if o.get("machine_id") not in skip]
     if not offers:
