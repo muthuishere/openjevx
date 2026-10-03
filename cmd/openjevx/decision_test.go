@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,17 +66,5 @@ func TestDecisionServerTiming(t *testing.T) {
 	if run < 3 || total < run || u.ServerMS == nil || *u.ServerMS < run {
 		t.Fatalf("run %v total %v server_ms %v: want run >= the 3 ms the fake session took, total and server_ms >= run (%s)",
 			run, total, u.ServerMS, rec.Body)
-	}
-}
-
-func TestIntraOpThreadsSource(t *testing.T) {
-	if n, from := intraOpThreads(config{}); n != runtime.GOMAXPROCS(0) || from != "GOMAXPROCS" {
-		t.Fatalf("default: %d %s", n, from)
-	}
-	if n, from := intraOpThreads(config{Threads: 3}); n != 3 || from != "config" {
-		t.Fatalf("config: %d %s", n, from)
-	}
-	if n, from := intraOpThreads(config{Threads: 5, threadsFrom: "env"}); n != 5 || from != "env" {
-		t.Fatalf("env: %d %s", n, from)
 	}
 }

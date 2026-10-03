@@ -41,7 +41,7 @@ type config struct {
 	ModelS3Path   bool   `json:"model_s3_path_style,omitempty"` // or AWS_S3_USE_PATH_STYLE=true
 	Runtime       string `json:"runtime,omitempty"`
 	Threads       int    `json:"threads,omitempty"`
-	threadsFrom   string // "config" or "env" when Threads is set; see intraOpThreads
+	threadsFrom   string // where Threads came from: config, env, cgroup, ecs or GOMAXPROCS (threads.go)
 }
 
 func main() {
@@ -82,8 +82,9 @@ func main() {
 		}
 		cfg.Threads, cfg.threadsFrom = n, "env"
 	}
-	n, from := intraOpThreads(cfg)
-	log.Printf("threads: intra-op %d (from %s), GOMAXPROCS %d, NumCPU %d", n, from, runtime.GOMAXPROCS(0), runtime.NumCPU())
+	t := hostCPU().resolve(cfg)
+	cfg.Threads, cfg.threadsFrom = t.n, t.from
+	log.Printf("threads: intra-op %d (from %s%s), GOMAXPROCS %d, NumCPU %d", t.n, t.from, t.note, runtime.GOMAXPROCS(0), runtime.NumCPU())
 	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -366,26 +367,12 @@ var (
 	outputNames = []string{"logits", "act_logits"}
 )
 
-// cpuOptions are the CPU session settings. ONNX Runtime sizes its thread pool from the host's cores and
-// ignores a container's CPU limit; GOMAXPROCS follows that limit, so it is the default ("threads" overrides).
+// cpuOptions are the CPU session settings: cfg.Threads intra-op threads, resolved once at startup
+// (threads.go), because ONNX Runtime alone sizes its pool from the host's cores, not the container's limit.
 func cpuOptions(cfg config) func(*ort.SessionOptions) error {
 	return func(o *ort.SessionOptions) error {
-		n, _ := intraOpThreads(cfg)
-		return o.SetIntraOpNumThreads(n)
+		return o.SetIntraOpNumThreads(cfg.Threads)
 	}
-}
-
-// intraOpThreads is the CPU session's thread count and where it came from: "threads" in openjevx.json
-// ("config"), OPENJEVX_THREADS ("env"), else GOMAXPROCS (the container's CPU limit).
-func intraOpThreads(cfg config) (int, string) {
-	if cfg.Threads > 0 {
-		from := cfg.threadsFrom
-		if from == "" {
-			from = "config"
-		}
-		return cfg.Threads, from
-	}
-	return runtime.GOMAXPROCS(0), "GOMAXPROCS"
 }
 
 // gpuProviders are tried in order; the first one this ONNX Runtime build can load wins.
@@ -555,7 +542,8 @@ start unless one of them loads.
 model is a model folder (openjevx.w8.onnx + config.json + tokenizer.json) or a plain .onnx file.
 Unset: model/ or models/openjevx/ next to the executable, then openjevx.w8.onnx next to it.
 Flags and environment override the file: -model / OPENJEVX_MODEL, -device / OPENJEVX_DEVICE,
-threads / OPENJEVX_THREADS (CPU threads per request; default GOMAXPROCS, which follows a container's CPU limit).
+threads / OPENJEVX_THREADS (CPU threads per request; default: the cgroup CPU quota, else the ECS/Fargate task's
+Limits.CPU, else GOMAXPROCS; never more than the CPUs).
 
 model can also be s3://bucket/prefix/ (holding the three files) or s3://bucket/model.tar.gz. Credentials
 come from the AWS default chain (env, profile, instance role, IRSA). The folder is downloaded into a
