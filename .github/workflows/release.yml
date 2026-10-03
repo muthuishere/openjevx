@@ -35,7 +35,9 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CC: zig cc -target ${{ matrix.zig }}
       - run: file openjevx libonnxruntime.so
-      - run: tar --format ustar -cf openjevx-linux-${{ matrix.arch }}.tar README openjevx openjevx.json libonnxruntime.so LICENSE NOTICE CREDITS licenses
+      # No openjevx.json: unpacking a new release over an old one must never replace the user's config (or ship a
+      # password); without one the server listens on 127.0.0.1:21118 and generates its dashboard password.
+      - run: tar --format ustar -cf openjevx-linux-${{ matrix.arch }}.tar README openjevx libonnxruntime.so LICENSE NOTICE CREDITS licenses
       - uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
@@ -55,7 +57,7 @@ jobs:
       - run: go build -o openjevx.exe ./cmd/openjevx
         env:
           CGO_ENABLED: "1"
-      - run: tar -a -cf openjevx-windows-amd64.zip README.cmd openjevx.exe openjevx.json onnxruntime.dll LICENSE NOTICE CREDITS licenses
+      - run: tar -a -cf openjevx-windows-amd64.zip README.cmd openjevx.exe onnxruntime.dll LICENSE NOTICE CREDITS licenses
       - uses: actions/upload-artifact@v4
         with:
           name: windows

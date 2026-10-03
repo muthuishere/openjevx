@@ -39,16 +39,27 @@ func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 		t.Fatalf("key %q password %q", cfg.APIKey, cfg.Password)
 	}
 	path := filepath.Join(dir, "openjevx.api-key")
-	if !strings.HasPrefix(key.from, path) || strings.Contains(key.from, cfg.APIKey) {
-		t.Fatalf("from %q: want the file, never the value", key.from)
+	if key.from != path || !key.generated || !pw.generated {
+		t.Fatalf("from %q generated %v/%v: want the file, created by this start", key.from, key.generated, pw.generated)
+	}
+	var out strings.Builder
+	printNew(&out, key, pw)
+	if !strings.Contains(out.String(), cfg.APIKey) || !strings.Contains(out.String(), cfg.Password) || !strings.Contains(out.String(), path) {
+		t.Fatalf("first start should show both new values and the file: %q", out.String())
 	}
 	st, err := os.Stat(path)
 	if err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("%s: %v %v", path, st, err)
 	}
 	again := config{Listen: "0.0.0.0:21118", configDir: dir}
-	if _, _, err := resolveAuth(&again); err != nil || again.APIKey != cfg.APIKey || again.Password != cfg.Password {
+	key2, pw2, err := resolveAuth(&again)
+	if err != nil || again.APIKey != cfg.APIKey || again.Password != cfg.Password {
 		t.Fatalf("second start: key %q password %q err %v; want the kept ones", again.APIKey, again.Password, err)
+	}
+	out.Reset()
+	printNew(&out, key2, pw2)
+	if out.Len() != 0 {
+		t.Fatalf("second start printed a credential: %q", out.String())
 	}
 }
 

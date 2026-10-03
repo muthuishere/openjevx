@@ -108,6 +108,7 @@ func main() {
 	} else {
 		log.Printf("dashboard password: from %s", password.from)
 	}
+	printNew(os.Stderr, key, password)
 	every, err := reloadEvery(cfg)
 	if err != nil {
 		log.Fatal(err)

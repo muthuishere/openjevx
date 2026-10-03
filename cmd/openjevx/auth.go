@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -19,8 +20,9 @@ import (
 //     On whenever the server listens beyond loopback; off on 127.0.0.1, ::1 and localhost unless one is set.
 //   - password: HTTP Basic (any user name) on the dashboard, /stats, /metrics and /recipes. Always on.
 // Each comes from the environment (OPENJEVX_API_KEY, OPENJEVX_PASSWORD), then openjevx.json. One that is needed
-// but unset is generated once and kept beside openjevx.json (openjevx.api-key, openjevx.password; mode 0600), so
-// every install has its own. The log names the file, never the value. allow_no_api_key / allow_no_password
+// but unset is generated once and kept beside openjevx.json, or beside the executable when there is none
+// (openjevx.api-key, openjevx.password; mode 0600), so every install has its own. The start that creates one prints
+// it once with its file; later starts name only the file. allow_no_api_key / allow_no_password
 // (OPENJEVX_ALLOW_NO_API_KEY=1, OPENJEVX_ALLOW_NO_PASSWORD=1) turn one off, e.g. behind a proxy that checks it.
 
 const (
@@ -42,16 +44,21 @@ func loopback(listen string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// secret is one resolved credential: its value ("" = off) and where it came from, for the log.
+// secret is one resolved credential: its value ("" = off), where it came from, and whether this start created it.
 type secret struct {
 	value, from string
+	generated   bool
 }
 
 // resolveAuth fills in cfg.APIKey and cfg.Password following the rules above and says where each came from.
 func resolveAuth(cfg *config) (key, password secret, err error) {
 	dir := cfg.configDir
 	if dir == "" {
-		dir = "."
+		exe, err := os.Executable()
+		if err != nil {
+			return key, password, err
+		}
+		dir = filepath.Dir(exe)
 	}
 	if v := os.Getenv("OPENJEVX_ALLOW_NO_API_KEY"); v != "" {
 		cfg.AllowNoAPIKey = v == "1" || strings.EqualFold(v, "true")
@@ -60,9 +67,9 @@ func resolveAuth(cfg *config) (key, password secret, err error) {
 		cfg.AllowNoPassword = v == "1" || strings.EqualFold(v, "true")
 	}
 
-	key = secret{cfg.APIKey, "openjevx.json"}
+	key = secret{value: cfg.APIKey, from: "openjevx.json"}
 	if v := os.Getenv("OPENJEVX_API_KEY"); v != "" {
-		key = secret{v, "OPENJEVX_API_KEY"}
+		key = secret{value: v, from: "OPENJEVX_API_KEY"}
 	}
 	switch {
 	case key.value != "":
@@ -80,9 +87,9 @@ func resolveAuth(cfg *config) (key, password secret, err error) {
 		}
 	}
 
-	password = secret{cfg.Password, "openjevx.json"}
+	password = secret{value: cfg.Password, from: "openjevx.json"}
 	if v := os.Getenv("OPENJEVX_PASSWORD"); v != "" {
-		password = secret{v, "OPENJEVX_PASSWORD"}
+		password = secret{value: v, from: "OPENJEVX_PASSWORD"}
 	}
 	if password.value == oldDefaultPassword {
 		log.Printf("password: %s has the old published default %q; ignoring it", password.from, oldDefaultPassword)
@@ -107,7 +114,7 @@ func keptSecret(path string) (secret, error) {
 	b, err := os.ReadFile(path)
 	if err == nil {
 		if v := strings.TrimSpace(string(b)); v != "" {
-			return secret{v, path}, nil
+			return secret{value: v, from: path}, nil
 		}
 		return secret{}, fmt.Errorf("%s is empty", path)
 	}
@@ -126,7 +133,7 @@ func keptSecret(path string) (secret, error) {
 	if err := f.Close(); err != nil {
 		return secret{}, err
 	}
-	return secret{v, path + " (generated)"}, nil
+	return secret{value: v, from: path, generated: true}, nil
 }
 
 // requireKey lets a request through only with "Authorization: Bearer <key>"; an empty key lets everything through.
@@ -143,5 +150,15 @@ func requireKey(key string, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		next(w, r)
+	}
+}
+
+// printNew shows a credential this start created, once, with the file that keeps it; later starts read the file.
+func printNew(w io.Writer, key, password secret) {
+	if password.generated {
+		fmt.Fprintf(w, "\nNew dashboard password (shown once; kept in %s):\n  %s\n\n", password.from, password.value)
+	}
+	if key.generated {
+		fmt.Fprintf(w, "\nNew API key for /v1/systemone (shown once; kept in %s):\n  %s\nSend it as: Authorization: Bearer <key>\n\n", key.from, key.value)
 	}
 }

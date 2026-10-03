@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { get } from "node:https";
 import { assetFor } from "./platform.js";
+import { mergeConfig } from "./config.js";
 
 const version = "v0.5.7";
 // The server and the model are versioned separately (deploy/VERSION, deploy/MODEL_VERSION): v0.5.7 ships the unchanged 0.5.2 model.
@@ -50,7 +51,8 @@ async function fetchAndUnpack(name) {
   if (extracted.status !== 0) process.exit(extracted.status || 1);
   rmSync(archive, { force: true });
 }
-// The server archive carries a default openjevx.json; keep the user's own across upgrades.
+// Archives up to v0.5.6 carried an openjevx.json (with the password "adminadmin") that replaced the user's on every
+// upgrade. Releases no longer ship one; the user's file is still put back after unpacking, whatever the archive holds.
 const configPath = join(home, "openjevx.json");
 if (!existsSync(exe) || installed !== version) {
   mkdirSync(home, { recursive: true });
@@ -60,9 +62,8 @@ if (!existsSync(exe) || installed !== version) {
   if (!windows) chmodSync(exe, 0o755);
   rmSync(join(home, "model"), { recursive: true, force: true });
   await fetchAndUnpack(modelAsset);
-  if (!existsSync(configPath)) {
-    writeFileSync(configPath, JSON.stringify({ listen: "127.0.0.1:21118", device: "auto" }, null, 2) + "\n");
-  }
+  const merged = mergeConfig(existsSync(configPath) ? readFileSync(configPath, "utf8") : null);
+  if (merged) writeFileSync(configPath, merged);
   writeFileSync(stamp, version + "\n");
 }
 
@@ -78,5 +79,6 @@ console.log("OpenJevX is ready.");
 console.log("Default port: 21118");
 console.log("Server:  http://127.0.0.1:21118/v1/systemone");
 console.log("Command: openjevx");
-console.log(`Dashboard password: created on first start in ${join(home, "openjevx.password")} (or set "password" in ${configPath})`);
+console.log(`Dashboard password: printed once on the first start and kept in ${join(home, "openjevx.password")}`);
+console.log(`  (or set "password" in ${configPath}; an old "adminadmin" there is ignored)`);
 if (!windows) console.log(`If needed: export PATH="${binDir}:$PATH"`);
