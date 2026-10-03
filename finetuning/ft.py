@@ -155,8 +155,11 @@ def gate(model):
         runtime = next(ROOT.glob(".local/libonnxruntime.*"))
     srv = WORK / "gate" / "server"
     srv.mkdir(parents=True, exist_ok=True)
+    # Cap the gate server's CPU threads (config gate.threads, default 6): uncapped it takes every core of a shared
+    # machine (2026-10-03: ~1000% CPU, load 126 on 18 cores).
     (srv / "openjevx.json").write_text(json.dumps(
-        {"listen": f"127.0.0.1:{g['port']}", "device": "cpu", "model": str(model), "runtime": str(runtime)}))
+        {"listen": f"127.0.0.1:{g['port']}", "device": "cpu", "model": str(model), "runtime": str(runtime),
+         "threads": int(g.get("threads", 6))}))
     proc = subprocess.Popen([str(binary)], cwd=srv, stdout=open(srv / "server.log", "w"), stderr=subprocess.STDOUT)
     try:
         for _ in range(120):

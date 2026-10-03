@@ -146,7 +146,8 @@
       "incoming/public/bgl_logs_eval.jsonl"
     ],
     "min_bgl_confident_right": 0.7,
-    "max_bgl_confident_wrong": 0.21
+    "max_bgl_confident_wrong": 0.21,
+    "threads": 6
   },
   "licence": {
     "note": "Train only on data whose licence allows commercial use (finetuning/dataprep/licence.py). tasksource rows are kept per row by the dataset's license_use; sources below are dropped whole.",
