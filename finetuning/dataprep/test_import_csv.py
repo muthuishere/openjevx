@@ -103,6 +103,9 @@ def test_example_csv_and_cli():
     assert not errors, errors
     rows = [r for rs in out.values() for r in rs]
     assert len(rows) >= 35
+    # The managed (SageMaker) fine-tune needs 100 trainable items; its smoke shard is the train rows x2, so the
+    # example must carry at least 50 train rows or the first job a user tries with it is refused.
+    assert len(out["train"]) >= 50, len(out["train"])
     assert {r["questions"]["q1"]["type"] for r in rows} == {"noul", "choice", "score"}
     assert not ic.adapter_rejects(rows)
     with tempfile.TemporaryDirectory() as tmp:
