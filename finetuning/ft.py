@@ -66,7 +66,7 @@ def validate():
         args += ["--train", paths.DATA / f]
     for f in v["leak_eval"]:
         if (paths.DATA / f).exists():
-            gate_file = f.startswith("gate/") or f in CFG["gate"].get("bgl_files", [])
+            gate_file = f.startswith("gate/") or f in CFG["gate"].get("slices", {})
             args += ["--gate" if gate_file else "--eval", paths.DATA / f]
         else:
             print(f"note: test file {f} not present, skipped in the leakage check")
@@ -182,11 +182,12 @@ def gate(model):
             report["files"][f] = m
             print(f"{f:40s} n={m['n']:6d} accuracy {m['accuracy']:6.1%} right&confident {m['confident_right']:6.1%} "
                   f"confidently WRONG {m['confident_wrong']:5.1%}", flush=True)
-            if f in g.get("bgl_files", []):
-                if m["confident_right"] < g["min_bgl_confident_right"]:
-                    failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {g['min_bgl_confident_right']:.0%}")
-                if m["confident_wrong"] > g["max_bgl_confident_wrong"]:
-                    failures.append(f"{f}: confidently wrong {m['confident_wrong']:.1%} > {g['max_bgl_confident_wrong']:.0%}")
+            sl = g.get("slices", {}).get(f)  # a gate slice with its own limits (config gate.slices)
+            if sl:
+                if m["confident_right"] < sl["min_confident_right"]:
+                    failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {sl['min_confident_right']:.0%}")
+                if m["confident_wrong"] > sl["max_confident_wrong"]:
+                    failures.append(f"{f}: confidently wrong {m['confident_wrong']:.1%} > {sl['max_confident_wrong']:.0%}")
             if f in g["basics_files"]:
                 if m["confident_right"] < g["min_basics_confident_right"]:
                     failures.append(f"{f}: right&confident {m['confident_right']:.1%} < {g['min_basics_confident_right']:.0%}")

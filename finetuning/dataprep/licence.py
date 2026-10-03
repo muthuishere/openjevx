@@ -50,6 +50,7 @@ class Filter:
         self.lmap = lmap
         self.cfg = cfg
         self.out = {}
+        self.kept = {}
 
     def _count(self, split, key, row, subset=None):
         s = self.out.setdefault(split, {"rows": 0, "decisions": 0, "by_class": {}})
@@ -71,10 +72,14 @@ class Filter:
             if use not in self.allow:
                 self._count(split, f"tasksource {use}", row, row.get("domain"))
                 return False
+        group = src if src.startswith("our-cases-public") else src.split("/")[0]
+        k = self.kept.setdefault(split, Counter())
+        k[group + " rows"] += 1
+        k[group + " decisions"] += len(row.get("questions") or {}) or 1
         return True
 
     def manifest(self):
-        out = {"policy": self.cfg}
+        out = {"policy": self.cfg, "kept": {split: dict(sorted(c.items())) for split, c in self.kept.items()}}
         for split, s in self.out.items():
             out[split] = {"rows": s["rows"], "decisions": s["decisions"],
                           "by_class": {k: {"rows": v["rows"], "decisions": v["decisions"],

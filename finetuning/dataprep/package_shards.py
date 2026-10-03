@@ -174,7 +174,7 @@ def build(out_dir, smoke=False, budget_gb=DEFAULT_BUDGET_GB, extra_train=(), ext
         "plan": plan,
         "train_decisions": sum(len(r["questions"]) for r in train_rows),
         "licence_excluded": {k: {"rows": v["rows"], "decisions": v["decisions"]}
-                             for k, v in licence.manifest().items() if k != "policy"} if licence is not None else None,
+                             for k, v in licence.manifest().items() if k not in ("policy", "kept")} if licence is not None else None,
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))
