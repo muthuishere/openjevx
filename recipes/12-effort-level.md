@@ -8,10 +8,10 @@ Rating: how much reasoning a task needs. `score` is the expected level (0 = firs
 curl -s localhost:21118/v1/systemone -d '{"state": "Rename the variable foo to bar in utils.py", "questions": {"effort": {"type": "score", "instructions": "How much reasoning does this coding task need?", "criteria": ["trivial", "moderate", "hard"]}}}' | jq -c .answers
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer (model 0.5.2, server 0.5.7, CPU):
 
 ```json
-{"effort":{"action":{"act_probability":1},"answer_confidence":0.5348,"confidence":0.5348,"probabilities":{"0":0.5348,"1":0.4179,"2":0.0472},"score":0.5124,"type":"score"}}
+{"effort":{"action":{"act_probability":1},"answer_confidence":0.68,"confidence":0.68,"probabilities":{"0":0.68,"1":0.2744,"2":0.0455},"score":0.3655,"type":"score"}}
 ```
 
 ## Same thing with jevx
@@ -23,7 +23,7 @@ jevx ask --profile openjevx --no-context --in "Rename the variable foo to bar in
 Real output:
 
 ```
-effort           unsure     0.53
+effort           trivial    0.68
 ```
 
 ## What to do with the answer
@@ -32,4 +32,4 @@ Delegate low-effort work to a smaller model; keep the hard ones.
 
 ## How the local model did
 
-Leans trivial (level 0 at 0.53, expected level 0.51) but not confidently; jevx says unsure (0.53). Hosted Jev says trivial 0.94.
+Right: trivial (level 0 at 0.68, expected level 0.37), and jevx says trivial 0.68. Hosted Jev says trivial 0.94.

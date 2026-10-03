@@ -19,10 +19,10 @@ Payment terms: due within 45 days of the issue date.
 curl -s localhost:21118/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 2026-09-01\nConsulting services, September .......... 1,250.00 EUR\nTotal due: 1,250.00 EUR\nPayment terms: due within 45 days of the issue date.", "questions": {"due": {"type": "choice", "instructions": "Which date is the payment due date?", "criteria": {"a": "2026-09-01", "b": "2026-10-16", "c": "2026-10-31"}}}}' | jq -c .answers
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer (model 0.5.2, server 0.5.7, CPU):
 
 ```json
-{"due":{"action":{"act_probability":1},"answer_confidence":0.7047,"choice":"a","confidence":0.7047,"probabilities":{"a":0.7047,"b":0.1507,"c":0.1446},"type":"choice"}}
+{"due":{"action":{"act_probability":1},"answer_confidence":0.898,"choice":"a","confidence":0.898,"probabilities":{"a":0.898,"b":0.047,"c":0.055},"type":"choice"}}
 ```
 
 ## Same thing with jevx
@@ -34,7 +34,7 @@ jevx pick --profile openjevx --no-context "Which date is the payment due date?" 
 Real output:
 
 ```
-a 0.70
+a 0.90
 ```
 
 ## What to do with the answer
@@ -43,4 +43,4 @@ Use the chosen candidate. Compute the candidates in code (45 days after 2026-09-
 
 ## How the local model did
 
-Wrong on this model: it picks `a` (the issue date, 0.70 from curl and jevx) instead of `b` (2026-10-16). Hosted Jev picks `b 1.00`. Do not rely on the local model for this one without testing it on your documents.
+Wrong on this model, and confidently: it picks `a` (the issue date, 0.90 from curl and jevx) instead of `b` (2026-10-16). Hosted Jev picks `b 1.00`. Do not use the local model for this one; compute due dates in code.
