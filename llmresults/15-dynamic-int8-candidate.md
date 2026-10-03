@@ -1,6 +1,6 @@
 # 15 — A dynamic-int8 build of model 0.5.2: passes the gate and is 1.7–3x faster on Apple Silicon; Linux servers need their own gate
 
-Date: 2026-10-03. Follows llmresults/14. Tool: `finetuning/export/quantize_dynamic.py` (same weights, no retraining).
+Date: 2026-10-03. Follows llmresults/14-x86-cpu-latency.md. Tool: `finetuning/export/quantize_dynamic.py` (same weights, no retraining).
 Probe: `scripts/ort_cpu_probe.py`, 1 thread, ONNX Runtime 1.29.0. Each number is the median of 3 runs, with seeded random
 tokens: "short" = 40 tokens, "long" = 512. x86: GitHub `ubuntu-latest`, native (run 37132675745). Linux ARM: GitHub
 `ubuntu-24.04-arm`, Neoverse N2 (Graviton-class; run 37136473465). Apple: M5 Pro, macOS.
@@ -8,7 +8,7 @@ tokens: "short" = 40 tokens, "long" = 512. x86: GitHub `ubuntu-latest`, native (
 ## What it is
 
 The shipped graph is int8 weights + `DequantizeLinear` + fp32 `MatMul`. ONNX Runtime fuses those into `MatMulNBits`,
-which has no fast int8 path on x86 (llmresults/14). `quantize_dynamic.py` folds the exact weights and re-quantizes them
+which has no fast int8 path on x86 (llmresults/14-x86-cpu-latency.md). `quantize_dynamic.py` folds the exact weights and re-quantizes them
 as a QOperator graph (`DynamicQuantizeMatMul`): per-channel int8 weights, activations quantized per request. The file
 is the same size (598 MB) and the folder layout is the same (config.json temperatures unchanged, new sha256).
 

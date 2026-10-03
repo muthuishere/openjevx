@@ -89,7 +89,7 @@ From a written policy or a document, turn each rule into many rows: both sides o
 ### The CSV
 
 Write the rows in a spreadsheet and save it as CSV. Start from the example in the repo,
-`finetuning/examples/decisions.csv` (39 rows: a 4-day week, working hours, a late parcel, a discount, team
+`finetuning/examples/decisions.csv` (68 rows: a 4-day week, working hours, a late parcel, a discount, team
 routing, ticket urgency).
 
 | column | required | what | example |
@@ -132,10 +132,10 @@ You should see the good and bad row counts, then one line per question with its 
 files were written:
 
 ```text
-yours.csv: 39 good rows, 0 bad
+yours.csv: 68 good rows, 0 bad
 ...
 adapter: every row accepted
-wrote    24 train rows -> ~/openjevx/data/train/mydata_train.jsonl
+wrote    53 train rows -> ~/openjevx/data/train/mydata_train.jsonl
 wrote    15 gate  rows -> ~/openjevx/data/gate/mydata_gate.jsonl
 updated ~/.config/openjevx/config.json (backup: config.json.bak-…)
 ```
