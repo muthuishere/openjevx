@@ -21,10 +21,10 @@ Yes/no per log line: keep only the lines an on-call engineer would act on.
 curl -s localhost:21118/v1/systemone -d '{"state": "2026-09-27 10:03:12 INFO  request served /checkout 200 in 84ms", "questions": {"act": {"type": "noul", "instructions": "Is this line an error or failure an on-call engineer would act on?"}}}'
 ```
 
-Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (model 0.5.2, server 0.5.7, CPU):
 
 ```json
-{"answers":{"act":{"action":{"act_probability":1},"answer_confidence":0.8134,"confidence":0.8134,"noul":0.1866,"probabilities":{"false":0.8134,"true":0.1866},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":64,"output_tokens":0}}
+{"answers":{"act":{"action":{"act_probability":1},"answer_confidence":0.9217,"confidence":0.9217,"noul":0.0783,"probabilities":{"false":0.9217,"true":0.0783},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":64,"output_tokens":0,"server_ms":838.86}}
 ```
 
 ## Same thing with jevx
@@ -50,12 +50,12 @@ Real output:
 
 ```
 VERDICT  P     INPUT
-no       0.19  2026-09-27 10:03:12 INFO  request served /checkout 200 in 84ms
-unsure   0.74  2026-09-27 10:03:25 WARN  slow query 1.2s on orders_by_user
-yes      0.84  2026-09-27 10:03:40 ERROR payment gateway timeout after 30s (order 4021)
-no       0.12  2026-09-27 10:03:51 INFO  cache warmed 1200 keys
-yes      0.84  2026-09-27 10:04:02 FATAL db connection refused: too many clients
-no       0.17  2026-09-27 10:04:10 INFO  healthcheck ok
+no       0.08  2026-09-27 10:03:12 INFO  request served /checkout 200 in 84ms
+no       0.10  2026-09-27 10:03:25 WARN  slow query 1.2s on orders_by_user
+yes      0.90  2026-09-27 10:03:40 ERROR payment gateway timeout after 30s (order 4021)
+no       0.09  2026-09-27 10:03:51 INFO  cache warmed 1200 keys
+yes      0.90  2026-09-27 10:04:02 FATAL db connection refused: too many clients
+no       0.09  2026-09-27 10:04:10 INFO  healthcheck ok
 ```
 
 The table output needs jevx v0.11.0 or newer.
@@ -66,4 +66,4 @@ Open the code behind the kept lines; skip the rest. Read `noul` as the probabili
 
 ## How the local model did
 
-Right on the clear cases: the ERROR and FATAL lines are yes (0.84) and jevx filter keeps exactly those two; the INFO lines are no (0.12-0.19). The slow-query WARN comes back unsure (0.74), which hosted Jev leaves out; read it yourself if you want it.
+Right on every line: the ERROR and FATAL lines are yes (0.90) and jevx filter keeps exactly those two; the INFO lines are no (0.08-0.09). The slow-query WARN is now a clear no (0.10), so if you want warnings too, ask a second question for them.

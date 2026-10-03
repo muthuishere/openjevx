@@ -8,10 +8,10 @@ One request, three questions of the three types: yes/no, pick-one and rating.
 curl -s localhost:21118/v1/systemone -d '{"state": "Checkout is down, customers are being charged twice", "questions": {"urgent": {"type": "noul", "instructions": "Is this urgent?"}, "team": {"type": "choice", "instructions": "Which team?", "criteria": {"web": "frontend", "api": "backend", "billing": "payments"}}, "sev": {"type": "score", "instructions": "How severe?", "criteria": ["low", "medium", "high"]}}}' | jq -c .answers
 ```
 
-Real answer (openjevx v0.4.0 8-bit model, CPU):
+Real answer (model 0.5.2, server 0.5.7, CPU):
 
 ```json
-{"sev":{"action":{"act_probability":1},"answer_confidence":0.7616,"confidence":0.7616,"probabilities":{"0":0.1161,"1":0.1223,"2":0.7616},"score":1.6455,"type":"score"},"team":{"action":{"act_probability":1},"answer_confidence":0.8944,"choice":"billing","confidence":0.8944,"probabilities":{"api":0.054,"billing":0.8944,"web":0.0516},"type":"choice"},"urgent":{"action":{"act_probability":1},"answer_confidence":0.8499,"confidence":0.8499,"noul":0.8499,"probabilities":{"false":0.1501,"true":0.8499},"type":"noul"}}
+{"sev":{"action":{"act_probability":1},"answer_confidence":0.9339,"confidence":0.9339,"probabilities":{"0":0.0294,"1":0.0367,"2":0.9339},"score":1.9045,"type":"score"},"team":{"action":{"act_probability":1},"answer_confidence":0.5491,"choice":"billing","confidence":0.5491,"probabilities":{"api":0.3245,"billing":0.5491,"web":0.1264},"type":"choice"},"urgent":{"action":{"act_probability":1},"answer_confidence":0.9119,"confidence":0.9119,"noul":0.9119,"probabilities":{"false":0.0881,"true":0.9119},"type":"noul"}}
 ```
 
 ## Same thing with jevx
@@ -23,9 +23,9 @@ echo "Checkout is down, customers are being charged twice" | jevx ask --profile 
 Real output:
 
 ```
-sev              high       0.76
-team             billing    0.86
-urgent           yes        0.85
+sev              high       0.93
+team             api        0.79
+urgent           yes        0.91
 ```
 
 ## What to do with the answer
@@ -34,4 +34,4 @@ Page the chosen team when urgent is yes and severity is high.
 
 ## How the local model did
 
-Right on all three: urgent yes 0.85, team billing 0.89, severity high 0.76. jevx agrees: urgent yes 0.85, billing 0.86, high 0.76.
+Urgent and severity are right both ways: urgent yes (0.91), severity high (0.93). The team is not settled on this model: the curl request gives billing at only 0.55 (below jevx's 0.6 confidence line), and jevx, which sends the same state from stdin, gives api 0.79. Ask the team question with more detail in the state before routing on it.

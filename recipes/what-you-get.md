@@ -73,15 +73,15 @@ curl -s localhost:21118/v1/systemone -d '{"state": "Checkout is down, customers 
 three-question request gives nearly the same answer: the runtime quantizes activations per call, so a probability
 can move by a few thousandths with what else is in the request ([Several judgements in one call](17-several-judgements.md)).
 
-Each block above is the `answers` object; the full response also carries `"model": "openjevx"` and `"usage": {"input_tokens": N, "output_tokens": 0}`.
+Each block above is the `answers` object; the full response also carries `"model": "openjevx"` and `"usage": {"input_tokens": N, "output_tokens": 0, "server_ms": T}`.
 
 ## How good is it
 
 It is a small, general model. The model 0.5.2 gate (`llmresults/13-v0.5.2-gate-misses.md`, questions kept out of
 training): everyday basics (463) 98.7% right and confident, 0.9% confidently wrong; rule-checking basics (300) 100% /
-0.0%; log alerts (900) 91.9% / 7.8%; jevx's 13 fundamentals 13/13. The 18 recipe pages were written against the
-v0.4 model; each says how that model did, and some answers will differ on 0.5.2. Test it on your own questions
-before you rely on it.
+0.0%; log alerts (900) 91.9% / 7.8%; jevx's 13 fundamentals 13/13. On the 18 recipe pages (re-run on 0.5.2) it is
+right on most everyday calls and misses some that hosted Jev gets: a due date, a prompt injection, a password in a
+URL, a force-push. Each page says how it did. Test it on your own questions before you rely on it.
 
 ## Getting a model fitted to your data
 

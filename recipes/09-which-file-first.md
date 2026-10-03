@@ -21,10 +21,10 @@ docs/README.md
 curl -s localhost:21118/v1/systemone -d '{"state": "internal/payments/gateway.go", "questions": {"hit": {"type": "noul", "instructions": "Is this file likely where a payment gateway timeout is handled?"}}}'
 ```
 
-Real answer for the first input (openjevx v0.4.0 8-bit model, CPU):
+Real answer for the first input (model 0.5.2, server 0.5.7, CPU):
 
 ```json
-{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.7514,"confidence":0.7514,"noul":0.7514,"probabilities":{"false":0.2486,"true":0.7514},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":47,"output_tokens":0}}
+{"answers":{"hit":{"action":{"act_probability":1},"answer_confidence":0.6172,"confidence":0.6172,"noul":0.6172,"probabilities":{"false":0.3828,"true":0.6172},"type":"noul"}},"model":"openjevx","usage":{"input_tokens":47,"output_tokens":0,"server_ms":284.88}}
 ```
 
 ## Same thing with jevx
@@ -36,9 +36,9 @@ jevx rank --profile openjevx --no-context "Is this file likely where a payment g
 Real output:
 
 ```
-0.80  internal/payments/retry.go
-0.75  internal/payments/gateway.go
-0.48  cmd/server/main.go
+0.62  internal/payments/gateway.go
+0.42  internal/payments/retry.go
+0.15  internal/users/store.go
 ```
 
 ## What to do with the answer
@@ -47,4 +47,4 @@ Read the top files first.
 
 ## How the local model did
 
-Right: the two payments files come first (retry.go 0.80 just above gateway.go 0.75).
+Right: gateway.go comes first (0.62), then retry.go (0.42); the third pick (store.go, 0.15) is not a candidate. Open the first two.

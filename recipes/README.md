@@ -20,10 +20,12 @@ Every recipe is one `POST /v1/systemone` with a `state` (the text or JSON the qu
 
 ## Every answer here is real
 
-Each recipe was run against a local OpenJevX server (v0.4.0 8-bit model, CPU, Apple M5 Pro) and the output was
-pasted unedited, including the wrong and unsure ones. Each page ends with how the local model did. The `jevx`
-lines ran through the `jevx` CLI with `--profile openjevx` and `--no-context` (so your agent files do not change
-the question) and `--fresh` (so no cached answer was reused); the tables and `--fresh` need jevx v0.11.0 or newer. Your inputs will score differently: copy the pattern, not the numbers, and test on your own data.
+Each recipe was run on 2026-10-03 against a local OpenJevX server (model 0.5.2, server 0.5.7, CPU, Apple M5 Pro)
+and the output was pasted unedited, including the wrong and unsure ones; two runs gave the same answers. Each page
+ends with how the local model did. The `jevx` lines ran through jevx v0.11.0 with `--profile openjevx` and
+`--no-context` (so your agent files do not change the question) and `--fresh` (so no cached answer was reused;
+`jevx judge` has no cache flag); the tables and `--fresh` need jevx v0.11.0 or newer. The "hosted Jev" answers
+quoted on some pages were recorded once, earlier, and were not re-run. Your inputs will score differently: copy the pattern, not the numbers, and test on your own data.
 
 ## Recipes
 
