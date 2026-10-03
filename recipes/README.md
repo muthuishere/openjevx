@@ -7,28 +7,6 @@ server listens on `localhost:21118` by default. These pages are also in the Dock
 
 Start with [what you get](what-you-get.md): model size, measured CPU latency, and the three question types.
 
-## The API key
-
-From server 0.5.7, `POST /v1/systemone` needs `Authorization: Bearer <key>` whenever the server listens on anything
-other than loopback (the Docker image, a cloud server). Every call on these pages sends it from `OPENJEVX_API_KEY`:
-
-```bash
-export OPENJEVX_API_KEY=$(cat /path/to/openjevx.api-key)   # the file the server names at startup
-```
-
-The key is the one you set (`OPENJEVX_API_KEY` or `"api_key"` in `openjevx.json`), or the one the server generated:
-its startup log says `api key: required on /v1/systemone ... (from /path/openjevx.api-key)`, beside `openjevx.json`
-(in the Docker image, `/data/openjevx.api-key`). On `127.0.0.1` with no key set the server needs none and ignores
-the header, so the calls work unchanged there.
-
-For `jevx`, put the header in the profile once; every `jevx` call on these pages uses `--profile openjevx`, and
-jevx reads the variable at call time:
-
-```bash
-jevx profile add openjevx http://localhost:21118/v1/systemone --model openjevx-0.5.2 \
-  --header 'Authorization: Bearer $OPENJEVX_API_KEY'
-```
-
 ## The request
 
 Every recipe is one `POST /v1/systemone` with a `state` (the text or JSON the question is about) and named

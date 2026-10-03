@@ -4,10 +4,8 @@ Pick-one: what would the user want next, given what they already said.
 
 ## Call the local server
 
-The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
-
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "User said: ship it once tests pass. Tests: 214 passed, 0 failed. Branch: main is protected by CI.", "questions": {"next": {"type": "choice", "instructions": "What would the user want the agent to do next?", "criteria": {"push": "push to main now", "ask": "stop and ask first"}}}}' | jq -c .answers
+curl -s localhost:21118/v1/systemone -d '{"state": "User said: ship it once tests pass. Tests: 214 passed, 0 failed. Branch: main is protected by CI.", "questions": {"next": {"type": "choice", "instructions": "What would the user want the agent to do next?", "criteria": {"push": "push to main now", "ask": "stop and ask first"}}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

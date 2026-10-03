@@ -4,10 +4,8 @@ Pick-one among function names (function calling from natural language).
 
 ## Call the local server
 
-The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
-
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "I want my money back for order 88", "questions": {"tool": {"type": "choice", "instructions": "Which function should handle this request?", "criteria": {"refund_payment": "refund a charge", "create_invoice": "create a new invoice", "update_email": "change the billing email"}}}}' | jq -c .answers
+curl -s localhost:21118/v1/systemone -d '{"state": "I want my money back for order 88", "questions": {"tool": {"type": "choice", "instructions": "Which function should handle this request?", "criteria": {"refund_payment": "refund a charge", "create_invoice": "create a new invoice", "update_email": "change the billing email"}}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):
