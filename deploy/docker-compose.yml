@@ -1,4 +1,4 @@
-# OpenJevX 0.5.7 (model 0.5.2) with Docker on any VPS, no clone needed: copy this one file, then
+# OpenJevX 0.5.8 (model 0.5.2) with Docker on any VPS, no clone needed: copy this one file, then
 #   OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build
 # (the image downloads the 8-bit model while it builds). Clients send "Authorization: Bearer <key>". It listens
 # on 127.0.0.1 only: reach it over an SSH tunnel, or open the port to your own network.
@@ -6,7 +6,7 @@
 services:
   openjevx:
     build:
-      context: https://github.com/muthuishere/openjevx.git#805a9e80048d5a9b2750ffc82222f65da92a80eb
+      context: https://github.com/muthuishere/openjevx.git#95c1b271a26059d8e5e333fe109c444c9476b2ef
     ports:
       - "127.0.0.1:21118:21118"
     environment:
