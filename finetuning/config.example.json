@@ -146,9 +146,9 @@
     "threads": 6,
     "slices": {
       "gate/ownlogs_gate.jsonl": {
-        "note": "own infrastructure logs, scrubbed, EVAL ONLY, internal, never redistributed; limits from shipped 0.5.2 on this set (set before 0.5.10 trains)",
-        "min_confident_right": null,
-        "max_confident_wrong": null
+        "note": "own infrastructure logs (226 rows: 26 failures, 200 routine), scrubbed, EVAL ONLY, internal, never redistributed or trained on. Limits = shipped 0.5.2 on this set (92.9% / 3.5%, measured before 0.5.10 trained) with ~3 pp allowance (about 6 rows). 0.5.2 catches only 46% of the failures confidently.",
+        "min_confident_right": 0.9,
+        "max_confident_wrong": 0.06
       }
     }
   },
