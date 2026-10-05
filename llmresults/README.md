@@ -30,3 +30,7 @@ Everything from the OpenJevX model-quality investigation, in one place.
 All of this ran against local OpenJevX servers under `.local/eval/` in the repo (not committed —
 they're 400MB+ model files and scratch scripts). The shipped model is `.local/openjevx.w4.onnx`
 (4-bit weight-only), released as v0.3.0.
+
+## Port note (2026-10-05)
+
+The server default port moved from 21118 to 21160 in server v0.5.11, because herdr-expose holds 21118. Where a report or probe says "21118" (or "port 21118"), it is the port the server used on that report's date. Nothing here was re-run on 21160.

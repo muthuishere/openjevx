@@ -36,7 +36,7 @@ jobs:
           CC: zig cc -target ${{ matrix.zig }}
       - run: file openjevx libonnxruntime.so
       # No openjevx.json: unpacking a new release over an old one must never replace the user's config (or ship a
-      # password); without one the server listens on 127.0.0.1:21118 and generates its dashboard password.
+      # password); without one the server listens on 127.0.0.1:21160 and generates its dashboard password.
       - run: tar --format ustar -cf openjevx-linux-${{ matrix.arch }}.tar README openjevx libonnxruntime.so LICENSE NOTICE CREDITS licenses
       - uses: actions/upload-artifact@v4
         with:

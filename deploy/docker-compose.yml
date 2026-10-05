@@ -8,7 +8,7 @@ services:
     build:
       context: https://github.com/muthuishere/openjevx.git#95c1b271a26059d8e5e333fe109c444c9476b2ef
     ports:
-      - "127.0.0.1:21118:21118"
+      - "127.0.0.1:21160:21160"
     environment:
       OPENJEVX_PASSWORD: ${OPENJEVX_PASSWORD:?set OPENJEVX_PASSWORD (12+ characters)}
       OPENJEVX_API_KEY: ${OPENJEVX_API_KEY:?set OPENJEVX_API_KEY (16+ characters)}

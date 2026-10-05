@@ -13,6 +13,6 @@ if [ ! -f /app/openjevx.json ] && [ ! -f /data/openjevx.json ]; then
     [ -n "$key" ] || { echo "openjevx: set OPENJEVX_API_KEY (16+ characters, e.g. openssl rand -hex 24); refusing to start with an open decision API" >&2; exit 1; }
     [ "${#key}" -ge 16 ] || { echo "openjevx: OPENJEVX_API_KEY must be at least 16 characters" >&2; exit 1; }
   fi
-  printf '{\n  "listen": "0.0.0.0:21118",\n  "device": "cpu",\n  "model": "/app/model"\n}\n' > /data/openjevx.json
+  printf '{\n  "listen": "0.0.0.0:21160",\n  "device": "cpu",\n  "model": "/app/model"\n}\n' > /data/openjevx.json
 fi
 exec /app/openjevx "$@"

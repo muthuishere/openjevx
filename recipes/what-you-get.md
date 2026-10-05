@@ -40,7 +40,7 @@ Every answer below is real output from model 0.5.2 on server 0.5.7 (2026-10-03).
 ### Yes/no: `noul`
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 2026-09-01\nConsulting services, September .......... 1,250.00 EUR\nTotal due: 1,250.00 EUR\nPayment terms: due within 45 days of the issue date.", "questions": {"claim": {"type": "noul", "instructions": "Does the invoice say the total is 1,500 EUR?"}}}'
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "INVOICE 2026-117  Issued: 2026-09-01\nConsulting services, September .......... 1,250.00 EUR\nTotal due: 1,250.00 EUR\nPayment terms: due within 45 days of the issue date.", "questions": {"claim": {"type": "noul", "instructions": "Does the invoice say the total is 1,500 EUR?"}}}'
 ```
 
 ```json
@@ -52,7 +52,7 @@ curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemon
 ### Pick one: `choice`
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "I want my money back for order 88", "questions": {"tool": {"type": "choice", "instructions": "Which function should handle this request?", "criteria": {"refund_payment": "refund a charge", "create_invoice": "create a new invoice", "update_email": "change the billing email"}}}}'
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "I want my money back for order 88", "questions": {"tool": {"type": "choice", "instructions": "Which function should handle this request?", "criteria": {"refund_payment": "refund a charge", "create_invoice": "create a new invoice", "update_email": "change the billing email"}}}}'
 ```
 
 ```json
@@ -62,7 +62,7 @@ curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemon
 ### Rating: `score`
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "Checkout is down, customers are being charged twice", "questions": {"sev": {"type": "score", "instructions": "How severe?", "criteria": ["low", "medium", "high"]}}}'
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "Checkout is down, customers are being charged twice", "questions": {"sev": {"type": "score", "instructions": "How severe?", "criteria": ["low", "medium", "high"]}}}'
 ```
 
 ```json

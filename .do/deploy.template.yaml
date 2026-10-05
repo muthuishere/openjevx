@@ -10,7 +10,7 @@ spec:
       git:
         repo_clone_url: https://github.com/muthuishere/openjevx.git
         branch: main
-      http_port: 21118
+      http_port: 21160
       instance_size_slug: apps-s-1vcpu-2gb
       instance_count: 1
       envs:

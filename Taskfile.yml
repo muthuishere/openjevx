@@ -36,7 +36,7 @@ tasks:
       - CGO_ENABLED=1 go build -o {{.LOCAL}}/openjevx ./cmd/openjevx
 
   run:
-    desc: Run the server locally (dashboard at http://127.0.0.1:21118/)
+    desc: Run the server locally (dashboard at http://127.0.0.1:21160/)
     deps: [build]
     cmds:
       - ./{{.LOCAL}}/openjevx

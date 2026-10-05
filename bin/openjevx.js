@@ -76,8 +76,8 @@ if (windows) {
   chmodSync(cmd, 0o755);
 }
 console.log("OpenJevX is ready.");
-console.log("Default port: 21118");
-console.log("Server:  http://127.0.0.1:21118/v1/systemone");
+console.log("Default port: 21160");
+console.log("Server:  http://127.0.0.1:21160/v1/systemone");
 console.log("Command: openjevx");
 console.log(`Dashboard password: printed once on the first start and kept in ${join(home, "openjevx.password")}`);
 console.log(`  (or set "password" in ${configPath}; an old "adminadmin" there is ignored)`);

@@ -258,7 +258,7 @@ The server refuses a graph whose sha256 does not match `config.json`.
 Point the server at your folder in `openjevx.json`:
 
 ```json
-{ "listen": "127.0.0.1:21118", "device": "auto", "model": "/path/to/my-model" }
+{ "listen": "127.0.0.1:21160", "device": "auto", "model": "/path/to/my-model" }
 ```
 
 `device` is `auto`, `cpu` or `gpu`. At startup the server logs the model path, version, temperatures and
@@ -277,7 +277,7 @@ DigitalOcean 1-Click image, cloud-init for any VPS and an AWS AMI.
 Use it from jevx with a **versioned** model name, because jevx caches answers by model name:
 
 ```sh
-jevx profile add mymodel http://127.0.0.1:21118/v1/systemone --model mymodel-v1 \
+jevx profile add mymodel http://127.0.0.1:21160/v1/systemone --model mymodel-v1 \
   --header 'Authorization: Bearer $OPENJEVX_API_KEY'   # only for a server that has a key (Docker, any non-loopback listen)
 jevx profile use mymodel
 jevx cache clear

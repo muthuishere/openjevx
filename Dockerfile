@@ -36,6 +36,6 @@ COPY --from=build /src/recipes/*.md /usr/share/openjevx/recipes/
 COPY --from=build /src/deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 WORKDIR /data
 USER 10001:10001
-EXPOSE 21118
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s CMD curl -fsS http://127.0.0.1:21118/health || exit 1
+EXPOSE 21160
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s CMD curl -fsS http://127.0.0.1:21160/health || exit 1
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

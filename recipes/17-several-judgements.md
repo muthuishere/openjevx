@@ -7,7 +7,7 @@ One request, three questions of the three types: yes/no, pick-one and rating.
 The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "Checkout is down, customers are being charged twice", "questions": {"urgent": {"type": "noul", "instructions": "Is this urgent?"}, "team": {"type": "choice", "instructions": "Which team?", "criteria": {"web": "frontend", "api": "backend", "billing": "payments"}}, "sev": {"type": "score", "instructions": "How severe?", "criteria": ["low", "medium", "high"]}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "Checkout is down, customers are being charged twice", "questions": {"urgent": {"type": "noul", "instructions": "Is this urgent?"}, "team": {"type": "choice", "instructions": "Which team?", "criteria": {"web": "frontend", "api": "backend", "billing": "payments"}}, "sev": {"type": "score", "instructions": "How severe?", "criteria": ["low", "medium", "high"]}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

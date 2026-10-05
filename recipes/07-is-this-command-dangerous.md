@@ -7,7 +7,7 @@ Yes/no about a command before running it.
 The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "git push --force origin main", "questions": {"danger": {"type": "noul", "instructions": "Does this command overwrite history on a shared remote branch?"}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "git push --force origin main", "questions": {"danger": {"type": "noul", "instructions": "Does this command overwrite history on a shared remote branch?"}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

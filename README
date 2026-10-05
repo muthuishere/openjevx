@@ -3,7 +3,7 @@
 # Linux / macOS:  ./README
 # Windows:        README.cmd
 # Config file openjevx.json next to this file:
-#   { "listen": "127.0.0.1:21118", "device": "cpu" }
+#   { "listen": "127.0.0.1:21160", "device": "cpu" }
 # The model is the folder model/ next to this file (from openjevx-model-<version>.tar.gz);
 # "model" in openjevx.json points elsewhere. gpu needs a CUDA ONNX Runtime and
 # refuses to fall back to CPU.

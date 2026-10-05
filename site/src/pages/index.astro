@@ -44,7 +44,7 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
   <p>Windows: download <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> and <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-model-0.5.2.tar.gz">openjevx-model-0.5.2.tar.gz</a>, unpack both into the same folder (<code>tar -xzf openjevx-model-0.5.2.tar.gz</code>) and run <code>openjevx.exe</code>.</p>
 
   <h2>Docker</h2>
-  <CodeCard label="Docker">docker run -d -p 127.0.0.1:21118:21118 \
+  <CodeCard label="Docker">docker run -d -p 127.0.0.1:21160:21160 \
   -e OPENJEVX_PASSWORD=&lt;12+ characters&gt; -e OPENJEVX_API_KEY=&lt;16+ characters&gt; \
   ghcr.io/deemwar-products/openjevx:v0.5.9</CodeCard>
   <p>The prebuilt image is for linux/amd64 and linux/arm64. To build it yourself:</p>
@@ -52,19 +52,19 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
 OPENJEVX_PASSWORD=&lt;12+ characters&gt; OPENJEVX_API_KEY=&lt;16+ characters&gt; docker compose up -d --build</CodeCard>
 
   <h2>Talk to it from jevx</h2>
-  <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+  <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21160/v1/systemone --model openjevx
 jevx profile use openjevx
 jevx is "Is this urgent?" &lt; email.txt</CodeCard>
 
   <div class="cards">
     <div class="card">
       <h3>What it is</h3>
-      <p>Default port <code>21118</code>, endpoint <code>/v1/systemone</code>. <code>device</code> is{' '}
+      <p>Default port <code>21160</code>, endpoint <code>/v1/systemone</code>. <code>device</code> is{' '}
         <code>auto</code>, <code>cpu</code>, or <code>gpu</code> in <code>openjevx.json</code>.</p>
     </div>
     <div class="card">
       <h3>Dashboard</h3>
-      <p>Open <code>http://127.0.0.1:21118/</code> while it runs: request counts, latency p50/p95/p99,
+      <p>Open <code>http://127.0.0.1:21160/</code> while it runs: request counts, latency p50/p95/p99,
         errors, recent requests. No default password: set <code>"password"</code>, or read the one the server
         generates into <code>openjevx.password</code>.</p>
     </div>

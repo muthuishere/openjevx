@@ -445,7 +445,7 @@ func sessionWith(model []byte, names, outs []string, add func(*ort.SessionOption
 }
 
 func loadConfig() config {
-	cfg := config{Listen: "127.0.0.1:21118", Device: "auto"}
+	cfg := config{Listen: "127.0.0.1:21160", Device: "auto"}
 	for _, path := range configPaths() {
 		b, err := os.ReadFile(path)
 		if err != nil {
@@ -458,7 +458,7 @@ func loadConfig() config {
 	}
 	cfg.Device = normalDevice(cfg.Device)
 	if cfg.Listen == "" {
-		cfg.Listen = "127.0.0.1:21118"
+		cfg.Listen = "127.0.0.1:21160"
 	}
 	return cfg
 }
@@ -555,7 +555,7 @@ Windows:  README.cmd
 
 Config file openjevx.json, next to the executable:
 
-  { "listen": "127.0.0.1:21118", "device": "cpu", "model": "model" }
+  { "listen": "127.0.0.1:21160", "device": "cpu", "model": "model" }
 
 Credentials (env in brackets):
 
@@ -594,7 +594,7 @@ cache, verified, and served from there; a valid cache starts offline. More setti
                     without bucket DNS (bucket in the path, not the host)
 
 jevx:
-  jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+  jevx profile add openjevx http://127.0.0.1:21160/v1/systemone --model openjevx
   (with an API key: add --header 'Authorization: Bearer $OPENJEVX_API_KEY')
   jevx profile use openjevx
 `

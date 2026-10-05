@@ -11,8 +11,8 @@ import (
 
 func TestLoopback(t *testing.T) {
 	for listen, want := range map[string]bool{
-		"127.0.0.1:21118": true, "127.0.0.2:1": true, "[::1]:21118": true, "localhost:21118": true,
-		"0.0.0.0:21118": false, ":21118": false, "[::]:21118": false, "10.0.0.5:21118": false, "myhost:21118": false,
+		"127.0.0.1:21160": true, "127.0.0.2:1": true, "[::1]:21160": true, "localhost:21160": true,
+		"0.0.0.0:21160": false, ":21160": false, "[::]:21160": false, "10.0.0.5:21160": false, "myhost:21160": false,
 	} {
 		if got := loopback(listen); got != want {
 			t.Errorf("loopback(%q) = %v, want %v", listen, got, want)
@@ -47,7 +47,7 @@ func readOnlyDir(t *testing.T) string {
 func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 	clearAuthEnv(t)
 	dir := t.TempDir()
-	cfg := config{Listen: "0.0.0.0:21118", configDir: dir}
+	cfg := config{Listen: "0.0.0.0:21160", configDir: dir}
 	key, pw, err := resolveAuth(&cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 	if err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("%s: %v %v", path, st, err)
 	}
-	again := config{Listen: "0.0.0.0:21118", configDir: dir}
+	again := config{Listen: "0.0.0.0:21160", configDir: dir}
 	key2, pw2, err := resolveAuth(&again)
 	if err != nil || again.APIKey != cfg.APIKey || again.Password != cfg.Password {
 		t.Fatalf("second start: key %q password %q err %v; want the kept ones", again.APIKey, again.Password, err)
@@ -84,7 +84,7 @@ func TestAPIKeyGeneratedWhenPublic(t *testing.T) {
 func TestAPIKeyOffOnLoopback(t *testing.T) {
 	clearAuthEnv(t)
 	dir := t.TempDir()
-	cfg := config{Listen: "127.0.0.1:21118", configDir: dir}
+	cfg := config{Listen: "127.0.0.1:21160", configDir: dir}
 	if _, _, err := resolveAuth(&cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestAuthSettings(t *testing.T) {
 	dir := t.TempDir()
 	// The environment beats openjevx.json.
 	t.Setenv("OPENJEVX_API_KEY", "from-the-environment-0123")
-	cfg := config{Listen: "127.0.0.1:21118", APIKey: "from-the-config-file-0123", Password: "a-real-password", configDir: dir}
+	cfg := config{Listen: "127.0.0.1:21160", APIKey: "from-the-config-file-0123", Password: "a-real-password", configDir: dir}
 	key, _, err := resolveAuth(&cfg)
 	if err != nil || cfg.APIKey != "from-the-environment-0123" || key.from != "OPENJEVX_API_KEY" {
 		t.Fatalf("key %q from %q err %v", cfg.APIKey, key.from, err)
@@ -115,13 +115,13 @@ func TestAuthSettings(t *testing.T) {
 	t.Setenv("OPENJEVX_API_KEY", "")
 	t.Setenv("OPENJEVX_ALLOW_NO_API_KEY", "1")
 	t.Setenv("OPENJEVX_ALLOW_NO_PASSWORD", "1")
-	cfg = config{Listen: "0.0.0.0:21118", configDir: dir}
+	cfg = config{Listen: "0.0.0.0:21160", configDir: dir}
 	if _, _, err := resolveAuth(&cfg); err != nil || cfg.APIKey != "" || cfg.Password != "" {
 		t.Fatalf("allow_no_*: key %q password %q err %v", cfg.APIKey, cfg.Password, err)
 	}
 	// The old published default counts as no password.
 	clearAuthEnv(t)
-	cfg = config{Listen: "127.0.0.1:21118", Password: oldDefaultPassword, configDir: dir}
+	cfg = config{Listen: "127.0.0.1:21160", Password: oldDefaultPassword, configDir: dir}
 	if _, _, err := resolveAuth(&cfg); err != nil || cfg.Password == oldDefaultPassword || cfg.Password == "" {
 		t.Fatalf("password %q err %v", cfg.Password, err)
 	}
@@ -131,7 +131,7 @@ func TestAuthSettings(t *testing.T) {
 func TestAPIKeyUnwritable(t *testing.T) {
 	clearAuthEnv(t)
 	t.Chdir(readOnlyDir(t))
-	cfg := config{Listen: "0.0.0.0:21118", configDir: readOnlyDir(t)}
+	cfg := config{Listen: "0.0.0.0:21160", configDir: readOnlyDir(t)}
 	_, _, err := resolveAuth(&cfg)
 	if err == nil || !strings.Contains(err.Error(), "OPENJEVX_API_KEY") || !strings.Contains(err.Error(), "OPENJEVX_DATA") {
 		t.Fatalf("err %v: want a refusal naming both ways out", err)
@@ -176,7 +176,7 @@ func TestReadOnlyConfigFolderFallsBackToData(t *testing.T) {
 	data := t.TempDir()
 	t.Setenv("OPENJEVX_DATA", data)
 	ro := readOnlyDir(t)
-	cfg := config{Listen: "0.0.0.0:21118", configDir: ro}
+	cfg := config{Listen: "0.0.0.0:21160", configDir: ro}
 	key, pw, err := resolveAuth(&cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +184,7 @@ func TestReadOnlyConfigFolderFallsBackToData(t *testing.T) {
 	if key.from != filepath.Join(data, "openjevx.api-key") || pw.from != filepath.Join(data, "openjevx.password") {
 		t.Fatalf("key in %q, password in %q: want both in %s", key.from, pw.from, data)
 	}
-	again := config{Listen: "0.0.0.0:21118", configDir: ro}
+	again := config{Listen: "0.0.0.0:21160", configDir: ro}
 	if _, _, err := resolveAuth(&again); err != nil || again.APIKey != cfg.APIKey || again.Password != cfg.Password {
 		t.Fatalf("second start: %v; want the kept ones", err)
 	}
@@ -198,7 +198,7 @@ func TestExistingSecretBesideConfigWins(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(conf, "openjevx.password"), []byte("kept-beside-the-config\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config{Listen: "127.0.0.1:21118", configDir: conf}
+	cfg := config{Listen: "127.0.0.1:21160", configDir: conf}
 	if _, pw, err := resolveAuth(&cfg); err != nil || cfg.Password != "kept-beside-the-config" || pw.generated {
 		t.Fatalf("password %q generated %v err %v", cfg.Password, pw.generated, err)
 	}

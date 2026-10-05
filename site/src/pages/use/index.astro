@@ -5,7 +5,7 @@ import CodeCard from '../../components/CodeCard.astro';
 <Base title="Use it" description="Run OpenJevX and wire it into jevx.">
   <h1>Use it</h1>
   <p class="lead">One server, one endpoint: <code>POST /v1/systemone</code>. Everything below assumes
-    the default port <code>21118</code>.</p>
+    the default port <code>21160</code>.</p>
 
   <h2>Run it</h2>
   <CodeCard label="macOS / Linux">npx git+https://github.com/muthuishere/openjevx.git
@@ -23,7 +23,7 @@ tar -xf openjevx-linux-amd64.tar && tar -xzf openjevx-model-0.5.2.tar.gz && ./op
     <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-windows-amd64.zip">openjevx-windows-amd64.zip</a> with <a href="https://github.com/muthuishere/openjevx/releases/download/v0.5.9/openjevx-model-0.5.2.tar.gz">openjevx-model-0.5.2.tar.gz</a> unpacked into the same folder.</p>
 
   <h2>Docker</h2>
-  <CodeCard label="Docker">docker run -d -p 127.0.0.1:21118:21118 \
+  <CodeCard label="Docker">docker run -d -p 127.0.0.1:21160:21160 \
   -e OPENJEVX_PASSWORD=&lt;12+ characters&gt; -e OPENJEVX_API_KEY=&lt;16+ characters&gt; \
   ghcr.io/deemwar-products/openjevx:v0.5.9</CodeCard>
   <p>The prebuilt image is for linux/amd64 and linux/arm64. To build it yourself:</p>
@@ -32,7 +32,7 @@ OPENJEVX_PASSWORD=&lt;12+ characters&gt; OPENJEVX_API_KEY=&lt;16+ characters&gt;
   <p>The image has no default credentials and refuses to start without both. It runs as a non-root user.</p>
 
   <h2>Wire it into jevx</h2>
-  <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+  <CodeCard label="shell">jevx profile add openjevx http://127.0.0.1:21160/v1/systemone --model openjevx
 jevx profile use openjevx
 
 jevx is "Is this urgent?" &lt; email.txt
@@ -44,7 +44,7 @@ jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_unit
   <h2>Config</h2>
   <p><code>openjevx.json</code> next to the binary:</p>
   <CodeCard label="openjevx.json">&#123;
-  "listen": "127.0.0.1:21118",
+  "listen": "127.0.0.1:21160",
   "device": "auto"
 &#125;</CodeCard>
   <p><code>device</code> is <code>auto</code> (the first GPU provider that loads: CUDA, CoreML on macOS, DirectML on
@@ -59,7 +59,7 @@ jevx ask --noul out_of_stock="Is the item out of stock?" --in '&#123;"stock_unit
   </ul>
 
   <h2>Dashboard and stats</h2>
-  <p>Open <code>http://127.0.0.1:21118/</code> while it runs — request counts, input tokens,
+  <p>Open <code>http://127.0.0.1:21160/</code> while it runs — request counts, input tokens,
     latency p50/p95/p99, errors, recent requests.</p>
   <ul>
     <li><code>GET /stats</code> — JSON snapshot (password-protected)</li>

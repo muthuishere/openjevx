@@ -48,7 +48,7 @@ jobs:
         run: |
           ort_version=$(sed -n 's/^ARG ORT_VERSION=//p' Dockerfile)
           model_version=$(cat deploy/MODEL_VERSION)
-          mkdir -p smoke && echo '{"listen":"0.0.0.0:21118","device":"cpu"}' > smoke/openjevx.json
+          mkdir -p smoke && echo '{"listen":"0.0.0.0:21160","device":"cpu"}' > smoke/openjevx.json
           curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v$ort_version/${{ matrix.ort }}-$ort_version.tgz | tar -xz
           cp -L ${{ matrix.ort }}-$ort_version/lib/libonnxruntime.so smoke/
           curl -fsSL https://github.com/muthuishere/openjevx/releases/download/v$model_version/openjevx-model-$model_version.tar.gz | tar -xz -C smoke
@@ -56,18 +56,18 @@ jobs:
       - name: Serve from distroless as uid 10001 and answer one decision
         run: |
           # Listening on 0.0.0.0 needs an API key; /app is read-only, so both credentials come from the environment.
-          docker run -d --name ojx --cpus 1 --user 10001 -p 127.0.0.1:21118:21118 -v "$PWD/smoke:/app:ro" -w /tmp \
+          docker run -d --name ojx --cpus 1 --user 10001 -p 127.0.0.1:21160:21160 -v "$PWD/smoke:/app:ro" -w /tmp \
             -e OPENJEVX_ORT=/app/libonnxruntime.so -e OPENJEVX_API_KEY=ci-smoke-key-0123456789 -e OPENJEVX_PASSWORD=ci-smoke-password \
             gcr.io/distroless/cc-debian12 /app/openjevx -device cpu -model /app/model
-          for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:21160/health && break; sleep 2; done || true
           docker logs ojx
-          curl -fsS http://127.0.0.1:21118/health
+          curl -fsS http://127.0.0.1:21160/health
           body='{"state":"x","questions":{"a":{"type":"noul","instructions":"Is it?"}}}'
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
-          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer wrong' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:21118/stats)" = 401
-          curl -fsS -u x:ci-smoke-password http://127.0.0.1:21118/stats >/dev/null
-          curl -fsS -D headers.txt -H 'Authorization: Bearer ci-smoke-key-0123456789' -X POST http://127.0.0.1:21118/v1/systemone \
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21160/v1/systemone -d "$body")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer wrong' -X POST http://127.0.0.1:21160/v1/systemone -d "$body")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:21160/stats)" = 401
+          curl -fsS -u x:ci-smoke-password http://127.0.0.1:21160/stats >/dev/null
+          curl -fsS -D headers.txt -H 'Authorization: Bearer ci-smoke-key-0123456789' -X POST http://127.0.0.1:21160/v1/systemone \
             -d '{"state":"The parcel arrived crushed and the customer is furious.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}' \
             | tee answer.json
           grep -q '"noul"' answer.json
@@ -90,20 +90,20 @@ jobs:
           grep 'set OPENJEVX_API_KEY' err.txt
       - name: Runs as uid 10001 and checks the key
         run: |
-          docker run -d --name img -p 127.0.0.1:21118:21118 -e OPENJEVX_PASSWORD=ci-image-password \
+          docker run -d --name img -p 127.0.0.1:21160:21160 -e OPENJEVX_PASSWORD=ci-image-password \
             -e OPENJEVX_API_KEY=ci-image-key-0123456789 ojx-image
-          for i in $(seq 60); do curl -fsS http://127.0.0.1:21118/health && break; sleep 2; done || true
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:21160/health && break; sleep 2; done || true
           docker logs img
           test "$(docker exec img id -u)" = 10001
           test "$(docker exec img stat -c %u /proc/1)" = 10001   # the server itself (PID 1 after the entrypoint's exec)
           body='{"state":"The parcel arrived crushed.","questions":{"a":{"type":"noul","instructions":"Is the customer angry?"}}}'
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21118/v1/systemone -d "$body")" = 401
-          curl -fsS -H 'Authorization: Bearer ci-image-key-0123456789' -X POST http://127.0.0.1:21118/v1/systemone -d "$body" | grep -q '"noul"'
-          curl -fsS -u x:ci-image-password http://127.0.0.1:21118/stats >/dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:21160/v1/systemone -d "$body")" = 401
+          curl -fsS -H 'Authorization: Bearer ci-image-key-0123456789' -X POST http://127.0.0.1:21160/v1/systemone -d "$body" | grep -q '"noul"'
+          curl -fsS -u x:ci-image-password http://127.0.0.1:21160/stats >/dev/null
       - name: A read-only config under /app starts, and generated credentials never reach the log
         run: |
-          echo '{"listen":"0.0.0.0:21118","device":"cpu","model":"/app/model"}' > ro.json
-          docker run -d --name ro -p 127.0.0.1:21119:21118 -v "$PWD/ro.json:/app/openjevx.json:ro" ojx-image
+          echo '{"listen":"0.0.0.0:21160","device":"cpu","model":"/app/model"}' > ro.json
+          docker run -d --name ro -p 127.0.0.1:21119:21160 -v "$PWD/ro.json:/app/openjevx.json:ro" ojx-image
           for i in $(seq 60); do curl -fsS http://127.0.0.1:21119/health && break; sleep 2; done || true
           docker logs ro 2>&1 | grep 'generated into /data/openjevx.api-key (sha256 \.\.\.'
           key=$(docker exec ro cat /data/openjevx.api-key); pw=$(docker exec ro cat /data/openjevx.password)
