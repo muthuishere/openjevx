@@ -11,14 +11,14 @@ decisions in milliseconds, on your own machine.
 - **Python:** [`python/openjevx.py`](python/openjevx.py), one file, same answers as the server (the container is still the recommended way to run it)
 - **jevx CLI:** [github.com/muthuishere/jevx](https://github.com/muthuishere/jevx)
 
-Default port: **21118**
+Default port: **21160**
 
-http://127.0.0.1:21118/v1/systemone
+http://127.0.0.1:21160/v1/systemone
 
 Change it in `openjevx.json`:
 
 ```json
-{ "listen": "127.0.0.1:21118", "device": "auto", "model": "model" }
+{ "listen": "127.0.0.1:21160", "device": "auto", "model": "model" }
 ```
 
 `device` is `auto`, `cpu`, or `gpu`. `auto` uses the first GPU provider that loads and matches the CPU on a probe
@@ -43,7 +43,7 @@ one never replaces yours (the npx installer keeps it too and only adds keys it l
 replaced by a generated one. The 401 body is `{"error":"missing or wrong API key"}`, the same as the jev-cloud gate's.
 
 ```bash
-curl -H "Authorization: Bearer $(cat openjevx.api-key)" http://<host>:21118/v1/systemone -d @body.json
+curl -H "Authorization: Bearer $(cat openjevx.api-key)" http://<host>:21160/v1/systemone -d @body.json
 ```
 
 `threads` (or `OPENJEVX_THREADS`, which wins) is the CPU threads one request uses. Unset, the server takes the first
@@ -154,7 +154,7 @@ same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 The prebuilt image, for linux/amd64 and linux/arm64 (each release tag, and `latest`):
 
 ```bash
-docker run -d -p 127.0.0.1:21118:21118 \
+docker run -d -p 127.0.0.1:21160:21160 \
   -e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> \
   ghcr.io/deemwar-products/openjevx:v0.5.9
 ```
@@ -175,14 +175,14 @@ working folder. Make a key with `openssl rand -hex 24`.
 Use OpenJevX from the [jevx CLI](https://github.com/muthuishere/jevx):
 
 ```bash
-jevx profile add openjevx http://127.0.0.1:21118/v1/systemone --model openjevx
+jevx profile add openjevx http://127.0.0.1:21160/v1/systemone --model openjevx
 jevx profile use openjevx
 ```
 
 With an API key (any server not on loopback), let jevx read it from the environment:
 
 ```bash
-jevx profile add openjevx http://<host>:21118/v1/systemone --model openjevx --header 'Authorization: Bearer $OPENJEVX_API_KEY'
+jevx profile add openjevx http://<host>:21160/v1/systemone --model openjevx --header 'Authorization: Bearer $OPENJEVX_API_KEY'
 ```
 
 Upgrading from an older model? jevx caches answers by model name, so run `jevx cache clear` after upgrading (or give the profile a versioned model name such as `--model openjevx-v0.5.2`).
@@ -190,14 +190,14 @@ Upgrading from an older model? jevx caches answers by model name, so run `jevx c
 ## Recipes
 
 18 runnable decisions (curl and jevx), each with the real answer and what to do next, plus a page of measured
-facts. In the repo: [`recipes/`](recipes/README.md). In a running server: http://127.0.0.1:21118/recipes (dashboard
+facts. In the repo: [`recipes/`](recipes/README.md). In a running server: http://127.0.0.1:21160/recipes (dashboard
 password). In the Docker image: `/usr/share/openjevx/recipes`.
 
 Apache-2.0. Credits: `CREDITS`. Decisions behind the project: [`docs/adr/`](docs/adr/README.md).
 
 ## Dashboard
 
-Open http://127.0.0.1:21118/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
+Open http://127.0.0.1:21160/ while the server runs. It shows request count, questions answered, input tokens, latency p50/p95/p99, errors, and recent requests.
 
 There is no default password. Set `"password"` in `openjevx.json` (or `OPENJEVX_PASSWORD`); unset, the server
 generates one on its first start, shows it once on a terminal, and keeps it in `openjevx.password` (the npx install
@@ -217,7 +217,7 @@ The server turns ONNX Runtime's telemetry off (`ORT_DISABLE_TELEMETRY=1` unless 
 Microsoft, and ORT 1.29 no longer runs `blkid`/`hostname` through `/bin/sh` at startup, which crashed it in distroless
 images.
 
-Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21118/. `task build` only builds; `task test` runs the tests.
+Needs Go and [Task](https://taskfile.dev). `task run` fetches ONNX Runtime and the model folder into `.local/` (`.local/model/`), builds, and starts the server on http://127.0.0.1:21160/. `task build` only builds; `task test` runs the tests.
 
 Release from this machine, no CI: `task package` builds the macOS, Linux (amd64, arm64) and Windows packages plus `openjevx-model-<version>.tar.gz` from `MODEL_DIR` (default `.local/model`) (Go cross-compiles, [zig](https://ziglang.org) is the C compiler), `task docker` builds both Docker images locally (no image tars are released: users build the image with `docker compose`, ADR 0010), and `task release VERSION=v<version>` uploads the release assets by name (the four server archives, the model archive and `SHA256SUMS-server`) to that GitHub release.
 

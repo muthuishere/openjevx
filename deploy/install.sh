@@ -15,7 +15,7 @@ MODEL_VERSION="${OPENJEVX_MODEL_VERSION:-$(cat "$here/MODEL_VERSION" 2>/dev/null
 [ -n "$MODEL_VERSION" ] || { echo "install.sh: set OPENJEVX_MODEL_VERSION (no MODEL_VERSION file next to this script)" >&2; exit 1; }
 BASE="${OPENJEVX_BASE:-https://github.com/muthuishere/openjevx/releases/download/v${VERSION}}"
 DIR=/opt/openjevx
-PORT=21118
+PORT=21160
 
 [ "$(id -u)" = 0 ] || { echo "install.sh: run as root" >&2; exit 1; }
 case "$(uname -m)" in
@@ -89,19 +89,19 @@ cat > /etc/update-motd.d/99-openjevx <<'MOTD'
 cat <<TXT
 
 OpenJevX is running as the service 'openjevx' (systemctl status openjevx).
-  Health:    curl http://127.0.0.1:21118/health
-  Decide:    POST http://127.0.0.1:21118/v1/systemone
+  Health:    curl http://127.0.0.1:21160/health
+  Decide:    POST http://127.0.0.1:21160/v1/systemone
              with  -H "Authorization: Bearer \$(cat /root/openjevx-api-key)"
-  Dashboard: http://<this-ip>:21118/  (password: cat /root/openjevx-password)
+  Dashboard: http://<this-ip>:21160/  (password: cat /root/openjevx-password)
 Servers installed before 0.5.7 got their API key on the first start of 0.5.7: /opt/openjevx/openjevx.api-key.
-Port 21118 is closed by the firewall; open it only to your own network, e.g.
-  ufw allow from 10.0.0.0/8 to any port 21118
-Or use an SSH tunnel:  ssh -L 21118:127.0.0.1:21118 root@<this-ip>
+Port 21160 is closed by the firewall; open it only to your own network, e.g.
+  ufw allow from 10.0.0.0/8 to any port 21160
+Or use an SSH tunnel:  ssh -L 21160:127.0.0.1:21160 root@<this-ip>
 TXT
 MOTD
 chmod 755 /etc/update-motd.d/99-openjevx
 
-# Firewall: SSH only. The customer opens 21118 to their own network (the API key is a second lock, not the only one).
+# Firewall: SSH only. The customer opens 21160 to their own network (the API key is a second lock, not the only one).
 # Allow every port sshd really listens on, so a non-standard SSH port does not lock anyone out.
 if command -v ufw >/dev/null; then
   ssh_ports="$( (sshd -T 2>/dev/null || true) | awk '$1=="port"{print $2}')"
@@ -111,7 +111,7 @@ if command -v ufw >/dev/null; then
   fi
   for p in $ssh_ports; do ufw allow "$p/tcp" >/dev/null; done
   ufw --force enable >/dev/null
-  echo "install.sh: firewall on; SSH allowed on port(s) $(echo "$ssh_ports" | tr "\n" " "); 21118 closed until you open it." >&2
+  echo "install.sh: firewall on; SSH allowed on port(s) $(echo "$ssh_ports" | tr "\n" " "); 21160 closed until you open it." >&2
 fi
 
 systemctl daemon-reload

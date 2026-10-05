@@ -223,13 +223,13 @@ task all</CodeCard>
   tokenizer.json</CodeCard>
   <p>Point the server at the folder in <code>openjevx.json</code> and start it:</p>
   <CodeCard label="openjevx.json">{`{
-  "listen": "127.0.0.1:21118",
+  "listen": "127.0.0.1:21160",
   "device": "auto",
   "model": "/path/to/my-model"
 }`}</CodeCard>
   <p>With Docker, mount the folder and set the same <code>"model"</code> path inside the container. Then
     add a jevx profile with a versioned model name, so cached answers from the old model are not reused:</p>
-  <CodeCard label="shell">{`jevx profile add mymodel http://127.0.0.1:21118/v1/systemone --model mymodel-v1
+  <CodeCard label="shell">{`jevx profile add mymodel http://127.0.0.1:21160/v1/systemone --model mymodel-v1
 jevx profile use mymodel
 jevx cache clear
 jevx ask --noul discount="Does the order get the discount? Orders over Rs 500 get 10% off." --in '{"order_total_rs": 501}'`}</CodeCard>

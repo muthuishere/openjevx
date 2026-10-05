@@ -17,7 +17,7 @@ default credentials anywhere.
 - **Images and cloud-init** (`install.sh`): each server writes its own random dashboard password and API key on
   first boot, into `openjevx.json` and `/root/openjevx-password` / `/root/openjevx-api-key` (mode 0600). Servers
   installed before 0.5.7 generate their key on the first start of 0.5.7, in `/opt/openjevx/openjevx.api-key`. The
-  firewall (ufw) still opens only SSH; the customer opens port 21118 to their own network or uses an SSH tunnel.
+  firewall (ufw) still opens only SSH; the customer opens port 21160 to their own network or uses an SSH tunnel.
 - **Docker image** (repo `Dockerfile`, Debian 12 slim, runs as uid 10001): refuses to start without
   `OPENJEVX_PASSWORD` (12+ characters) and `OPENJEVX_API_KEY` (16+), or your own `openjevx.json` mounted at
   `/data/openjevx.json` or read-only at `/app/openjevx.json`. Credentials it has to generate go to `/data`
@@ -48,7 +48,7 @@ set `OPENJEVX_BASE` / `-var openjevx_base=` to a public R2 folder instead once t
    cd deploy/digitalocean && packer init . && sec run DIGITALOCEAN_TOKEN -- packer build .
    ```
    The build runs DigitalOcean's `99-img-check.sh` (pinned to a commit and sha256); it must pass.
-2. Test: create a droplet from the snapshot, SSH in, read the login message, `curl http://127.0.0.1:21118/health`.
+2. Test: create a droplet from the snapshot, SSH in, read the login message, `curl http://127.0.0.1:21160/health`.
 3. Owner submits in the [Vendor Portal](https://cloud.digitalocean.com/vendorportal) with:
    - Name: OpenJevX · Vendor: deemwar · Category: Machine Learning / Developer Tools
    - Summary: "A small decision model you run on your own CPU. Ask yes/no, pick-one and rating questions over an HTTP API; answers come with a confidence."
@@ -74,7 +74,7 @@ key. Even so, this path suits trials; production should use the 1-Click droplet 
   Azure "Custom data", GCP `user-data` metadata, Hetzner/DO "User data").
 - **Docker, prebuilt:** `ghcr.io/deemwar-products/openjevx:<release tag>` (and `:latest`), linux/amd64 and
   linux/arm64, pushed by `release.yml` from this repo's Dockerfile; the release notes give its digest. Run it with
-  `-e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> -p 127.0.0.1:21118:21118`.
+  `-e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> -p 127.0.0.1:21160:21160`.
 - **Docker, from source:** copy `deploy/docker-compose.yml` to the box and run
   `OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build`.
 

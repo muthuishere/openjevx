@@ -18,7 +18,7 @@ Changing your avatar
 The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "Pricing of the enterprise plan", "questions": {"hit": {"type": "noul", "instructions": "Does this page answer: how do I get my money back?"}}}'
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "Pricing of the enterprise plan", "questions": {"hit": {"type": "noul", "instructions": "Does this page answer: how do I get my money back?"}}}'
 ```
 
 Real answer for the first input (model 0.5.2, server 0.5.7, CPU):

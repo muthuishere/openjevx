@@ -2,7 +2,7 @@
 
 Eighteen everyday decisions an agent or a script hands to OpenJevX, each as a call you can run against your own
 server. Start the server (`task run`, the Docker image, or a release binary), then copy any call below. The
-server listens on `localhost:21118` by default. These pages are also in the Docker image as files, in
+server listens on `localhost:21160` by default. These pages are also in the Docker image as files, in
 `/usr/share/openjevx/recipes`, and on the server at `/recipes`.
 
 Start with [what you get](what-you-get.md): model size, measured CPU latency, and the three question types.
@@ -25,7 +25,7 @@ For `jevx`, put the header in the profile once; every `jevx` call on these pages
 jevx reads the variable at call time:
 
 ```bash
-jevx profile add openjevx http://localhost:21118/v1/systemone --model openjevx-0.5.2 \
+jevx profile add openjevx http://localhost:21160/v1/systemone --model openjevx-0.5.2 \
   --header 'Authorization: Bearer $OPENJEVX_API_KEY'
 ```
 

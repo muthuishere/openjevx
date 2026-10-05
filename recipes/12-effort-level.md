@@ -7,7 +7,7 @@ Rating: how much reasoning a task needs. `score` is the expected level (0 = firs
 The calls send `OPENJEVX_API_KEY`, and the `jevx` lines use the `openjevx` profile that carries it: [the API key](README.md).
 
 ```bash
-curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21118/v1/systemone -d '{"state": "Rename the variable foo to bar in utils.py", "questions": {"effort": {"type": "score", "instructions": "How much reasoning does this coding task need?", "criteria": ["trivial", "moderate", "hard"]}}}' | jq -c .answers
+curl -s -H "Authorization: Bearer $OPENJEVX_API_KEY" localhost:21160/v1/systemone -d '{"state": "Rename the variable foo to bar in utils.py", "questions": {"effort": {"type": "score", "instructions": "How much reasoning does this coding task need?", "criteria": ["trivial", "moderate", "hard"]}}}' | jq -c .answers
 ```
 
 Real answer (model 0.5.2, server 0.5.7, CPU):

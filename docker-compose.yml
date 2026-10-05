@@ -3,7 +3,7 @@ services:
     image: ghcr.io/deemwar-products/openjevx:latest
     build: .
     ports:
-      - "127.0.0.1:21118:21118"
+      - "127.0.0.1:21160:21160"
     # Both credentials are required (no defaults); or mount your own config at /data/openjevx.json instead.
     # Clients send "Authorization: Bearer $OPENJEVX_API_KEY" to /v1/systemone.
     environment:
