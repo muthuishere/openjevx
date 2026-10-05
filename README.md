@@ -11,7 +11,7 @@ decisions in milliseconds, on your own machine.
 - **Python:** [`python/openjevx.py`](python/openjevx.py), one file, same answers as the server (the container is still the recommended way to run it)
 - **jevx CLI:** [github.com/muthuishere/jevx](https://github.com/muthuishere/jevx)
 
-Default port: **21160**
+Default port: **21160**. Before v0.5.11 the default was 21118; an upgrade keeps the port already in openjevx.json.
 
 http://127.0.0.1:21160/v1/systemone
 
