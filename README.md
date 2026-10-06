@@ -154,10 +154,12 @@ same folder (`tar -xzf openjevx-model-0.5.2.tar.gz`) and run `openjevx.exe`.
 The prebuilt image, for linux/amd64 and linux/arm64 (each release tag, and `latest`):
 
 ```bash
-docker run -d -p 127.0.0.1:21160:21160 \
+docker run -d -p 127.0.0.1:21118:21118 \
   -e OPENJEVX_PASSWORD=<12+ characters> -e OPENJEVX_API_KEY=<16+ characters> \
   ghcr.io/deemwar-products/openjevx:v0.5.9
 ```
+
+This image listens on 21118 (`EXPOSE 21118`). The native install uses 21160; the v0.5.11 image on 21160 is pending.
 
 Or build it from source:
 
