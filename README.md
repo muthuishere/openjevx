@@ -165,7 +165,7 @@ Or build it from source:
 
 ```bash
 git clone https://github.com/muthuishere/openjevx.git && cd openjevx
-OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d --build
+OPENJEVX_PASSWORD=<12+ characters> OPENJEVX_API_KEY=<16+ characters> docker compose up -d
 ```
 
 The image has no default credentials: it refuses to start without `OPENJEVX_PASSWORD` and `OPENJEVX_API_KEY` (or
